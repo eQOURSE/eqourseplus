@@ -1,17 +1,15 @@
 # PROGRESS.md — FR completion tracker (agents update this; human owns it)
-Current phase: 0 — Foundation
+Current phase: 0 — Foundation (next: FR-FND-01)
 Last completed FR: —
 
-## Phase 0 — Foundation (wk 1–2)
-- [ ] Repo scaffold (Turborepo: apps/web, apps/api, packages/*)
-- [ ] Auth skeleton (email OTP + JWT + RBAC guard)
-- [ ] Atlas dev cluster connected via env
-- [ ] CI (GitHub Actions: lint+test+build) 
-- [ ] Deploy hello-world: web (Vercel/CF) + api (Cloud Run) + staging (Utho)
-## Phase 1 — Public site + SEO (wk 3–4)
-- [ ] Home, /jobs, /freelancers, /vendors, /about, /login, /register (SSR)
-- [ ] FR-SEO-01 programmatic pages + sitemap engine + robots + JSON-LD
-- [ ] GSC property + links from eqourse.com live
+## Phase 0 — Foundation (wk 1–2) — SPEC.md Section 22.1, strictly in order
+- [ ] FR-FND-01 scaffold  - [ ] FR-FND-02 auth core  - [ ] FR-FND-03 db wiring
+- [ ] FR-FND-04 CI  - [ ] FR-FND-05 deployments  - [ ] FR-FND-06 observability
+## Phase 1 — Public site + SEO (wk 3–4) — SPEC.md Section 22.2
+- [ ] FR-PUB-01 home  - [ ] FR-PUB-02 jobs pages  - [ ] FR-PUB-03 /freelancers
+- [ ] FR-PUB-04 /vendors  - [ ] FR-PUB-05 /about  - [ ] FR-PUB-06 login/register
+- [ ] FR-SEO-01 programmatic SEO engine
+- [ ] Manual (not code): GSC property + links from eqourse.com live
 ## Phase 2 — Freelancer onboarding (wk 5–8)
 - [ ] FR-REG-01  - [ ] FR-REG-02  - [ ] FR-REG-03  - [ ] FR-REG-04  - [ ] FR-REG-05
 - [ ] FR-REG-06  - [ ] FR-REG-07  - [ ] FR-REG-11  - [ ] FR-REG-12  - [ ] FR-REG-14

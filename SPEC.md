@@ -1,4 +1,4 @@
-# eQOURSE+ — SaaS Requirements Specification (SPEC.md) v2.0 — Global Edition
+# eQOURSE+ — SaaS Requirements Specification (SPEC.md) v2.1 — Global Edition
 > Workforce & Project Delivery Platform for eQOURSE (AI Data Services + Content Services) and Tutrain.
 > This file is the single source of truth for AI coding agents (Antigravity / Cursor / Claude Code / Kiro).
 > RULES FOR AGENTS: Implement only requirements listed here, by FR ID. Never invent endpoints, entities or
@@ -273,3 +273,28 @@ white-label in Phase 3. Phases (exit-criterion gated): 0 Foundation (wk1–2: re
 → 4 Talent DB+projects TAL-01..03, PRJ-01..07 (wk12–16) → 5 QA+finance core QLT-01, FIN-01..04,08 (wk17–20) →
 6 Vendors REG-08/09/13, PRJ-09, FIN-05/06 (wk21–24) → 7 Autonomy TAL-04/05, QLT-02/03, FIN-09, ADM-04..06,
 open board (wk25–30) → 8 AI+CRM (31+). Never start a phase before the previous exit criterion runs on staging.
+
+## 22. Foundation & Public-Site Requirements (Phase 0–1 FR IDs — added v2.1)
+
+### 22.1 Foundation (FND) — Phase 0, in this order
+| ID | Requirement | Acceptance |
+|---|---|---|
+| FR-FND-01 | [P1] Turborepo scaffold: apps/web (Next.js 14 App Router, TS, Tailwind, shadcn init), apps/api (NestJS Node 20, Mongoose, GET /health), packages/shared (state enums from Flows F1/F4/F5 + zod schemas), packages/adapters (KYC/ESign/Payout/Proctor/Storage/LLM interfaces + sandbox implementations only), packages/ui (tokens: primary #F59E0B, text #1E293B, Inter/Plus Jakarta Sans). | `pnpm dev` runs web+api; `pnpm test` and `pnpm lint` green; /health returns 200. |
+| FR-FND-02 | [P1] Auth core: email OTP sign-in, JWT access+refresh, roles enum, RBAC route guard, rate-limit on auth endpoints. | Tests prove 401 unauthenticated, 403 wrong-role, 200 correct-role. |
+| FR-FND-03 | [P1] Database wiring: Atlas dev connection via env, migrate-mongo configured, seed script inserting skillTaxonomy sample tree. | Migration + seed run cleanly against the dev cluster; no credentials in repo. |
+| FR-FND-04 | [P1] CI: GitHub Actions on PR = lint + test + build; merge to main = staging deploy hook. | A failing test blocks the PR check. |
+| FR-FND-05 | [P1] Deployments: web on Vercel (or CF Workers), api container on GCP Cloud Run asia-south1, full stack on Utho via Dokploy as staging; health checks + envs from secret manager. | Hello-world reachable on staging and prod URLs; secrets absent from repo. |
+| FR-FND-06 | [P1] Observability: Sentry on web+api, structured JSON logs, request-id propagation. | A deliberately thrown error appears in Sentry from both apps. |
+
+### 22.2 Public site (PUB) — Phase 1, after all FND
+| ID | Requirement | Acceptance |
+|---|---|---|
+| FR-PUB-01 | [P1] Home `/` per Section 16.1 (hero, trust strip, how-it-works, category grid, stats, testimonials, footer with eqourse.com links). | SSR; Lighthouse SEO ≥95; meta/canonical per Section 18. |
+| FR-PUB-02 | [P1] `/jobs` listing + `/jobs/[slug]` detail with JobPosting JSON-LD, filters by category/language; sourced from seeded sample jobs until FR-PRJ ships. | Google Rich Results test passes JobPosting on a job page. |
+| FR-PUB-03 | [P1] `/freelancers` landing (earnings, tiers, testing, payout methods by country, FAQ + FAQPage schema). | Indexed-ready; meta standards met. |
+| FR-PUB-04 | [P1] `/vendors` landing (RFP model, capability requirements, case-study links to eqourse.com). | Same standards. |
+| FR-PUB-05 | [P1] `/about` trust page (parent-company story, certifications, security, contact). | Organization schema includes parentOrganization: eQOURSE. |
+| FR-PUB-06 | [P1] `/login` + `/register` with role choice (Freelancer / Vendor) and country selector stub feeding FR-REG-11. | Role choice routes to the correct wizard placeholder; app routes noindex. |
+| FR-SEO-01 | [P1] Programmatic SEO engine: auto-generated category×language landing pages, sitemap.xml regenerated on job publish, robots.txt blocking /app + /api, sitewide Organization + WebSite JSON-LD. | Publishing a seeded job updates sitemap.xml automatically; /app routes carry noindex. |
+
+Ordering rule: FND-01→06 strictly sequential; PUB-01..06 then FR-SEO-01. FR-SEO-01 must not begin before FR-FND-01/05 are done.
