@@ -1,4 +1,4 @@
-# eQOURSE+ — SaaS Requirements Specification (SPEC.md) v2.1 — Global Edition
+# eQOURSE+ — SaaS Requirements Specification (SPEC.md) v2.2 — Global Edition
 > Workforce & Project Delivery Platform for eQOURSE (AI Data Services + Content Services) and Tutrain.
 > This file is the single source of truth for AI coding agents (Antigravity / Cursor / Claude Code / Kiro).
 > RULES FOR AGENTS: Implement only requirements listed here, by FR ID. Never invent endpoints, entities or
@@ -150,6 +150,8 @@ IN_PROGRESS → EXPIRED → requeue.
 
 **F5 Finance:** Accepted work → EarningLine → cycle close → auto TDS/GST → Finance batch approval →
 payout API → webhook success/fail (fail → retry queue) → worker dashboard + payslips; margin analytics fed continuously.
+**F5 PayoutBatch state enum (normative):** PENDING → APPROVED → PROCESSING → SUCCEEDED | FAILED → RETRY_QUEUED → PROCESSING; CANCELLED reachable from PENDING/APPROVED only (admin action, audit-logged). EarningLine.status: ACCRUED → LOCKED_IN_BATCH → PAID | FAILED | DISPUTED.
+**DESIGN SYSTEM (normative):** ./DESIGN.md (extracted from eqourse.com) is the canonical visual language for all UI — colors, typography, gradients, shadows, radius, glassmorphism, animation library, easing and timing. Any UI FR must comply with DESIGN.md; the platform may EXTEND it (Section 12 of DESIGN.md) but never contradict its tokens.
 
 ## 7. Screen Inventory (prototype = production components: Next.js + Tailwind + shadcn/ui)
 Freelancer: Onboarding wizard (stepper, save-resume, doc uploader w/ API status) · Dashboard (tier badge, quality ring,
@@ -159,7 +161,7 @@ Vendor: KYB onboarding · Team management · RFPs & bids · Delivery/allocation 
 Ops: Verification queue · Talent search (+semantic P2, benches, compare) · Project builder · Staffing kanban (+auto-match panel) ·
 Project dashboard · QA console (rubrics, gold results) · Finance console (cycles, batches, TDS/GST, margin, escrow) ·
 Admin (taxonomy, test builder, RBAC matrix, automation rules, audit explorer, announcements).
-Design: light-first, primary #F59E0B, text #1E293B, rounded cards, dark mode, EN+HI strings, WCAG-AA,
+Design: eqourse.com design system per DESIGN.md — primary teal #0F9B8E (hsl 170 82% 32%), accent mint #7BE8C9, navy #232145/#2B2856, background #F7FAF9, gradient-primary teal→mint; rounded cards, dark mode, EN+HI strings, WCAG-AA,
 every empty state has guidance + CTA.
 
 ## 8. Core Entities (PostgreSQL system of record — keep names exact)
@@ -279,7 +281,7 @@ open board (wk25–30) → 8 AI+CRM (31+). Never start a phase before the previo
 ### 22.1 Foundation (FND) — Phase 0, in this order
 | ID | Requirement | Acceptance |
 |---|---|---|
-| FR-FND-01 | [P1] Turborepo scaffold: apps/web (Next.js 14 App Router, TS, Tailwind, shadcn init), apps/api (NestJS Node 20, Mongoose, GET /health), packages/shared (state enums from Flows F1/F4/F5 + zod schemas), packages/adapters (KYC/ESign/Payout/Proctor/Storage/LLM interfaces + sandbox implementations only), packages/ui (tokens: primary #F59E0B, text #1E293B, Inter/Plus Jakarta Sans). | `pnpm dev` runs web+api; `pnpm test` and `pnpm lint` green; /health returns 200. |
+| FR-FND-01 | [P1] Turborepo scaffold: apps/web (Next.js 14 App Router, TS, Tailwind, shadcn init), apps/api (NestJS Node 20, Mongoose, GET /health), packages/shared (state enums from Flows F1/F4/F5 + zod schemas), packages/adapters (KYC/ESign/Payout/Proctor/Storage/LLM interfaces + sandbox implementations only), packages/ui (tokens per DESIGN.md: primary teal hsl(170 82% 32%) #0F9B8E, accent mint hsl(165 75% 71%) #7BE8C9, navy #232145, background #F7FAF9, destructive #EF4444, radius 0.75rem, shadows soft/card/elevated, gradient-primary 135deg teal→mint; fonts Inter (body) + Plus Jakarta Sans (headings)). | `pnpm dev` runs web+api; `pnpm test` and `pnpm lint` green; /health returns 200. |
 | FR-FND-02 | [P1] Auth core: email OTP sign-in, JWT access+refresh, roles enum, RBAC route guard, rate-limit on auth endpoints. | Tests prove 401 unauthenticated, 403 wrong-role, 200 correct-role. |
 | FR-FND-03 | [P1] Database wiring: Atlas dev connection via env, migrate-mongo configured, seed script inserting skillTaxonomy sample tree. | Migration + seed run cleanly against the dev cluster; no credentials in repo. |
 | FR-FND-04 | [P1] CI: GitHub Actions on PR = lint + test + build; merge to main = staging deploy hook. | A failing test blocks the PR check. |

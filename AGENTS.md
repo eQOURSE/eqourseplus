@@ -17,7 +17,7 @@ The full specification is in ./SPEC.md. The PDF (eQOURSE-plus-SRS-v2.pdf) is the
 9. Security defaults: validate every input with zod/class-validator; RBAC check on every API route; rate-limit auth + public endpoints; no PII in logs; signed URLs for file access.
 10. New dependencies require asking the human first (one-line justification). Prefer stdlib/existing deps.
 11. Public pages must follow SPEC.md Section 18 SEO standards (SSR, title/meta/canonical/JSON-LD). App routes are noindex.
-12. UI: Tailwind + shadcn/ui, tokens in packages/ui — primary #F59E0B, text #1E293B, Inter/Plus Jakarta Sans, rounded-2xl cards, WCAG-AA, every empty state = illustration + one line + CTA. Match SPEC.md Section 16 screen specs exactly.
+12. UI: Tailwind + shadcn/ui, tokens in packages/ui sourced from ./DESIGN.md (the eqourse.com design system — canonical): primary teal hsl(170 82% 32%) #0F9B8E, accent mint #7BE8C9, navy #232145, background #F7FAF9, radius 0.75rem, shadow-soft/card/elevated, gradient-primary teal→mint, Inter body + Plus Jakarta Sans headings, animation vocabulary + easing curves from DESIGN.md Sections 7 & 12, prefers-reduced-motion respected, WCAG-AA, every empty state = illustration + one line + CTA. Match SPEC.md Section 16 screen specs exactly. Never introduce colors/easings outside DESIGN.md.
 13. Git: branch feat/FR-XXX-nn-short-name; conventional commits; PR description lists FR IDs + pasted acceptance criteria checklist.
 14. If SPEC.md is ambiguous, STOP and ask. Do not guess silently.
 
