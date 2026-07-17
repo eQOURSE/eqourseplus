@@ -1,0 +1,4 @@
+Read AGENTS.md at the root and obey every rule (it is the source of truth), then SPEC.md for the FR being built.
+One FR per task, tests first, adapters for all third parties, enums+guards for state machines,
+append-only ledger with Mongo transactions and integer minor units, no new deps or secrets without asking,
+SEO standards from SPEC.md Section 18 on public pages, UI per Section 16. Update PROGRESS.md when done.
