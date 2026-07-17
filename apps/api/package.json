@@ -1,0 +1,29 @@
+{
+  "name": "@eqourse/api",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "lint": "eslint src test --ext .ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nestjs/common": "11.1.28",
+    "@nestjs/core": "11.1.28",
+    "@nestjs/mongoose": "11.0.4",
+    "@nestjs/platform-express": "11.1.28",
+    "mongoose": "9.7.4",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/testing": "11.1.28",
+    "@types/node": "^20.17.0",
+    "@types/supertest": "^6.0.2",
+    "supertest": "^7.0.0",
+    "typescript": "5.9.3",
+    "vitest": "2.1.9"
+  }
+}
