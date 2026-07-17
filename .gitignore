@@ -5,6 +5,8 @@ node_modules/
 dist/
 .next/
 .turbo/
+.pnpm-store/
 coverage/
+*.tsbuildinfo
 *.log
 .DS_Store
