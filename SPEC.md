@@ -1,4 +1,4 @@
-# eQOURSE+ — SaaS Requirements Specification (SPEC.md) v2.2 — Global Edition
+# eQOURSE+ — SaaS Requirements Specification (SPEC.md) v2.3 — Global Edition
 > Workforce & Project Delivery Platform for eQOURSE (AI Data Services + Content Services) and Tutrain.
 > This file is the single source of truth for AI coding agents (Antigravity / Cursor / Claude Code / Kiro).
 > RULES FOR AGENTS: Implement only requirements listed here, by FR ID. Never invent endpoints, entities or
@@ -260,6 +260,31 @@ workOrders, taskBatches, tasks, qaReviews, earningLines[APPEND-ONLY], payoutBatc
 auditLogs[APPEND-ONLY], notifications, announcements, messages). MANDATORY: multi-document transactions for all
 ledger/payout writes; state machines as enums + service-layer guards. If finance outgrows Mongo, isolate ledger
 into small Postgres service later via adapter.
+
+### 19.2 Normative collection schemas (added v2.3 — extend this subsection as each collection is first implemented)
+
+**skillTaxonomy** — one document per selectable skill node.
+```
+{
+  _id: ObjectId,
+  businessUnit: "EQOURSE" | "TUTRAIN",        // required
+  serviceLine: string,                         // required, e.g. "AI Data Services", "Content Services", "Tutoring"
+  skill: string,                               // required, e.g. "Annotation", "Curriculum", "NEET Biology"
+  specialization: string | null,               // optional leaf refinement, e.g. "Bounding Box"; null = general skill
+  slug: string,                                // required, unique, kebab-case of full path, e.g. "eqourse-ai-data-services-annotation-bounding-box"
+  status: "ACTIVE" | "DEPRECATED",             // required, default "ACTIVE" (never hard-delete taxonomy nodes)
+  version: number,                             // required, starts 1, increments on any field change
+  createdAt: Date, updatedAt: Date
+}
+```
+Indexes: unique on `slug`; unique compound on `(businessUnit, serviceLine, skill, specialization)`; index on `status`.
+Rules: proficiency levels (BEGINNER | INTERMEDIATE | ADVANCED | EXPERT) are NOT taxonomy rows — they are stored on
+profiles as `{ taxonomySlug, level }` when FR-REG-02 lands. Seed/import operations upsert by `slug` (idempotent).
+Normative seed rows (FR-FND-03):
+1. EQOURSE / AI Data Services / Annotation / Bounding Box
+2. EQOURSE / Content Services / Curriculum / null
+3. TUTRAIN / Tutoring / NEET Biology / null
+
 
 ## 20. Deployment (no physical servers)
 Vercel (Next.js, plus.eqourse.com CNAME, PR previews) · Railway/Render (NestJS API + BullMQ workers; Docker;
