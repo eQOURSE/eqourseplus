@@ -1,9 +1,9 @@
 # PROGRESS.md — FR completion tracker (agents update this; human owns it)
-Current phase: 0 — Foundation (next: FR-FND-02)
-Last completed FR: FR-FND-01 — 2026-07-17 — Turborepo web/api/packages scaffold; normative state enums and guards; sandbox adapters; canonical UI tokens; tests, lint, build, and live health smoke green.
+Current phase: 0 — Foundation (next: FR-FND-03)
+Last completed FR: FR-FND-02 — 2026-07-20 — Email OTP via sandbox mailer; JWT access + rotating/revocable refresh tokens stored hashed in MongoDB; business-unit-scoped roles and RBAC with SUPER_ADMIN exemption; per-IP and per-email auth throttling plus five-attempt OTP invalidation; tests, lint, and build green.
 
 ## Phase 0 — Foundation (wk 1–2) — SPEC.md Section 22.1, strictly in order
-- [x] FR-FND-01 scaffold (2026-07-17)  - [ ] FR-FND-02 auth core  - [ ] FR-FND-03 db wiring
+- [x] FR-FND-01 scaffold (2026-07-17)  - [x] FR-FND-02 auth core (2026-07-20)  - [ ] FR-FND-03 db wiring
 - [ ] FR-FND-04 CI  - [ ] FR-FND-05 deployments  - [ ] FR-FND-06 observability
 ## Phase 1 — Public site + SEO (wk 3–4) — SPEC.md Section 22.2
 - [ ] FR-PUB-01 home  - [ ] FR-PUB-02 jobs pages  - [ ] FR-PUB-03 /freelancers

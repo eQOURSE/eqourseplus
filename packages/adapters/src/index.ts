@@ -1,6 +1,7 @@
 export * from "./contracts/esign.adapter";
 export * from "./contracts/kyc.adapter";
 export * from "./contracts/llm.adapter";
+export * from "./contracts/mailer.adapter";
 export * from "./contracts/payout.adapter";
 export * from "./contracts/proctor.adapter";
 export * from "./contracts/resolver";
@@ -8,6 +9,7 @@ export * from "./contracts/storage.adapter";
 export * from "./sandbox/esign.sandbox";
 export * from "./sandbox/kyc.sandbox";
 export * from "./sandbox/llm.sandbox";
+export * from "./sandbox/mailer.sandbox";
 export * from "./sandbox/payout.sandbox";
 export * from "./sandbox/proctor.sandbox";
 export * from "./sandbox/storage.sandbox";

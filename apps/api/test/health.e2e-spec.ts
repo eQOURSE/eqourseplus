@@ -15,6 +15,7 @@ describe("GET /health (FR-FND-01)", () => {
   });
 
   it("returns HTTP 200", async () => {
+    process.env.JWT_SECRET = "test-only-jwt-secret-at-least-32-characters";
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -22,5 +23,6 @@ describe("GET /health (FR-FND-01)", () => {
     await app.init();
 
     await request(app.getHttpServer()).get("/health").expect(200);
+    delete process.env.JWT_SECRET;
   });
 });
