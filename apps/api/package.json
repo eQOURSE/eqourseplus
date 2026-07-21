@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "build": "nest build",
+    "db:migrate": "migrate-mongo up -f migrate-mongo-config.cjs",
+    "db:migrate:status": "migrate-mongo status -f migrate-mongo-config.cjs",
+    "db:seed": "node database/seeds/skill-taxonomy.cjs",
     "dev": "nest start --watch",
     "lint": "eslint src test --ext .ts",
     "test": "vitest run"
@@ -26,6 +29,8 @@
     "@nestjs/testing": "11.1.28",
     "@types/node": "^20.17.0",
     "@types/supertest": "^6.0.2",
+    "migrate-mongo": "^14.0.7",
+    "mongodb-memory-server": "^11.2.0",
     "supertest": "^7.0.0",
     "typescript": "5.9.3",
     "vitest": "2.1.9"

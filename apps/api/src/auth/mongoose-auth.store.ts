@@ -1,6 +1,7 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { connect, connection } from "mongoose";
 
+import { DatabaseConnectionService } from "../database/database-connection.service";
 import type {
   AuthStore,
   OtpChallenge,
@@ -13,6 +14,11 @@ import { UserModel, type UserDocument } from "./user.schema";
 @Injectable()
 export class MongooseAuthStore implements AuthStore {
   private connectionPromise?: Promise<void>;
+
+  constructor(
+    @Optional()
+    private readonly databaseConnection?: DatabaseConnectionService,
+  ) {}
 
   async findByEmail(email: string): Promise<StoredUser | null> {
     await this.ensureConnected();
@@ -145,6 +151,10 @@ export class MongooseAuthStore implements AuthStore {
 
   private async ensureConnected(): Promise<void> {
     if (connection.readyState === 1) return;
+    if (this.databaseConnection) {
+      await this.databaseConnection.connect();
+      return;
+    }
     if (!this.connectionPromise) {
       const uri = process.env.MONGODB_URI;
       if (!uri) throw new Error("MONGODB_URI is required for auth persistence");
