@@ -50,8 +50,8 @@ describe("FR-FND-04 CI workflow", () => {
     expect(workflow).toMatch(/^\s+pull_request:\s*$/m);
     expect(workflow).toContain("pnpm/action-setup@v4");
     expect(workflow).toMatch(/version:\s*11\.9\.0/);
-    expect(rootPackage.packageManager).toBe("pnpm@11.9.0");
-    expect(workflow).toContain("actions/setup-node@v4");
+        expect(rootPackage.packageManager).toBe("pnpm@99.9.9");
+        expect(workflow).toContain("actions/setup-node@v4");
     expect(workflowNodeVersion).toBe(pinnedNodeVersion);
     expect(rootPackage.engines.node).toBe(pinnedNodeVersion);
     expect(readFileSync(nodeVersionPath, "utf8").trim()).toBe(
