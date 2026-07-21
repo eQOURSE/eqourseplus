@@ -4,6 +4,7 @@ import request from "supertest";
 import { afterEach, describe, it } from "vitest";
 
 import { AppModule } from "../src/app.module";
+import { DatabaseConnectionService } from "../src/database/database-connection.service";
 
 describe("GET /health (FR-FND-01)", () => {
   let app: INestApplication;
@@ -18,7 +19,10 @@ describe("GET /health (FR-FND-01)", () => {
     process.env.JWT_SECRET = "test-only-jwt-secret-at-least-32-characters";
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(DatabaseConnectionService)
+      .useValue({})
+      .compile();
     app = moduleRef.createNestApplication();
     await app.init();
 

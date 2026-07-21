@@ -8,4 +8,5 @@ onlyBuiltDependencies:
   - unrs-resolver
 allowBuilds:
   esbuild: true
+  mongodb-memory-server: true
   unrs-resolver: true
