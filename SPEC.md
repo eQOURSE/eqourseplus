@@ -180,7 +180,7 @@ versioned proctoring consent); ISO 27001 alignment (access reviews, immutable au
 AWS Mumbai + Singapore residency); 99.5% uptime, RPO 1h/RTO 4h; i18n externalized (EN+HI).
 
 ## 11. Approved Stack
-Next.js 14+/TS/Tailwind/shadcn (PWA) · NestJS modular monolith (Node 20) · PostgreSQL 16 + Redis(BullMQ) + S3 ·
+Next.js 14+/TS/Tailwind/shadcn (PWA) · NestJS modular monolith (Node 22 LTS) · PostgreSQL 16 + Redis(BullMQ) + S3 ·
 Typesense/OpenSearch + pgvector · Keycloak/Auth0 (JWT, RBAC, 2FA) · KYC: IDfy/HyperVerge · e-sign: Digio/Leegality ·
 Proctoring: Mettl/AutoProctor SDK (buy) · Payouts: RazorpayX/Cashfree (+Stripe overseas) · Label Studio embedded ·
 LLM API behind internal service · AWS (Mumbai+SG), Terraform, Docker · Sentry + Grafana + structured logs.
@@ -287,7 +287,7 @@ Normative seed rows (FR-FND-03):
 
 
 ## 20. Deployment (no physical servers)
-Vercel (Next.js, plus.eqourse.com CNAME, PR previews) · Railway/Render (NestJS API + BullMQ workers; Docker;
+Vercel (Next.js, plus.eqourse.com CNAME, PR previews) · Railway/Render (NestJS API + BullMQ workers; Node 22 LTS; Docker;
 ap-south-1/SG) · Upstash Redis · MongoDB Atlas · Cloudflare R2 (buckets: kyc-docs encrypted-private,
 project-assets, deliverables; pre-signed URLs) · Resend/SES + MSG91/WhatsApp Cloud · Auth0 or Keycloak ·
 GitHub Actions CI/CD (prod migrations manual-gated) · Secrets: Doppler → synced to Vercel/Railway; never in repo;
@@ -306,7 +306,7 @@ open board (wk25–30) → 8 AI+CRM (31+). Never start a phase before the previo
 ### 22.1 Foundation (FND) — Phase 0, in this order
 | ID | Requirement | Acceptance |
 |---|---|---|
-| FR-FND-01 | [P1] Turborepo scaffold: apps/web (Next.js 14 App Router, TS, Tailwind, shadcn init), apps/api (NestJS Node 20, Mongoose, GET /health), packages/shared (state enums from Flows F1/F4/F5 + zod schemas), packages/adapters (KYC/ESign/Payout/Proctor/Storage/LLM interfaces + sandbox implementations only), packages/ui (tokens per DESIGN.md: primary teal hsl(170 82% 32%) #0F9B8E, accent mint hsl(165 75% 71%) #7BE8C9, navy #232145, background #F7FAF9, destructive #EF4444, radius 0.75rem, shadows soft/card/elevated, gradient-primary 135deg teal→mint; fonts Inter (body) + Plus Jakarta Sans (headings)). | `pnpm dev` runs web+api; `pnpm test` and `pnpm lint` green; /health returns 200. |
+| FR-FND-01 | [P1] Turborepo scaffold: apps/web (Next.js 14 App Router, TS, Tailwind, shadcn init), apps/api (NestJS Node 22 LTS, Mongoose, GET /health), packages/shared (state enums from Flows F1/F4/F5 + zod schemas), packages/adapters (KYC/ESign/Payout/Proctor/Storage/LLM interfaces + sandbox implementations only), packages/ui (tokens per DESIGN.md: primary teal hsl(170 82% 32%) #0F9B8E, accent mint hsl(165 75% 71%) #7BE8C9, navy #232145, background #F7FAF9, destructive #EF4444, radius 0.75rem, shadows soft/card/elevated, gradient-primary 135deg teal→mint; fonts Inter (body) + Plus Jakarta Sans (headings)). | `pnpm dev` runs web+api; `pnpm test` and `pnpm lint` green; /health returns 200. |
 | FR-FND-02 | [P1] Auth core: email OTP sign-in, JWT access+refresh, roles enum, RBAC route guard, rate-limit on auth endpoints. | Tests prove 401 unauthenticated, 403 wrong-role, 200 correct-role. |
 | FR-FND-03 | [P1] Database wiring: Atlas dev connection via env, migrate-mongo configured, seed script inserting skillTaxonomy sample tree. | Migration + seed run cleanly against the dev cluster; no credentials in repo. |
 | FR-FND-04 | [P1] CI: GitHub Actions on PR = lint + test + build; merge to main = staging deploy hook. | A failing test blocks the PR check. |

@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Lint, test, and build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.1
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Restore MongoDB memory-server binary cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/mongodb-memory-server
+          key: ${{ runner.os }}-mongodb-memory-server-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          MONGOMS_DOWNLOAD_DIR: ${{ github.workspace }}/node_modules/.cache/mongodb-memory-server
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test without external services
+        run: pnpm test
+        env:
+          MONGOMS_RUNTIME_DOWNLOAD: "false"
+
+      - name: Build
+        run: pnpm build
+
+  staging-deploy:
+    name: Staging deploy (stub)
+    needs: ci
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Placeholder until staging infrastructure exists
+        run: echo "FR-FND-05 will replace this staging deploy hook."
