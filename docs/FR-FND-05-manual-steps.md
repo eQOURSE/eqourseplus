@@ -8,8 +8,8 @@ the FR-FND-05 API pipeline. They do not deploy to Vercel or Utho.
 **Run every step in Sections 1–6 while the PR is still open, before merging it
 to `main`.** The staging workflow fires on the merge itself, so Artifact
 Registry, both service accounts, Workload Identity Federation, `MONGODB_URI`,
-the GitHub repository variables, and the protected `production` environment
-must already exist.
+`JWT_SECRET`, the GitHub repository variables, and the protected `production`
+environment must already exist.
 
 Run the following commands in PowerShell from a terminal where `gcloud` is
 authenticated as a project IAM administrator. The GitHub CLI commands also
@@ -113,21 +113,38 @@ gcloud iam service-accounts add-iam-policy-binding $DeployServiceAccount `
 
 No service-account key is created or downloaded.
 
-## 4. Create `MONGODB_URI` without putting its value in chat or a file
+## 4. Create runtime secrets without putting their values in chat or files
 
-Run this command, paste the MongoDB URI directly into the terminal, then send
-end-of-input. In Windows PowerShell, press `Ctrl+Z` and then Enter. In a
-Unix-like terminal, press `Ctrl+D`.
+For each command below, paste the requested raw value directly into the terminal,
+then send end-of-input. In Windows PowerShell, press Enter, then `Ctrl+Z`, then
+Enter. In a Unix-like terminal, press Enter, then `Ctrl+D`.
+
+First, create the database secret using the complete connection string without
+an `MONGODB_URI=` prefix or surrounding quotes:
 
 ```powershell
 gcloud secrets create MONGODB_URI --replication-policy=automatic --data-file=- `
   --project=$ProjectId
 ```
 
-Grant only the Cloud Run runtime identity access to this one secret:
+Next, create the JWT signing secret using a password-manager-generated random
+value of at least 32 characters, without a `JWT_SECRET=` prefix or surrounding
+quotes:
+
+```powershell
+gcloud secrets create JWT_SECRET --replication-policy=automatic --data-file=- `
+  --project=$ProjectId
+```
+
+Grant only the Cloud Run runtime identity access to these two secrets:
 
 ```powershell
 gcloud secrets add-iam-policy-binding MONGODB_URI `
+  --project=$ProjectId `
+  --member="serviceAccount:$RuntimeServiceAccount" `
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding JWT_SECRET `
   --project=$ProjectId `
   --member="serviceAccount:$RuntimeServiceAccount" `
   --role="roles/secretmanager.secretAccessor"
@@ -193,6 +210,7 @@ gcloud iam workload-identity-pools providers describe $ProviderId `
   --format="yaml(name,attributeMapping,attributeCondition)"
 
 gcloud secrets describe MONGODB_URI --project=$ProjectId
+gcloud secrets describe JWT_SECRET --project=$ProjectId
 
 gh variable list --repo $GitHubRepository
 ```
@@ -204,8 +222,9 @@ reviewer. Only then merge the PR.
 
 The staging job builds and pushes the commit-SHA image, deploys
 `eqplus-api-staging` in `asia-south1` with `min-instances=0`, public invocation,
-Secret Manager injection, and HTTP startup/liveness probes. It then calls
-`/health` and fails if the endpoint does not return a successful response.
+Secret Manager injection for `MONGODB_URI` and `JWT_SECRET`, and HTTP
+startup/liveness probes. It then calls `/health` and fails if the endpoint does
+not return a successful response.
 
 After that succeeds, the `Deploy production API` job must be visibly waiting
 for approval. Approve it only when you intend to promote that exact commit image.
