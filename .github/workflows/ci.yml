@@ -109,6 +109,15 @@ jobs:
           --liveness-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=10,timeoutSeconds=2,periodSeconds=30,failureThreshold=3
           --quiet
 
+      - name: Configure optional staging Sentry DSN
+        if: ${{ vars.ENABLE_SENTRY_DSN_SECRET == 'true' }}
+        run: >-
+          gcloud run services update eqplus-api-staging
+          --project=eqplus-503212
+          --region=asia-south1
+          --update-secrets=SENTRY_DSN=SENTRY_DSN:latest
+          --quiet
+
       - name: Verify staging health
         run: |
           SERVICE_URL="$(gcloud run services describe eqplus-api-staging --project=eqplus-503212 --region=asia-south1 --format='value(status.url)')"
@@ -151,6 +160,15 @@ jobs:
           --set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest
           --startup-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=0,timeoutSeconds=2,periodSeconds=5,failureThreshold=12
           --liveness-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=10,timeoutSeconds=2,periodSeconds=30,failureThreshold=3
+          --quiet
+
+      - name: Configure optional production Sentry DSN
+        if: ${{ vars.ENABLE_SENTRY_DSN_SECRET == 'true' }}
+        run: >-
+          gcloud run services update eqplus-api
+          --project=eqplus-503212
+          --region=asia-south1
+          --update-secrets=SENTRY_DSN=SENTRY_DSN:latest
           --quiet
 
       - name: Verify production health
