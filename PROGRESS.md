@@ -1,10 +1,10 @@
 # PROGRESS.md — FR completion tracker (agents update this; human owns it)
-Current phase: 0 — Foundation (next: FR-FND-06)
-Last completed FR: FR-FND-05 — 2026-07-23 — GitHub Actions run 29996312960 authenticated to GCP through main-only, repository-scoped Workload Identity Federation, built and pushed the API image, and deployed it to Cloud Run in asia-south1. `eqplus-api-staging` returned 200 with `{"status":"ok"}` from its run.app `/health`; the `Production` GitHub Environment visibly held `eqplus-api` for required-reviewer approval, and the approved production deployment completed successfully with its run.app `/health` also returning 200. Both services explicitly use min-instances=0, public access, health probes, the runtime service account, and Secret Manager-backed `MONGODB_URI`/`JWT_SECRET`; no JSON service-account keys or secrets are stored in the repository or workflow.
+Current phase: 0 — Foundation complete (next: FR-PUB-01)
+Last completed FR: FR-FND-06 — 2026-07-23 — Added pinned Sentry 9.17.0 integrations for Next.js web and NestJS API, disabled cleanly when DSNs are absent; tests prove deliberately thrown errors reach the web capture boundary as the exact Error instance and the API in-memory Sentry transport without a live DSN. API logs are single-line structured JSON with request-scoped IDs, allowlisted HTTP metadata, and tested redaction of emails, bearer tokens, and credentialed connection URLs. Web middleware originates/preserves `X-Request-Id`, the server API client forwards it, and the API honors or mints it, includes it on request logs/Sentry context, and returns it. Cloud Run can opt into Secret Manager-backed `SENTRY_DSN` only after the secret exists, so initial deployments do not fail; Vercel reads its intentionally public browser DSN from env only. Full tests, lint, and build are green.
 
 ## Phase 0 — Foundation (wk 1–2) — SPEC.md Section 22.1, strictly in order
 - [x] FR-FND-01 scaffold (2026-07-17)  - [x] FR-FND-02 auth core (2026-07-20)  - [x] FR-FND-03 db wiring (2026-07-21)
-- [x] FR-FND-04 CI (2026-07-21)  - [x] FR-FND-05 deployments (2026-07-23)  - [ ] FR-FND-06 observability
+- [x] FR-FND-04 CI (2026-07-21)  - [x] FR-FND-05 deployments (2026-07-23)  - [x] FR-FND-06 observability (2026-07-23)
 ## Phase 1 — Public site + SEO (wk 3–4) — SPEC.md Section 22.2
 - [ ] FR-PUB-01 home  - [ ] FR-PUB-02 jobs pages  - [ ] FR-PUB-03 /freelancers
 - [ ] FR-PUB-04 /vendors  - [ ] FR-PUB-05 /about  - [ ] FR-PUB-06 login/register
