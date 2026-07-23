@@ -9,4 +9,5 @@ dist/
 coverage/
 *.tsbuildinfo
 *.log
+gha-creds-*.json
 .DS_Store

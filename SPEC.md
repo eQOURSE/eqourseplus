@@ -1,4 +1,4 @@
-# eQOURSE+ — SaaS Requirements Specification (SPEC.md) v2.3 — Global Edition
+# eQOURSE+ — SaaS Requirements Specification (SPEC.md) v2.4 — Global Edition
 > Workforce & Project Delivery Platform for eQOURSE (AI Data Services + Content Services) and Tutrain.
 > This file is the single source of truth for AI coding agents (Antigravity / Cursor / Claude Code / Kiro).
 > RULES FOR AGENTS: Implement only requirements listed here, by FR ID. Never invent endpoints, entities or
@@ -287,11 +287,17 @@ Normative seed rows (FR-FND-03):
 
 
 ## 20. Deployment (no physical servers)
-Vercel (Next.js, plus.eqourse.com CNAME, PR previews) · Railway/Render (NestJS API + BullMQ workers; Node 22 LTS; Docker;
-ap-south-1/SG) · Upstash Redis · MongoDB Atlas · Cloudflare R2 (buckets: kyc-docs encrypted-private,
+Vercel (Next.js, plus.eqourse.com CNAME, PR previews = web staging) · GCP Cloud Run asia-south1 (NestJS API + future BullMQ workers; Node 22 LTS; Docker; staging + approval-gated prod services; Workload Identity Federation from GitHub Actions) · Upstash Redis · MongoDB Atlas · Cloudflare R2 (buckets: kyc-docs encrypted-private,
 project-assets, deliverables; pre-signed URLs) · Resend/SES + MSG91/WhatsApp Cloud · Auth0 or Keycloak ·
 GitHub Actions CI/CD (prod migrations manual-gated) · Secrets: Doppler → synced to Vercel/Railway; never in repo;
 per-env sandbox keys (all providers have sandboxes — staging uses them) · Sentry + BetterStack + Atlas alerts.
+
+### 20.1 Atlas connectivity decision (v2.4, conscious tradeoff)
+Cloud Run egress IPs are dynamic and Atlas M0 supports neither PrivateLink nor VPC peering. Decision: the DEV
+cluster's IP access list is opened to 0.0.0.0/0, accepted because it holds only seed/dev data, requires SCRAM auth
+with a rotated least-privilege user over TLS, and costs nothing. This is FORBIDDEN for any cluster holding real
+user data: when the production cluster (Flex/M10) is created in Phase 5, it MUST use static egress (VPC connector
++ Cloud NAT with allowlisted IP) or private networking, and this section must be updated then.
 
 ## 21. Naming & Phases (solo engineer + AI agents)
 Name **eQOURSE+** at plus.eqourse.com; byline "the talent platform by eQOURSE"; Tutrain = business unit,
@@ -310,7 +316,7 @@ open board (wk25–30) → 8 AI+CRM (31+). Never start a phase before the previo
 | FR-FND-02 | [P1] Auth core: email OTP sign-in, JWT access+refresh, roles enum, RBAC route guard, rate-limit on auth endpoints. | Tests prove 401 unauthenticated, 403 wrong-role, 200 correct-role. |
 | FR-FND-03 | [P1] Database wiring: Atlas dev connection via env, migrate-mongo configured, seed script inserting skillTaxonomy sample tree. | Migration + seed run cleanly against the dev cluster; no credentials in repo. |
 | FR-FND-04 | [P1] CI: GitHub Actions on PR = lint + test + build; merge to main = staging deploy hook. | A failing test blocks the PR check. |
-| FR-FND-05 | [P1] Deployments: web on Vercel (or CF Workers), api container on GCP Cloud Run asia-south1, full stack on Utho via Dokploy as staging; health checks + envs from secret manager. | Hello-world reachable on staging and prod URLs; secrets absent from repo. |
+| FR-FND-05 | [P1] Deployments (v2.4 revision — Utho is PRODUCTION for eqourse.com/tutrain and is OUT OF SCOPE for this platform; never deploy to it): web on Vercel via git integration (prod = plus.eqourse.com on main, previews per PR = web staging); api as Docker container on GCP Cloud Run asia-south1, project eqplus-503212 — service `eqplus-api-staging` auto-deploys on merge to main, service `eqplus-api` (prod) deploys only behind manual approval; GitHub Actions authenticates to GCP via Workload Identity Federation (keyless — no JSON service-account keys anywhere); MONGODB_URI supplied to Cloud Run from GCP Secret Manager; health checks configured. | Deployed staging /health returns 200 on its run.app URL; prod deploy requires manual approval; no JSON keys or secrets in repo or workflow files. |
 | FR-FND-06 | [P1] Observability: Sentry on web+api, structured JSON logs, request-id propagation. | A deliberately thrown error appears in Sentry from both apps. |
 
 ### 22.2 Public site (PUB) — Phase 1, after all FND

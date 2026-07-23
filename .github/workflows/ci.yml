@@ -9,6 +9,14 @@ on:
 permissions:
   contents: read
 
+env:
+  PROJECT_ID: eqplus-503212
+  REGION: asia-south1
+  ARTIFACT_REPOSITORY: eqplus-api
+  IMAGE_NAME: eqplus-api
+  IMAGE_URI: asia-south1-docker.pkg.dev/eqplus-503212/eqplus-api/eqplus-api:${{ github.sha }}
+  RUNTIME_SERVICE_ACCOUNT: eqplus-api-runtime@eqplus-503212.iam.gserviceaccount.com
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -55,11 +63,97 @@ jobs:
         run: pnpm build
 
   staging-deploy:
-    name: Staging deploy (stub)
+    # FR-FND-05: build once on main, then promote this immutable image to prod.
+    name: Build, push, and deploy staging API
     needs: ci
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
-      - name: Placeholder until staging infrastructure exists
-        run: echo "FR-FND-05 will replace this staging deploy hook."
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud with Workload Identity Federation
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Configure Artifact Registry authentication
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build API image
+        run: docker build --file apps/api/Dockerfile --tag "${IMAGE_URI}" .
+
+      - name: Push API image
+        run: docker push "${IMAGE_URI}"
+
+      - name: Deploy staging API
+        run: >-
+          gcloud run deploy eqplus-api-staging
+          --project=eqplus-503212
+          --region=asia-south1
+          --image="${IMAGE_URI}"
+          --service-account="${RUNTIME_SERVICE_ACCOUNT}"
+          --port=8080
+          --min-instances=0
+          --allow-unauthenticated
+          --set-secrets=MONGODB_URI=MONGODB_URI:latest
+          --startup-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=0,timeoutSeconds=2,periodSeconds=5,failureThreshold=12
+          --liveness-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=10,timeoutSeconds=2,periodSeconds=30,failureThreshold=3
+          --quiet
+
+      - name: Verify staging health
+        run: |
+          SERVICE_URL="$(gcloud run services describe eqplus-api-staging --project=eqplus-503212 --region=asia-south1 --format='value(status.url)')"
+          curl --fail --retry 12 --retry-all-errors --retry-delay 5 "${SERVICE_URL}/health"
+
+  production-deploy:
+    name: Deploy production API
+    needs: staging-deploy
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud with Workload Identity Federation
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Deploy approved image to production
+        run: >-
+          gcloud run deploy eqplus-api
+          --project=eqplus-503212
+          --region=asia-south1
+          --image="${IMAGE_URI}"
+          --service-account="${RUNTIME_SERVICE_ACCOUNT}"
+          --port=8080
+          --min-instances=0
+          --allow-unauthenticated
+          --set-secrets=MONGODB_URI=MONGODB_URI:latest
+          --startup-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=0,timeoutSeconds=2,periodSeconds=5,failureThreshold=12
+          --liveness-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=10,timeoutSeconds=2,periodSeconds=30,failureThreshold=3
+          --quiet
+
+      - name: Verify production health
+        run: |
+          SERVICE_URL="$(gcloud run services describe eqplus-api --project=eqplus-503212 --region=asia-south1 --format='value(status.url)')"
+          curl --fail --retry 12 --retry-all-errors --retry-delay 5 "${SERVICE_URL}/health"
