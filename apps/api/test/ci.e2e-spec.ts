@@ -159,7 +159,7 @@ describe("FR-FND-05 API deployment", () => {
     expect(workflow).toContain("--min-instances=0");
     expect(workflow).toContain("--allow-unauthenticated");
     expect(workflow).toContain(
-      "--set-secrets=MONGODB_URI=MONGODB_URI:latest",
+      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest",
     );
     expect(workflow).toContain("--startup-probe=httpGet.path=/health");
     expect(workflow).toContain("--liveness-probe=httpGet.path=/health");
@@ -187,7 +187,9 @@ describe("FR-FND-05 API deployment", () => {
       workflow.match(/--allow-unauthenticated/g)?.length,
     ).toBeGreaterThanOrEqual(2);
     expect(
-      workflow.match(/--set-secrets=MONGODB_URI=MONGODB_URI:latest/g)?.length,
+      workflow.match(
+        /--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest/g,
+      )?.length,
     ).toBeGreaterThanOrEqual(2);
     expect(
       workflow.match(/--startup-probe=httpGet\.path=\/health/g)?.length,
@@ -211,6 +213,12 @@ describe("FR-FND-05 API deployment", () => {
     expect(runbook).toContain("roles/iam.workloadIdentityUser");
     expect(runbook).toContain(
       "gcloud secrets create MONGODB_URI --replication-policy=automatic --data-file=-",
+    );
+    expect(runbook).toContain(
+      "gcloud secrets create JWT_SECRET --replication-policy=automatic --data-file=-",
+    );
+    expect(runbook).toContain(
+      'gcloud secrets add-iam-policy-binding JWT_SECRET',
     );
     expect(runbook).toContain("GCP_WORKLOAD_IDENTITY_PROVIDER");
     expect(runbook).toContain("GCP_DEPLOY_SERVICE_ACCOUNT");
