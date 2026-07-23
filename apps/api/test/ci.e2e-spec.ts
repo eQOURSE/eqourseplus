@@ -12,6 +12,18 @@ const workflowPath = path.join(
   "workflows",
   "ci.yml",
 );
+const dockerfilePath = path.join(
+  repositoryDirectory,
+  "apps",
+  "api",
+  "Dockerfile",
+);
+const dockerignorePath = path.join(repositoryDirectory, ".dockerignore");
+const deploymentRunbookPath = path.join(
+  repositoryDirectory,
+  "docs",
+  "FR-FND-05-manual-steps.md",
+);
 const packagePath = path.join(repositoryDirectory, "package.json");
 const nodeVersionPath = path.join(repositoryDirectory, ".node-version");
 const pinnedNodeVersion = "22.23.1";
@@ -38,6 +50,10 @@ function meetsMinimumVersion(
 describe("FR-FND-04 CI workflow", () => {
   it("runs pinned, cache-backed lint, offline tests, and build checks for pull requests", () => {
     const workflow = readFileSync(workflowPath, "utf8");
+    const ciJob = workflow.slice(
+      workflow.indexOf("  ci:"),
+      workflow.indexOf("  staging-deploy:"),
+    );
     const rootPackage = JSON.parse(readFileSync(packagePath, "utf8")) as {
       engines: { node: string };
       packageManager: string;
@@ -70,10 +86,10 @@ describe("FR-FND-04 CI workflow", () => {
     expect(workflow).toContain("pnpm test");
     expect(workflow).toContain("pnpm build");
     expect(workflow).toMatch(/MONGOMS_RUNTIME_DOWNLOAD:\s*["']false["']/);
-    expect(workflow).not.toContain("MONGODB_URI");
+    expect(ciJob).not.toContain("MONGODB_URI");
   });
 
-  it("cancels superseded PR runs and leaves a main-only staging deploy stub", () => {
+  it("cancels superseded PR runs and leaves a main-only staging deploy hook", () => {
     const workflow = readFileSync(workflowPath, "utf8");
 
     expect(workflow).toMatch(/^concurrency:\s*$/m);
@@ -83,5 +99,121 @@ describe("FR-FND-04 CI workflow", () => {
     expect(workflow).toContain("staging-deploy");
     expect(workflow).toContain("github.event_name == 'push'");
     expect(workflow).toContain("FR-FND-05");
+  });
+});
+
+describe("FR-FND-05 API deployment", () => {
+  it("defines a pnpm-aware, multi-stage, non-root production API image", () => {
+    const dockerfile = readFileSync(dockerfilePath, "utf8");
+    const dockerignore = readFileSync(dockerignorePath, "utf8");
+
+    expect(dockerfile.match(/^FROM /gm)).toHaveLength(3);
+    expect(dockerfile).toMatch(/^FROM .+ AS build$/m);
+    expect(dockerfile).toContain("corepack enable");
+    expect(dockerfile).toContain("pnpm@11.9.0");
+    expect(dockerfile).toContain("pnpm install --frozen-lockfile");
+    expect(dockerfile).toMatch(/pnpm .+@eqourse\/api.+ build/);
+    expect(dockerfile).toMatch(/^FROM node:22\.23\.1-.+ AS runtime$/m);
+    expect(dockerfile).toMatch(/^ENV NODE_ENV=production$/m);
+    expect(dockerfile).toMatch(/^ENV PORT=8080$/m);
+    expect(dockerfile).toMatch(/^USER node$/m);
+    expect(dockerfile).toMatch(/^EXPOSE 8080$/m);
+    expect(dockerfile).toContain('CMD ["node", "dist/main.js"]');
+
+    expect(dockerignore).toContain(".env");
+    expect(dockerignore).toContain("gha-creds-*.json");
+    expect(dockerignore).toContain(".git");
+    expect(dockerignore).toContain("node_modules");
+  });
+
+  it("builds one immutable image and deploys staging from main with keyless auth", () => {
+    const workflow = readFileSync(workflowPath, "utf8");
+
+    expect(workflow).toContain("FR-FND-05");
+    expect(workflow).toContain("PROJECT_ID: eqplus-503212");
+    expect(workflow).toContain("REGION: asia-south1");
+    expect(workflow).toContain("ARTIFACT_REPOSITORY: eqplus-api");
+    expect(workflow).toContain("IMAGE_NAME: eqplus-api");
+    expect(workflow).toMatch(/staging-deploy:[\s\S]+needs: ci/);
+    expect(workflow).toMatch(
+      /staging-deploy:[\s\S]+github\.event_name == 'push'[\s\S]+refs\/heads\/main/,
+    );
+    expect(workflow).toMatch(
+      /staging-deploy:[\s\S]+permissions:[\s\S]+contents: read[\s\S]+id-token: write/,
+    );
+    expect(workflow).toContain("google-github-actions/auth@v3");
+    expect(workflow).toContain("google-github-actions/setup-gcloud@v3");
+    expect(workflow).toContain(
+      "workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}",
+    );
+    expect(workflow).toContain(
+      "service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}",
+    );
+    expect(workflow).toContain(
+      "asia-south1-docker.pkg.dev/eqplus-503212/eqplus-api/eqplus-api:${{ github.sha }}",
+    );
+    expect(workflow).toContain("docker build");
+    expect(workflow).toContain("docker push");
+    expect(workflow).toContain("gcloud run deploy eqplus-api-staging");
+    expect(workflow).toContain("--region=asia-south1");
+    expect(workflow).toContain("--min-instances=0");
+    expect(workflow).toContain("--allow-unauthenticated");
+    expect(workflow).toContain(
+      "--set-secrets=MONGODB_URI=MONGODB_URI:latest",
+    );
+    expect(workflow).toContain("--startup-probe=httpGet.path=/health");
+    expect(workflow).toContain("--liveness-probe=httpGet.path=/health");
+    expect(workflow).not.toContain("credentials_json");
+    expect(workflow).not.toMatch(/service[_-]account[_-]key/i);
+  });
+
+  it("deploys the same commit image to production only through its approval environment", () => {
+    const workflow = readFileSync(workflowPath, "utf8");
+
+    expect(workflow).toMatch(
+      /production-deploy:[\s\S]+needs: staging-deploy[\s\S]+environment:\s*\n\s+name: production/,
+    );
+    expect(workflow).toContain("gcloud run deploy eqplus-api");
+    expect(workflow).toContain(
+      "asia-south1-docker.pkg.dev/eqplus-503212/eqplus-api/eqplus-api:${{ github.sha }}",
+    );
+    expect(
+      workflow.match(/--region=asia-south1/g)?.length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      workflow.match(/--min-instances=0/g)?.length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      workflow.match(/--allow-unauthenticated/g)?.length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      workflow.match(/--set-secrets=MONGODB_URI=MONGODB_URI:latest/g)?.length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      workflow.match(/--startup-probe=httpGet\.path=\/health/g)?.length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      workflow.match(/--liveness-probe=httpGet\.path=\/health/g)?.length,
+    ).toBeGreaterThanOrEqual(2);
+  });
+
+  it("documents the pre-merge, main-only WIF and Secret Manager setup", () => {
+    const runbook = readFileSync(deploymentRunbookPath, "utf8");
+
+    expect(runbook).toMatch(/before merging/i);
+    expect(runbook).toContain("eQOURSE/eqourseplus");
+    expect(runbook).toContain("refs/heads/main");
+    expect(runbook).toContain("assertion.repository_owner=='eQOURSE'");
+    expect(runbook).toContain(
+      "assertion.repository=='eQOURSE/eqourseplus'",
+    );
+    expect(runbook).toContain("assertion.ref=='refs/heads/main'");
+    expect(runbook).toContain("roles/iam.workloadIdentityUser");
+    expect(runbook).toContain(
+      "gcloud secrets create MONGODB_URI --replication-policy=automatic --data-file=-",
+    );
+    expect(runbook).toContain("GCP_WORKLOAD_IDENTITY_PROVIDER");
+    expect(runbook).toContain("GCP_DEPLOY_SERVICE_ACCOUNT");
+    expect(runbook).toMatch(/production.+required reviewer/is);
   });
 });

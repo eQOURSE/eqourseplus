@@ -1,6 +1,7 @@
 # PROGRESS.md — FR completion tracker (agents update this; human owns it)
 Current phase: 0 — Foundation (next: FR-FND-05)
 Last completed FR: FR-FND-04 — 2026-07-21 — Single GitHub Actions workflow runs cache-backed, pinned Node 22.23.1/pnpm 11.9.0 lint, memory-server-only tests, and build on PRs; tests receive no MONGODB_URI and cannot download a MongoDB binary at runtime; superseded PR runs cancel; main pushes run a FR-FND-05 staging-deploy placeholder. Workflow contract test prevents a pnpm/Node version mismatch; tests, lint, and build green.
+FR-FND-05 implementation ready — 2026-07-23 — API-only Cloud Run pipeline, production Docker image, main-only keyless WIF trust runbook, Secret Manager injection, explicit asia-south1/min-instances=0/public access, /health probes, and approval-gated production promotion are implemented and locally verified. Remains unchecked until the documented pre-merge cloud setup is run and staging /health returns 200 after merge.
 
 ## Phase 0 — Foundation (wk 1–2) — SPEC.md Section 22.1, strictly in order
 - [x] FR-FND-01 scaffold (2026-07-17)  - [x] FR-FND-02 auth core (2026-07-20)  - [x] FR-FND-03 db wiring (2026-07-21)
