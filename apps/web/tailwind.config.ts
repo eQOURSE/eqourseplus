@@ -10,10 +10,17 @@ const config: Config = {
   ],
   darkMode: ["class"],
   theme: {
+    screens: {
+      sm: designTokens.breakpoints.sm,
+      md: designTokens.breakpoints.md,
+      lg: designTokens.breakpoints.lg,
+      xl: designTokens.breakpoints.xl,
+      "2xl": designTokens.breakpoints["2xl"],
+    },
     container: {
       center: true,
       padding: "2rem",
-      screens: { "2xl": "1400px" },
+      screens: { "2xl": designTokens.breakpoints["2xl"] },
     },
     extend: {
       backgroundImage: {

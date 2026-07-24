@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { designTokens } from "../src";
 
 describe("FR-FND-01 canonical eQOURSE design tokens", () => {
-  it("matches DESIGN.md and SPEC.md v2.2", () => {
+  it("matches DESIGN.md and SPEC.md v2.5", () => {
     expect(designTokens.colors.primary).toEqual({
       hsl: "170 82% 32%",
       hex: "#0F9B8E",
@@ -21,6 +21,11 @@ describe("FR-FND-01 canonical eQOURSE design tokens", () => {
     expect(designTokens.fonts).toEqual({
       body: "Inter, sans-serif",
       heading: "Plus Jakarta Sans, sans-serif",
+    });
+    expect(designTokens.breakpoints.semantic).toEqual({
+      mobile: { min: 0, max: 767 },
+      tablet: { min: 768, max: 1023 },
+      desktop: { min: 1024 },
     });
   });
 });
