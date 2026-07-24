@@ -6,8 +6,10 @@ import {
   FrostedSurface,
   Glass,
   GlassButton,
+  GlassMotifField,
   GlassNav,
   GlassSegmentedControl,
+  HeroLens,
   ThemeToggle,
   isLowEndDevice,
   prefersReducedMotion,
@@ -28,23 +30,6 @@ function BreakpointIndicator() {
       <span className="hidden md:inline lg:hidden">Tablet · 768px+</span>
       <span className="hidden lg:inline">Desktop · 1024px+</span>
     </span>
-  );
-}
-
-function AmbientBacking({ compact = false }: { compact?: boolean }) {
-  return (
-    <div
-      className={`relative h-full w-full overflow-hidden bg-background ${
-        compact ? "min-h-36" : "min-h-56"
-      }`}
-    >
-      <span className="absolute -left-10 -top-8 h-40 w-40 rounded-full bg-[#0F9B8E]/60 blur-[60px]" />
-      <span className="absolute -right-8 top-4 h-36 w-36 rounded-full bg-[#7BE8C9]/60 blur-[60px]" />
-      <span className="absolute bottom-0 left-1/3 h-32 w-32 rounded-full bg-[#38bdf8]/50 blur-[60px]" />
-      <span className="absolute bottom-2 right-1/4 h-28 w-28 rounded-full bg-[#5eead4]/50 blur-[60px]" />
-      <span className="absolute inset-x-0 bottom-0 h-16 bg-[#232145]/40 blur-[60px]" />
-      <span className="absolute inset-0 bg-[linear-gradient(120deg,transparent,hsl(var(--accent)/0.18),transparent)]" />
-    </div>
   );
 }
 
@@ -156,21 +141,19 @@ export function DesignSystemDemo() {
             </div>
           </div>
 
-          <FrostedSurface
-            glassTier="clear"
-            variant="panel"
-            className="relative min-h-[22rem] overflow-hidden p-3"
+          <HeroLens
+            activated={focalProofActive}
+            className="h-[22rem]"
+            data-focal-candidate="2"
+            data-testid="hero-lens-showcase"
           >
-            <AmbientBacking />
-            <div className="absolute inset-x-8 bottom-8">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
-                Ambient canvas
-              </p>
-              <p className="mt-2 max-w-sm font-heading text-2xl font-bold">
-                Five authorized colors. CSS transforms and opacity only.
-              </p>
-            </div>
-          </FrostedSurface>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#7BE8C9]">
+              Hero lens
+            </p>
+            <p className="mt-2 max-w-sm font-heading text-2xl font-bold text-white">
+              A traveling lens bends the sharp field behind it.
+            </p>
+          </HeroLens>
         </header>
 
         <section
@@ -265,17 +248,18 @@ export function DesignSystemDemo() {
             <Glass
               activated={focalProofActive}
               className="eq-glass-runtime min-h-64"
-              data-focal-candidate="2"
-              refractedContent={<AmbientBacking />}
-              strength={22}
+              curvature={70}
+              data-focal-candidate="3"
+              refractedContent={<GlassMotifField />}
+              strength={36}
               variant="panel"
             >
               <div className="relative min-h-64 p-7">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#7BE8C9]">
                   Focal · 24px + displacement
                 </p>
-                <p className="mt-5 max-w-xs font-heading text-2xl font-bold">
-                  Ambient color bends; foreground copy stays sharp.
+                <p className="mt-5 max-w-xs font-heading text-2xl font-bold text-white">
+                  Sharp motifs bend; foreground copy stays sharp.
                 </p>
               </div>
             </Glass>
@@ -299,40 +283,22 @@ export function DesignSystemDemo() {
             </p>
           </div>
 
-          <div className="mt-10 grid gap-5 md:grid-cols-2">
-            <Glass
-              activated={focalProofActive}
-              className="eq-glass-runtime min-h-52"
-              data-focal-candidate="3"
-              refractedContent={<AmbientBacking compact />}
-              strength={18}
-              variant="panel"
-            >
-              <div className="relative min-h-52 p-7">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
-                  Candidate 3
-                </p>
-                <p className="mt-5 font-heading text-2xl font-bold">
-                  Final available focal slot.
-                </p>
-              </div>
-            </Glass>
-
+          <div className="mt-10 grid gap-5">
             <Glass
               activated={focalProofActive}
               className="eq-glass-runtime min-h-52"
               data-expected-tier="frosted"
               data-focal-candidate="4"
               data-testid="focal-budget-candidate-4"
-              refractedContent={<AmbientBacking compact />}
-              strength={18}
+              refractedContent={<GlassMotifField variant="compact" />}
+              strength={30}
               variant="panel"
             >
               <div className="relative min-h-52 p-7">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#7BE8C9]">
                   Candidate 4 · fallback
                 </p>
-                <p className="mt-5 font-heading text-2xl font-bold">
+                <p className="mt-5 font-heading text-2xl font-bold text-white">
                   Frosted automatically when the budget is full.
                 </p>
               </div>

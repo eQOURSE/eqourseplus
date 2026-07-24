@@ -18,7 +18,10 @@ import {
   supportsSvgRefraction,
   type RefractionSlot,
 } from "../glass/capabilities";
-import { createDisplacementDataUrl } from "../glass/displacement-map";
+import {
+  DEFAULT_CURVATURE,
+  createDisplacementDataUrl,
+} from "../glass/displacement-map";
 import {
   FrostedSurface,
   type FrostedSurfaceProps,
@@ -26,6 +29,7 @@ import {
 
 export interface GlassProps extends FrostedSurfaceProps {
   activated?: boolean;
+  curvature?: number;
   disabled?: boolean;
   refractedContent?: ReactNode;
   strength?: number;
@@ -49,9 +53,10 @@ export function Glass({
   activated = false,
   children,
   className = "",
+  curvature = DEFAULT_CURVATURE,
   disabled = false,
   refractedContent,
-  strength = 22,
+  strength = 30,
   style,
   variant = "panel",
   ...props
@@ -118,7 +123,11 @@ export function Glass({
         return;
       }
 
-      const mapUrl = createDisplacementDataUrl(bounds.width, bounds.height);
+      const mapUrl = createDisplacementDataUrl(
+        bounds.width,
+        bounds.height,
+        curvature,
+      );
       if (!mapUrl) {
         fallBack();
         return;
@@ -254,7 +263,7 @@ export function Glass({
       surface.removeEventListener("touchstart", initializeAfterInteraction);
       releaseSlot();
     };
-  }, [activated, disabled, strength]);
+  }, [activated, curvature, disabled, strength]);
 
   const tier = config ? "refraction" : "frosted";
   const contentStyle: CSSProperties | undefined = config
@@ -310,7 +319,7 @@ export function Glass({
 
             <feOffset
               in="SourceAlpha"
-              dx="0.8"
+              dx="2.2"
               dy="0"
               result="primary-offset"
             />
@@ -322,7 +331,7 @@ export function Glass({
             />
             <feFlood
               floodColor="#0F9B8E"
-              floodOpacity="0.2"
+              floodOpacity="0.42"
               result="primary-flood"
             />
             <feComposite
@@ -334,7 +343,7 @@ export function Glass({
 
             <feOffset
               in="SourceAlpha"
-              dx="-0.8"
+              dx="-2.2"
               dy="0"
               result="accent-offset"
             />
@@ -346,7 +355,7 @@ export function Glass({
             />
             <feFlood
               floodColor="#7BE8C9"
-              floodOpacity="0.18"
+              floodOpacity="0.38"
               result="accent-flood"
             />
             <feComposite

@@ -103,7 +103,7 @@ export function GlassSegmentedControl<Value extends string = string>({
           activated={activated || interactionActivated}
           className="eq-glass-segmented__lens"
           data-focal-candidate="1"
-          strength={14}
+          strength={24}
           refractedContent={
             <div
               aria-hidden="true"

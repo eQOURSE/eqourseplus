@@ -222,24 +222,24 @@
 @keyframes eq-ambient-drift-a {
   0%,
   100% {
-    opacity: 0.38;
+    opacity: 0.46;
     transform: translate3d(0, 0, 0) scale(1);
   }
   50% {
-    opacity: 0.52;
-    transform: translate3d(16%, -12%, 0) scale(1.12);
+    opacity: 0.6;
+    transform: translate3d(22%, -16%, 0) scale(1.16);
   }
 }
 
 @keyframes eq-ambient-drift-b {
   0%,
   100% {
-    opacity: 0.34;
-    transform: translate3d(0, 0, 0) scale(1.08);
+    opacity: 0.44;
+    transform: translate3d(0, 0, 0) scale(1.1);
   }
   50% {
-    opacity: 0.48;
-    transform: translate3d(-14%, 16%, 0) scale(0.94);
+    opacity: 0.58;
+    transform: translate3d(-18%, 20%, 0) scale(0.92);
   }
 }
 
@@ -256,8 +256,8 @@
   position: absolute;
   display: block;
   border-radius: 9999px;
-  filter: blur(72px);
-  opacity: 0.38;
+  filter: blur(64px);
+  opacity: 0.46;
   will-change: auto;
   animation-play-state: paused;
 }
@@ -320,6 +320,199 @@
 .eq-ambient-canvas[data-ambient-motion="running"]
   .eq-ambient-canvas__blob {
   animation-play-state: running;
+}
+
+/* Sharp-edged §13-colored motifs: the defined edges the focal lens bends. */
+.eq-motif-field {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ambient-navy);
+}
+
+.eq-motif-field__layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+
+.eq-motif-field__layer--wash {
+  background:
+    linear-gradient(
+      135deg,
+      var(--ambient-teal) 0%,
+      var(--ambient-teal) 34%,
+      var(--ambient-navy) 34.2%,
+      var(--ambient-navy) 100%
+    );
+  opacity: 0.85;
+}
+
+.eq-motif-field__layer--stripes {
+  background: repeating-linear-gradient(
+    115deg,
+    transparent 0,
+    transparent 30px,
+    var(--ambient-teal-300) 30px,
+    var(--ambient-teal-300) 35px
+  );
+  opacity: 0.6;
+}
+
+.eq-motif-field__layer--grid {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 47px,
+      var(--ambient-mint) 47px,
+      var(--ambient-mint) 48px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 47px,
+      var(--ambient-mint) 47px,
+      var(--ambient-mint) 48px
+    );
+  opacity: 0.35;
+}
+
+.eq-motif-field__layer--orb {
+  inset: auto;
+  border-radius: 9999px;
+}
+
+.eq-motif-field__layer--orb-teal {
+  top: 12%;
+  left: 14%;
+  width: 7.5rem;
+  height: 7.5rem;
+  background: var(--ambient-teal);
+  border: 4px solid var(--ambient-mint);
+  animation: eq-motif-drift-a 28s linear infinite alternate;
+}
+
+.eq-motif-field__layer--orb-mint {
+  top: 52%;
+  left: 44%;
+  width: 5rem;
+  height: 5rem;
+  background: var(--ambient-mint);
+  animation: eq-motif-drift-b 24s linear infinite alternate;
+}
+
+.eq-motif-field__layer--orb-sky {
+  top: 22%;
+  right: 12%;
+  left: auto;
+  width: 6.25rem;
+  height: 6.25rem;
+  background: var(--ambient-sky-blue);
+  animation: eq-motif-drift-a 32s linear infinite alternate-reverse;
+}
+
+.eq-motif-field__layer--ring {
+  inset: auto;
+  bottom: 8%;
+  left: 8%;
+  width: 8.5rem;
+  height: 8.5rem;
+  border: 6px solid var(--ambient-sky-blue);
+  border-radius: 9999px;
+  animation: eq-motif-drift-b 30s linear infinite alternate-reverse;
+}
+
+.eq-motif-field--compact .eq-motif-field__layer--ring,
+.eq-motif-field--compact .eq-motif-field__layer--orb-sky {
+  display: none;
+}
+
+@keyframes eq-motif-drift-a {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(9%, 12%, 0);
+  }
+}
+
+@keyframes eq-motif-drift-b {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-11%, -8%, 0);
+  }
+}
+
+/* Hero showcase: the lens and its backing copy share one 26s timeline, so
+   the refracted pixels stay registered with the field behind the lens. */
+/* Needs a definite height: with container-type: size an auto/min-height
+   block size is indefinite and cqh units resolve to 0. */
+.eq-hero-lens {
+  --hero-lens-size: 11rem;
+  position: relative;
+  container-type: size;
+  height: 20rem;
+  overflow: hidden;
+  border-radius: 1.5rem;
+}
+
+.eq-hero-lens__field {
+  position: absolute;
+  inset: 0;
+}
+
+.eq-hero-lens__lens {
+  position: absolute;
+  top: calc(50cqh - var(--hero-lens-size) / 2);
+  left: 0;
+  z-index: 1;
+  width: var(--hero-lens-size);
+  height: var(--hero-lens-size);
+  border-radius: 2.75rem;
+  pointer-events: none;
+  animation: eq-hero-lens-travel 26s linear infinite alternate;
+}
+
+.eq-hero-lens__backing {
+  position: absolute;
+  top: calc(var(--hero-lens-size) / 2 - 50cqh);
+  left: 0;
+  width: 100cqw;
+  height: 100cqh;
+  animation: eq-hero-lens-counter 26s linear infinite alternate;
+}
+
+.eq-hero-lens__content {
+  position: absolute;
+  inset: auto 1.5rem 1.5rem;
+  z-index: 2;
+}
+
+@keyframes eq-hero-lens-travel {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(calc(100cqw - var(--hero-lens-size)), 0, 0);
+  }
+}
+
+@keyframes eq-hero-lens-counter {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(
+      calc(-1 * (100cqw - var(--hero-lens-size))),
+      0,
+      0
+    );
+  }
 }
 
 .eq-glass-nav {
@@ -490,6 +683,12 @@
 .eq-liquid-glass-demo[data-motion="static"] .eq-theme-toggle__label,
 .eq-liquid-glass-demo[data-motion="static"] .eq-theme-toggle__thumb {
   transition: none !important;
+}
+
+.eq-liquid-glass-demo[data-motion="static"] .eq-hero-lens__lens,
+.eq-liquid-glass-demo[data-motion="static"] .eq-hero-lens__backing,
+.eq-liquid-glass-demo[data-motion="static"] .eq-motif-field__layer {
+  animation: none !important;
 }
 
 .eq-liquid-glass-demo[data-motion="static"] .eq-glass-button:hover,
@@ -665,6 +864,12 @@
   .eq-ambient-canvas__blob {
     animation: none !important;
     will-change: auto;
+  }
+
+  .eq-hero-lens__lens,
+  .eq-hero-lens__backing,
+  .eq-motif-field__layer {
+    animation: none !important;
   }
 
   .eq-glass-button:hover,

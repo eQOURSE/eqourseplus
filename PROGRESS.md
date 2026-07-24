@@ -7,7 +7,7 @@ Last completed FR: FR-PUB-00A — 2026-07-24 — Extended the FR-PUB-00 foundati
 - [x] FR-FND-04 CI (2026-07-21)  - [x] FR-FND-05 deployments (2026-07-23)  - [x] FR-FND-06 observability (2026-07-23)
 ## Phase 1 — Public site + SEO (wk 3–4) — SPEC.md Section 22.2
 - [x] FR-PUB-00 public design-system foundation (2026-07-24)
-- [x] FR-PUB-00A Liquid Glass visual language (2026-07-24)
+- [x] FR-PUB-00A Liquid Glass visual language (2026-07-24) — visual-intensity pass same day: sharp GlassMotifField refraction backing (§13 colors), displacement map delta 86→120 + curvature param (default 65), stronger teal/mint chroma fringe, HeroLens traveling-lens showcase on /design-system (cq-unit counter-translated backing; container needs definite height), ambient blobs brightened within §13 caps (≤0.6 opacity, blur ≥60px). Focal budget, a11y backing-copy pattern, reduced-motion/low-end fallbacks unchanged; verified in headless Edge via CDP (3 refract, 4th frosted). Lighthouse 3-run check pending on Vercel preview (PR #13).
 - [ ] FR-PUB-01 home  - [ ] FR-PUB-02 jobs pages  - [ ] FR-PUB-03 /freelancers
 - [ ] FR-PUB-04 /vendors  - [ ] FR-PUB-05 /about  - [ ] FR-PUB-06 login/register
 - [ ] FR-SEO-01 programmatic SEO engine

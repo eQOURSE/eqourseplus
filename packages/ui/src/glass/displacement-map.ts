@@ -1,10 +1,13 @@
 export interface DisplacementMapOptions {
   width: number;
   height: number;
+  /** Aave-style 0–100 rim concentration; higher pulls the bend to the edge. */
+  curvature?: number;
 }
 
 const NEUTRAL = 128;
-const MAX_CHANNEL_DELTA = 86;
+const MAX_CHANNEL_DELTA = 120;
+export const DEFAULT_CURVATURE = 65;
 
 function smoothstep(edgeStart: number, edgeEnd: number, value: number) {
   const normalized = Math.min(
@@ -32,9 +35,11 @@ function setPixel(
 export function createDisplacementPixels({
   width,
   height,
+  curvature = DEFAULT_CURVATURE,
 }: DisplacementMapOptions): Uint8ClampedArray {
   const safeWidth = Math.max(2, Math.floor(width));
   const safeHeight = Math.max(2, Math.floor(height));
+  const rimExponent = Math.max(0.5, curvature / 40);
   const pixels = new Uint8ClampedArray(safeWidth * safeHeight * 4);
   const halfWidth = Math.ceil(safeWidth / 2);
   const halfHeight = Math.ceil(safeHeight / 2);
@@ -51,7 +56,7 @@ export function createDisplacementPixels({
       );
       const insideLens = roundedRectangleDistance <= 1;
       const edgeStrength = insideLens
-        ? smoothstep(0.34, 1, roundedRectangleDistance)
+        ? Math.pow(smoothstep(0.3, 1, roundedRectangleDistance), rimExponent)
         : 0;
       const vectorLength =
         Math.hypot(normalizedX, normalizedY) || Number.EPSILON;
@@ -113,6 +118,7 @@ export function createDisplacementPixels({
 export function createDisplacementDataUrl(
   sourceWidth: number,
   sourceHeight: number,
+  curvature: number = DEFAULT_CURVATURE,
 ): string | null {
   if (typeof document === "undefined") {
     return null;
@@ -140,7 +146,7 @@ export function createDisplacementDataUrl(
 
   const imageData = context.createImageData(evenWidth, evenHeight);
   imageData.data.set(
-    createDisplacementPixels({ width: evenWidth, height: evenHeight }),
+    createDisplacementPixels({ width: evenWidth, height: evenHeight, curvature }),
   );
   context.putImageData(imageData, 0, 0);
   return canvas.toDataURL("image/png");

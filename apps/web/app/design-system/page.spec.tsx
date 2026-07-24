@@ -5,6 +5,8 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { GlassButton } from "../../../../packages/ui/src/components/glass-button";
 import { GlassSegmentedControl } from "../../../../packages/ui/src/components/glass-segmented-control";
 import { Glass } from "../../../../packages/ui/src/components/glass";
+import { GlassMotifField } from "../../../../packages/ui/src/components/glass-motif-field";
+import { HeroLens } from "../../../../packages/ui/src/components/hero-lens";
 import { ThemeToggle } from "../../../../packages/ui/src/components/theme-toggle";
 import { THEME_STORAGE_KEY } from "../../../../packages/ui/src/theme/resolution";
 import { DesignSystemDemo } from "./design-system-demo";
@@ -155,9 +157,43 @@ describe("FR-PUB-00A interactive glass acceptance", () => {
     requestAnimationFrame.mockRestore();
   });
 
-  it("renders the three glass tiers and a visible fourth-candidate fallback proof", () => {
+  it("renders GlassMotifField as decorative sharp-edged backing content", () => {
+    render(<GlassMotifField data-testid="motif-field" />);
+
+    const field = screen.getByTestId("motif-field");
+
+    expect(field).toHaveAttribute("aria-hidden", "true");
+    expect(
+      field.querySelectorAll(".eq-motif-field__layer").length,
+    ).toBeGreaterThanOrEqual(3);
+  });
+
+  it("keeps the HeroLens backing copy hidden while real content stays outside the filtered subtree", () => {
+    render(
+      <HeroLens data-testid="hero-lens">
+        <p>Real hero copy</p>
+      </HeroLens>,
+    );
+
+    const hero = screen.getByTestId("hero-lens");
+    const backing = hero.querySelector(".eq-hero-lens__backing");
+
+    expect(backing).not.toBeNull();
+    expect(backing).toHaveAttribute("aria-hidden", "true");
+    expect(hero.querySelector(".eq-hero-lens__lens")).not.toBeNull();
+    const copy = screen.getByText("Real hero copy");
+    expect(backing?.contains(copy)).toBe(false);
+    expect(
+      copy.closest(".eq-glass__backing, .eq-hero-lens__backing"),
+    ).toBeNull();
+  });
+
+  it("renders the hero lens showcase, three glass tiers, and a visible fourth-candidate fallback proof", () => {
     const { container } = render(<DesignSystemDemo />);
 
+    expect(
+      within(container as HTMLElement).getByTestId("hero-lens-showcase"),
+    ).toBeInTheDocument();
     expect(container.querySelector('[data-glass-visual-tier="regular"]')).toBeTruthy();
     expect(container.querySelector('[data-glass-visual-tier="clear"]')).toBeTruthy();
     expect(container.querySelector('[data-glass-visual-tier="focal"]')).toBeTruthy();
