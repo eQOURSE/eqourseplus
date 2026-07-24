@@ -518,6 +518,7 @@ All animations are disabled:
 | **Standard ease** | `ease` or `cubic-bezier(0.25, 0.46, 0.45, 0.94)` | Most transitions |
 | **Decelerate (entrance)** | `cubic-bezier(0.16, 1, 0.3, 1)` | `fadeInUp`, `scaleIn` |
 | **Spring** | `cubic-bezier(0.34, 1.56, 0.64, 1)` | Button bounces, toggle pops |
+| **Gel press** | `cubic-bezier(0.5, 1.8, 0.4, 0.9)` | glass press/squish/release. |
 | **Linear** | `linear` | Marquees, continuous rotation |
 
 ### Timing Philosophy
@@ -526,3 +527,35 @@ All animations are disabled:
 - **Hover transitions:** 0.3s standard, 0.4s for transforms with shadows
 - **Continuous loops:** 6s for gentle float, 20–35s for marquee/rotation
 - **Micro-interactions:** 0.15–0.25s (immediate feel)
+
+---
+
+## 13. Liquid Glass Visual Language (eQOURSE+)
+
+### Ambient Canvas Colors
+
+- Teal `#0F9B8E`
+- Mint `#7BE8C9`
+- Navy `#232145`
+- Sky-blue `#38bdf8`
+- Teal-300 `#5eead4`
+- Use as slow-moving radial/linear gradient blobs, opacity ≤0.6, blur ≥60px, 18–35s loop (per §12 continuous-loop timing).
+
+### Glass Tiers
+
+- `--glass-regular`: tint `rgba(255,255,255,0.55)` light / `rgba(35,45,70,0.45)` dark, blur 18px.
+- `--glass-clear`: tint `rgba(255,255,255,0.25)` light / `rgba(35,45,70,0.25)` dark, blur 8px, for reading values through.
+- `--glass-focal`: real refraction, blur 24px + displacement.
+
+### Rim/Specular/Chroma Tokens
+
+- Specular highlight = white ≤0.25 alpha.
+- Chromatic fringe = primary teal + accent mint only (no arbitrary RGB).
+- Rim light = `--accent` at ≤0.18 alpha.
+
+### Timing
+
+- Glass press: 0.12–0.2s.
+- Selection glide: 0.35–0.5s spring.
+- Ambient loops: 18–35s.
+- All gated by `prefers-reduced-motion`.
