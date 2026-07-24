@@ -58,8 +58,33 @@ export const designTokens = {
       standard: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
       entrance: "cubic-bezier(0.16, 1, 0.3, 1)",
       spring: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+      gelPress: "cubic-bezier(0.5, 1.8, 0.4, 0.9)",
       linear: "linear",
     },
+  },
+  ambient: {
+    teal: "#0F9B8E",
+    mint: "#7BE8C9",
+    navy: "#232145",
+    skyBlue: "#38bdf8",
+    teal300: "#5eead4",
+  },
+  glass: {
+    regular: {
+      light: "rgba(255,255,255,0.55)",
+      dark: "rgba(35,45,70,0.45)",
+      blur: "18px",
+    },
+    clear: {
+      light: "rgba(255,255,255,0.25)",
+      dark: "rgba(35,45,70,0.25)",
+      blur: "8px",
+    },
+    focal: {
+      blur: "24px",
+    },
+    specularMaxAlpha: 0.25,
+    rimMaxAlpha: 0.18,
   },
 } as const;
 

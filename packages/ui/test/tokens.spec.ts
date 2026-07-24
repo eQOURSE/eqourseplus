@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { designTokens } from "../src";
 
 describe("FR-FND-01 canonical eQOURSE design tokens", () => {
-  it("matches DESIGN.md and SPEC.md v2.5", () => {
+  it("matches DESIGN.md and SPEC.md v2.6", () => {
     expect(designTokens.colors.primary).toEqual({
       hsl: "170 82% 32%",
       hex: "#0F9B8E",

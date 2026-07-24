@@ -84,7 +84,8 @@ export function supportsSvgRefraction(): boolean {
   if (
     typeof window === "undefined" ||
     typeof document === "undefined" ||
-    typeof CSS === "undefined"
+    typeof CSS === "undefined" ||
+    typeof CSS.supports !== "function"
   ) {
     return false;
   }

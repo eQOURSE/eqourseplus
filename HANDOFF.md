@@ -23,13 +23,16 @@ guide infra/dashboard work, and flag security issues. Assume that role and rhyth
   plan first + wait for "go", tests first, update PROGRESS). SETUP.md = accounts/costs/deploy guide.
 
 ## Current position (update this line as things change)
-**Phase 0 of 8 complete; Phase 1 has begun. Done: FR-FND-01..06 and FR-PUB-00. FR-PUB-00 established the
-shared public design system in `packages/ui`: SSR-first frosted glass; progressively enhanced live-content SVG
-refraction with automatic fallbacks and a three-element budget; DESIGN.md-only motion, light/dark theme, and
-responsive tokens; persisted no-FOUC theming; and a noindex `/design-system` proof route. Tests were written red
-first; the final repository result is 72 passing tests, clean lint/build, and Vercel-preview Lighthouse
-Performance scores of 94, 98, and 97. No FR-PUB-01 page content was built. Next: FR-PUB-01, then FR-PUB-02..06
-and FR-SEO-01.**
+**Phase 0 of 8 complete; Phase 1 has begun. Done: FR-FND-01..06 and FR-PUB-00/00A. The shared public design
+system in `packages/ui` now includes SSR-first frosted glass; progressive live-content SVG refraction with
+automatic fallbacks and a three-element budget; DESIGN.md-only motion, light/dark theme, responsive tokens, and
+the §13 Liquid Glass language; a post-load five-color ambient canvas; GlassNav, GlassButton, and
+GlassSegmentedControl; event-driven pointer specular without an animation-frame loop; real-label roving keyboard
+focus over an aria-hidden/nonfocusable backing copy; and fully static/frosted reduced-motion and low-end paths.
+The noindex `/design-system` proof route is the only content surface. Tests were written red first; the final
+repository result is 86 passing tests, clean lint/build, desktop Lighthouse Performance scores of 99, 97, and
+97, and a desktop accessibility score of 100 with no contrast or aria-hidden-focus failures. No FR-PUB-01 page
+content was built. Next: FR-PUB-01, then FR-PUB-02..06 and FR-SEO-01.**
 
 ## Infrastructure inventory (no credentials here, ever)
 - GitHub org eQOURSE / repo eqourseplus; my admin account bhau23. Node 22.23.1 + pnpm 11.9.0 pinned.

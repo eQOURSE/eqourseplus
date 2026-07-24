@@ -69,6 +69,43 @@ describe("FR-PUB-00 refraction focal-element budget", () => {
   });
 });
 
+describe("FR-PUB-00A refraction intensity", () => {
+  const rimDelta = (pixels: Uint8ClampedArray, width: number, x: number, y: number) =>
+    Math.abs((pixels[(y * width + x) * 4] ?? 128) - 128);
+
+  it("bends at least 100/128 at the lens rim so refraction is obvious", () => {
+    const width = 32;
+    const height = 32;
+    const pixels = createDisplacementPixels({ width, height });
+
+    expect(rimDelta(pixels, width, 1, Math.floor(height / 2) - 1)).toBeGreaterThanOrEqual(100);
+  });
+
+  it("keeps the lens center neutral so foreground copy stays readable", () => {
+    const width = 32;
+    const height = 32;
+    const pixels = createDisplacementPixels({ width, height });
+    const center = (Math.floor(height / 2) * width + Math.floor(width / 2)) * 4;
+
+    expect(pixels[center]).toBe(128);
+    expect(pixels[center + 1]).toBe(128);
+  });
+
+  it("concentrates the bend harder at the rim as curvature increases", () => {
+    const width = 32;
+    const height = 32;
+    const midLensX = 5;
+    const midLensY = Math.floor(height / 2) - 1;
+    const softer = createDisplacementPixels({ width, height, curvature: 40 });
+    const harder = createDisplacementPixels({ width, height, curvature: 90 });
+
+    expect(rimDelta(harder, width, midLensX, midLensY)).toBeLessThan(
+      rimDelta(softer, width, midLensX, midLensY),
+    );
+    expect(rimDelta(harder, width, 1, midLensY)).toBeGreaterThanOrEqual(100);
+  });
+});
+
 describe("FR-PUB-00 quarter-map displacement symmetry", () => {
   it("keeps the outside neutral and mirrors X/Y displacement around the lens", () => {
     const width = 12;
