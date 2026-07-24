@@ -33,4 +33,35 @@ export const designTokens = {
     card: "0 8px 30px -8px hsl(242 33% 20% / 0.08)",
     elevated: "0 20px 60px -15px hsl(242 33% 20% / 0.12)",
   },
+  breakpoints: {
+    sm: "640px",
+    md: "768px",
+    lg: "1024px",
+    xl: "1280px",
+    "2xl": "1400px",
+    semantic: {
+      mobile: { min: 0, max: 767 },
+      tablet: { min: 768, max: 1023 },
+      desktop: { min: 1024 },
+    },
+  },
+  motion: {
+    durations: {
+      micro: "0.2s",
+      hover: "0.3s",
+      transform: "0.4s",
+      scaleIn: "0.6s",
+      reveal: "0.7s",
+      entrance: "0.8s",
+    },
+    easings: {
+      standard: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+      entrance: "cubic-bezier(0.16, 1, 0.3, 1)",
+      spring: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+      linear: "linear",
+    },
+  },
 } as const;
+
+export const responsiveTokens = designTokens.breakpoints;
+export const motionTokens = designTokens.motion;
