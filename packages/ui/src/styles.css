@@ -623,7 +623,7 @@
   z-index: 1;
   width: calc(50% - 0.25rem);
   border-radius: 9999px;
-  background: hsl(var(--primary));
+  background: hsl(var(--navy));
   box-shadow: var(--shadow-soft);
   transition: transform var(--motion-micro) var(--ease-spring);
 }
