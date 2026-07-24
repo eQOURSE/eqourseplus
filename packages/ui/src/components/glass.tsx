@@ -33,6 +33,8 @@ interface RefractionConfig {
   mapUrl: string;
 }
 
+const POST_LCP_INITIALIZATION_DELAY_MS = 7000;
+
 let filterRevision = 0;
 
 function createFreshFilterId(): string {
@@ -136,17 +138,21 @@ export function Glass({
       }
       initializationScheduled = true;
 
-      if (typeof window.requestIdleCallback === "function") {
-        idleHandle = window.requestIdleCallback(() => {
+      fallbackHandle = window.setTimeout(() => {
+        if (disposed) {
+          return;
+        }
+
+        if (typeof window.requestIdleCallback === "function") {
+          idleHandle = window.requestIdleCallback(() => {
+            initializationScheduled = false;
+            generateFilter();
+          });
+        } else {
           initializationScheduled = false;
           generateFilter();
-        });
-      } else {
-        fallbackHandle = window.setTimeout(() => {
-          initializationScheduled = false;
-          generateFilter();
-        }, 3000);
-      }
+        }
+      }, POST_LCP_INITIALIZATION_DELAY_MS);
     };
 
     const observeVisibility = () => {
