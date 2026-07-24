@@ -1,12 +1,13 @@
 # PROGRESS.md — FR completion tracker (agents update this; human owns it)
 Current phase: 1 — Public site + SEO in progress (next: FR-PUB-01)
-Last completed FR: FR-PUB-00 — 2026-07-24 — Added the shared public design-system foundation in `packages/ui`: SSR-first frosted surfaces; progressively enhanced live-content SVG refraction with quarter-map symmetry, fresh filter IDs, chromatic/specular passes, a three-element budget, and automatic reduced-motion/low-end/unsupported fallbacks; DESIGN.md-only motion and theme tokens; persisted no-FOUC light/dark theming; and shared responsive breakpoints. The noindex `/design-system` proof route covers both glass tiers, fallback control, theme switching, reduced-motion behavior, and mobile/tablet/desktop states without adding FR-PUB-01 page content. Theme and glass tests were written red first; the final repository result is 72 passing tests, clean lint, and a successful production build. Three clean desktop Lighthouse Performance runs on the Vercel preview scored 94, 98, and 97. The protected preview's SEO-only audit reports the expected Vercel authentication `noindex`; the root page and metadata remain unchanged, preserving the current scaffold SEO baseline.
+Last completed FR: FR-PUB-00A — 2026-07-24 — Extended the FR-PUB-00 foundation with the DESIGN.md §13 Liquid Glass language: a post-load animated five-color ambient canvas; regular, clear, and focal tiers; GlassNav, GlassButton, and GlassSegmentedControl; event-driven pointer specular with no animation-frame loop; real-label roving keyboard focus over an aria-hidden, nonfocusable refracted backing copy; and a shared three-focal-element budget whose fourth candidate falls back to frosted. Reduced-motion and low-end paths stay fully static/frosted. Tests were written red first; the final repository result is 86 passing tests, clean lint, and a successful production build. Three clean desktop Lighthouse Performance runs on the Vercel preview scored 99, 97, and 97; the desktop accessibility audit scored 100 with zero contrast or aria-hidden-focus failures. The noindex `/design-system` route remains the only proof surface, and no FR-PUB-01 content was built.
 
 ## Phase 0 — Foundation (wk 1–2) — SPEC.md Section 22.1, strictly in order
 - [x] FR-FND-01 scaffold (2026-07-17)  - [x] FR-FND-02 auth core (2026-07-20)  - [x] FR-FND-03 db wiring (2026-07-21)
 - [x] FR-FND-04 CI (2026-07-21)  - [x] FR-FND-05 deployments (2026-07-23)  - [x] FR-FND-06 observability (2026-07-23)
 ## Phase 1 — Public site + SEO (wk 3–4) — SPEC.md Section 22.2
 - [x] FR-PUB-00 public design-system foundation (2026-07-24)
+- [x] FR-PUB-00A Liquid Glass visual language (2026-07-24)
 - [ ] FR-PUB-01 home  - [ ] FR-PUB-02 jobs pages  - [ ] FR-PUB-03 /freelancers
 - [ ] FR-PUB-04 /vendors  - [ ] FR-PUB-05 /about  - [ ] FR-PUB-06 login/register
 - [ ] FR-SEO-01 programmatic SEO engine
