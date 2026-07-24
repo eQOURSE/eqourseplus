@@ -1,11 +1,12 @@
 # PROGRESS.md — FR completion tracker (agents update this; human owns it)
-Current phase: 0 — Foundation complete (next: FR-PUB-01)
-Last completed FR: FR-FND-06 — 2026-07-23 — Added pinned Sentry 9.17.0 integrations for Next.js web and NestJS API, disabled cleanly when DSNs are absent; tests prove deliberately thrown errors reach the web capture boundary as the exact Error instance and the API in-memory Sentry transport without a live DSN. API logs are single-line structured JSON with request-scoped IDs, allowlisted HTTP metadata, and tested redaction of emails, bearer tokens, and credentialed connection URLs. Web middleware originates/preserves `X-Request-Id`, the server API client forwards it, and the API honors or mints it, includes it on request logs/Sentry context, and returns it. Cloud Run can opt into Secret Manager-backed `SENTRY_DSN` only after the secret exists, so initial deployments do not fail; Vercel reads its intentionally public browser DSN from env only. Full tests, lint, and build are green.
+Current phase: 1 — Public site + SEO in progress (next: FR-PUB-01)
+Last completed FR: FR-PUB-00 — 2026-07-24 — Added the shared public design-system foundation in `packages/ui`: SSR-first frosted surfaces; progressively enhanced live-content SVG refraction with quarter-map symmetry, fresh filter IDs, chromatic/specular passes, a three-element budget, and automatic reduced-motion/low-end/unsupported fallbacks; DESIGN.md-only motion and theme tokens; persisted no-FOUC light/dark theming; and shared responsive breakpoints. The noindex `/design-system` proof route covers both glass tiers, fallback control, theme switching, reduced-motion behavior, and mobile/tablet/desktop states without adding FR-PUB-01 page content. Theme and glass tests were written red first; the final repository result is 72 passing tests, clean lint, and a successful production build. Three clean desktop Lighthouse Performance runs on the Vercel preview scored 94, 98, and 97. The protected preview's SEO-only audit reports the expected Vercel authentication `noindex`; the root page and metadata remain unchanged, preserving the current scaffold SEO baseline.
 
 ## Phase 0 — Foundation (wk 1–2) — SPEC.md Section 22.1, strictly in order
 - [x] FR-FND-01 scaffold (2026-07-17)  - [x] FR-FND-02 auth core (2026-07-20)  - [x] FR-FND-03 db wiring (2026-07-21)
 - [x] FR-FND-04 CI (2026-07-21)  - [x] FR-FND-05 deployments (2026-07-23)  - [x] FR-FND-06 observability (2026-07-23)
 ## Phase 1 — Public site + SEO (wk 3–4) — SPEC.md Section 22.2
+- [x] FR-PUB-00 public design-system foundation (2026-07-24)
 - [ ] FR-PUB-01 home  - [ ] FR-PUB-02 jobs pages  - [ ] FR-PUB-03 /freelancers
 - [ ] FR-PUB-04 /vendors  - [ ] FR-PUB-05 /about  - [ ] FR-PUB-06 login/register
 - [ ] FR-SEO-01 programmatic SEO engine

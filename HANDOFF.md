@@ -23,17 +23,13 @@ guide infra/dashboard work, and flag security issues. Assume that role and rhyth
   plan first + wait for "go", tests first, update PROGRESS). SETUP.md = accounts/costs/deploy guide.
 
 ## Current position (update this line as things change)
-**Phase 0 of 8 complete. Done: FR-FND-01 (scaffold), FND-02 (auth: OTP+JWT+RBAC), FND-03 (Atlas wiring,
-migrate-mongo, idempotent skillTaxonomy seed — 3 rows live in dev cluster), FND-04 (CI green on GitHub, branch
-protection on main w/ required "Lint, test, and build" check, admin bypass consciously left enabled for
-solo-admin emergencies, red-test ritual proven), FND-05 (production pnpm-aware non-root API image; Cloud Run
-staging auto-deploy on main merge; production deploy gated by required-reviewer approval; keyless WIF restricted
-to eQOURSE/eqourseplus@refs/heads/main; Secret Manager-backed MONGODB_URI/JWT_SECRET; explicit asia-south1,
-min-instances=0, public access, and /health probes), and FND-06 (pinned Sentry web+API integrations; deliberately
-thrown errors proven through local capture transports without live DSNs; structured redacting JSON API logs;
-end-to-end X-Request-Id propagation; optional Secret Manager activation prevents missing-Sentry-secret deploy
-failures). GitHub Actions run 29996312960 previously proved the FND-05 staging/production deployment and approval
-gate. Next: Phase 1 public site + SEO, beginning with FR-PUB-01, then FR-PUB-02..06 and FR-SEO-01.**
+**Phase 0 of 8 complete; Phase 1 has begun. Done: FR-FND-01..06 and FR-PUB-00. FR-PUB-00 established the
+shared public design system in `packages/ui`: SSR-first frosted glass; progressively enhanced live-content SVG
+refraction with automatic fallbacks and a three-element budget; DESIGN.md-only motion, light/dark theme, and
+responsive tokens; persisted no-FOUC theming; and a noindex `/design-system` proof route. Tests were written red
+first; the final repository result is 72 passing tests, clean lint/build, and Vercel-preview Lighthouse
+Performance scores of 94, 98, and 97. No FR-PUB-01 page content was built. Next: FR-PUB-01, then FR-PUB-02..06
+and FR-SEO-01.**
 
 ## Infrastructure inventory (no credentials here, ever)
 - GitHub org eQOURSE / repo eqourseplus; my admin account bhau23. Node 22.23.1 + pnpm 11.9.0 pinned.
