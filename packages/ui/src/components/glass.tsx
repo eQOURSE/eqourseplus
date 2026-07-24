@@ -177,7 +177,7 @@ export function Glass({
 
     const observeVisibility = () => {
       if (typeof IntersectionObserver === "undefined") {
-        scheduleBackgroundInitialization();
+        scheduleBackgroundInitialization(POST_LCP_INITIALIZATION_DELAY_MS);
         return;
       }
 
