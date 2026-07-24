@@ -93,6 +93,9 @@ describe("FR-PUB-00A interactive glass acceptance", () => {
 
   it("updates GlassButton specular variables from pointer events without an animation loop", () => {
     const requestAnimationFrame = vi.spyOn(window, "requestAnimationFrame");
+    const hardwareConcurrency = vi
+      .spyOn(window.navigator, "hardwareConcurrency", "get")
+      .mockReturnValue(8);
     window.PointerEvent = MouseEvent as typeof PointerEvent;
 
     render(<GlassButton>Request access</GlassButton>);
@@ -116,6 +119,39 @@ describe("FR-PUB-00A interactive glass acceptance", () => {
     expect(button.style.getPropertyValue("--glass-pointer-y")).toBe("25%");
     expect(requestAnimationFrame).not.toHaveBeenCalled();
 
+    hardwareConcurrency.mockRestore();
+    requestAnimationFrame.mockRestore();
+  });
+
+  it("keeps GlassButton specular static on low-end devices", () => {
+    const requestAnimationFrame = vi.spyOn(window, "requestAnimationFrame");
+    const hardwareConcurrency = vi
+      .spyOn(window.navigator, "hardwareConcurrency", "get")
+      .mockReturnValue(4);
+    window.PointerEvent = MouseEvent as typeof PointerEvent;
+
+    render(<GlassButton>Low-end action</GlassButton>);
+    const button = screen.getByRole("button", { name: "Low-end action" });
+    vi.spyOn(button, "getBoundingClientRect").mockReturnValue({
+      bottom: 80,
+      height: 80,
+      left: 0,
+      right: 200,
+      top: 0,
+      width: 200,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+
+    fireEvent.pointerEnter(button);
+    fireEvent.pointerMove(button, { clientX: 50, clientY: 20 });
+
+    expect(button.style.getPropertyValue("--glass-pointer-x")).toBe("");
+    expect(button.style.getPropertyValue("--glass-pointer-y")).toBe("");
+    expect(requestAnimationFrame).not.toHaveBeenCalled();
+
+    hardwareConcurrency.mockRestore();
     requestAnimationFrame.mockRestore();
   });
 
