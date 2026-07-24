@@ -33,7 +33,7 @@ interface RefractionConfig {
   mapUrl: string;
 }
 
-const POST_LCP_INITIALIZATION_DELAY_MS = 7000;
+const POST_LCP_INITIALIZATION_DELAY_MS = 12000;
 
 let filterRevision = 0;
 
@@ -70,6 +70,9 @@ export function Glass({
     let resizeHandle: number | null = null;
     let loadListener: (() => void) | null = null;
     let initializationScheduled = false;
+    let filterGenerated = false;
+    let interactionRequested = false;
+    let pageLoaded = document.readyState === "complete";
 
     const releaseSlot = () => {
       releaseRefractionSlot(slotRef.current);
@@ -120,6 +123,7 @@ export function Glass({
         filterId: createFreshFilterId(),
         mapUrl,
       });
+      filterGenerated = true;
 
       if (typeof ResizeObserver !== "undefined" && !resizeObserver) {
         resizeObserver = new ResizeObserver(() => {
@@ -132,10 +136,18 @@ export function Glass({
       }
     };
 
-    const scheduleBackgroundInitialization = () => {
-      if (initializationScheduled || disposed) {
+    const scheduleBackgroundInitialization = (delay: number) => {
+      if (disposed) {
         return;
       }
+
+      if (fallbackHandle !== null) {
+        window.clearTimeout(fallbackHandle);
+      }
+      if (idleHandle !== null) {
+        window.cancelIdleCallback(idleHandle);
+      }
+
       initializationScheduled = true;
 
       fallbackHandle = window.setTimeout(() => {
@@ -152,7 +164,15 @@ export function Glass({
           initializationScheduled = false;
           generateFilter();
         }
-      }, POST_LCP_INITIALIZATION_DELAY_MS);
+      }, delay);
+    };
+
+    const initializeAfterInteraction = () => {
+      interactionRequested = true;
+      if (!pageLoaded || filterGenerated || disposed) {
+        return;
+      }
+      scheduleBackgroundInitialization(0);
     };
 
     const observeVisibility = () => {
@@ -165,7 +185,11 @@ export function Glass({
         ([entry]) => {
           if (entry?.isIntersecting) {
             intersectionObserver?.disconnect();
-            scheduleBackgroundInitialization();
+            if (!initializationScheduled) {
+              scheduleBackgroundInitialization(
+                POST_LCP_INITIALIZATION_DELAY_MS,
+              );
+            }
           }
         },
         { rootMargin: "160px", threshold: 0.01 },
@@ -173,10 +197,27 @@ export function Glass({
       intersectionObserver.observe(surface);
     };
 
-    if (document.readyState === "complete") {
+    surface.addEventListener("pointerenter", initializeAfterInteraction, {
+      once: true,
+    });
+    surface.addEventListener("focusin", initializeAfterInteraction, {
+      once: true,
+    });
+    surface.addEventListener("touchstart", initializeAfterInteraction, {
+      once: true,
+      passive: true,
+    });
+
+    if (pageLoaded) {
       observeVisibility();
     } else {
-      loadListener = observeVisibility;
+      loadListener = () => {
+        pageLoaded = true;
+        observeVisibility();
+        if (interactionRequested) {
+          scheduleBackgroundInitialization(0);
+        }
+      };
       window.addEventListener("load", loadListener, { once: true });
     }
 
@@ -196,6 +237,9 @@ export function Glass({
       if (loadListener) {
         window.removeEventListener("load", loadListener);
       }
+      surface.removeEventListener("pointerenter", initializeAfterInteraction);
+      surface.removeEventListener("focusin", initializeAfterInteraction);
+      surface.removeEventListener("touchstart", initializeAfterInteraction);
       releaseSlot();
     };
   }, [disabled, strength]);
