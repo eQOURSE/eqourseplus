@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
 } from "react";
 
 import {
@@ -24,7 +25,9 @@ import {
 } from "./frosted-surface";
 
 export interface GlassProps extends FrostedSurfaceProps {
+  activated?: boolean;
   disabled?: boolean;
+  refractedContent?: ReactNode;
   strength?: number;
 }
 
@@ -43,9 +46,11 @@ function createFreshFilterId(): string {
 }
 
 export function Glass({
+  activated = false,
   children,
   className = "",
   disabled = false,
+  refractedContent,
   strength = 22,
   style,
   variant = "panel",
@@ -221,6 +226,13 @@ export function Glass({
       window.addEventListener("load", loadListener, { once: true });
     }
 
+    if (activated) {
+      interactionRequested = true;
+      if (pageLoaded) {
+        scheduleBackgroundInitialization(0);
+      }
+    }
+
     return () => {
       disposed = true;
       intersectionObserver?.disconnect();
@@ -242,7 +254,7 @@ export function Glass({
       surface.removeEventListener("touchstart", initializeAfterInteraction);
       releaseSlot();
     };
-  }, [disabled, strength]);
+  }, [activated, disabled, strength]);
 
   const tier = config ? "refraction" : "frosted";
   const contentStyle: CSSProperties | undefined = config
@@ -260,6 +272,7 @@ export function Glass({
       className={`eq-glass ${className}`.trim()}
       style={style}
       data-glass-tier={tier}
+      data-glass-visual-tier="focal"
       {...props}
     >
       {config ? (
@@ -379,9 +392,24 @@ export function Glass({
           </filter>
         </svg>
       ) : null}
-      <div className="eq-glass__content" style={contentStyle}>
-        {children}
-      </div>
+      {refractedContent ? (
+        <>
+          <div
+            aria-hidden="true"
+            className="eq-glass__backing"
+            style={contentStyle}
+          >
+            {refractedContent}
+          </div>
+          {children ? (
+            <div className="eq-glass__foreground">{children}</div>
+          ) : null}
+        </>
+      ) : (
+        <div className="eq-glass__content" style={contentStyle}>
+          {children}
+        </div>
+      )}
     </FrostedSurface>
   );
 }

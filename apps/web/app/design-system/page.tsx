@@ -4,7 +4,7 @@ import { DesignSystemDemo } from "./design-system-demo";
 
 export const metadata: Metadata = {
   title: "Design system lab | eQOURSE+",
-  description: "Internal FR-PUB-00 design-system acceptance route.",
+  description: "Internal FR-PUB-00A liquid-glass acceptance route.",
   robots: {
     index: false,
     follow: false,
