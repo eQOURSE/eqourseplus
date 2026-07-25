@@ -6,6 +6,7 @@ export * from "./components/glass-motif-field";
 export * from "./components/glass-nav";
 export * from "./components/hero-lens";
 export * from "./components/glass-segmented-control";
+export * from "./components/glass-substrate";
 export * from "./components/motion-reveal";
 export * from "./components/theme-toggle";
 export * from "./glass/capabilities";

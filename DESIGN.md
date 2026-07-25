@@ -589,7 +589,7 @@ All animations are disabled:
 | Theme toggle | Neutral frosted bezel | Brighter hairline / lens-thumb movement | Brand ring | — |
 
 - The primary button gets brand colour from `linear-gradient(135deg, hsl(170 82% 26%), hsl(174 72% 20%))` behind neutral glass, never from its glass fill. White bold labels measure 5.36:1 at the light stop and 8.29:1 at the dark stop.
-- The pre-existing flat `--primary` (`170 82% 32%`) with white is 4.06:1 at 16px/700 and is not changed here. FR-PUB-01 CTAs must use the deepened plate above rather than flat `--primary` for white labels.
+- The pre-existing flat `--primary` (`170 82% 32%`) with white measures 3.76:1 under the standard WCAG HSL-to-sRGB calculation (the FR prompt recorded 4.06:1) and is not changed here. FR-PUB-01 CTAs must use the deepened plate above rather than flat `--primary` for white labels.
 
 ### Timing
 

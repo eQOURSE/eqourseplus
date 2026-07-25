@@ -9,6 +9,7 @@ import {
   GlassMotifField,
   GlassNav,
   GlassSegmentedControl,
+  GlassSubstrate,
   HeroLens,
   ThemeToggle,
   isLowEndDevice,
@@ -73,12 +74,10 @@ export function DesignSystemDemo() {
       data-motion={motionAllowed ? "enabled" : "static"}
     >
       <AmbientCanvas paused={ambientPaused} />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-[1] opacity-[0.04] [background-image:radial-gradient(circle,hsl(var(--primary))_1px,transparent_1px)] [background-size:40px_40px]"
-      />
 
       <div className="relative mx-auto max-w-[1400px]">
+        <div className="eq-glass-sunken-band">
+          <GlassSubstrate />
         <GlassNav
           aria-label="Design system lab"
         >
@@ -123,12 +122,14 @@ export function DesignSystemDemo() {
               <GlassButton
                 aria-pressed={ambientPaused}
                 onClick={() => setAmbientPaused((current) => !current)}
+                variant="ghost"
               >
                 {ambientPaused ? "Resume ambient motion" : "Pause ambient motion"}
               </GlassButton>
               <GlassButton
                 aria-pressed={focalProofActive}
                 onClick={() => setFocalProofActive(true)}
+                variant="secondary"
               >
                 {focalProofActive ? "Focal budget active" : "Activate focal proof"}
               </GlassButton>
@@ -141,6 +142,7 @@ export function DesignSystemDemo() {
             </div>
           </div>
 
+          {/* Focal slot 1 of 3: HeroLens inner lens. */}
           <HeroLens
             activated={focalProofActive}
             className="h-[22rem]"
@@ -155,6 +157,7 @@ export function DesignSystemDemo() {
             </p>
           </HeroLens>
         </header>
+        </div>
 
         <section
           aria-labelledby="components-title"
@@ -189,12 +192,18 @@ export function DesignSystemDemo() {
               </div>
 
               <div className="flex flex-wrap items-center gap-4">
-                <GlassButton>Primary glass action</GlassButton>
+                <GlassButton variant="primary">Primary glass action</GlassButton>
+                <GlassButton variant="ghost" disabled>
+                  Disabled glass
+                </GlassButton>
                 <span className="max-w-sm text-sm leading-relaxed text-muted-foreground">
                   Pointer specular updates only during interaction; the tactile
                   press uses the Gel easing.
                 </span>
               </div>
+              <p className="eq-reading-surface rounded-xl px-4 py-3 text-sm text-muted-foreground">
+                Sharp substrate carries brand colour through neutral glass.
+              </p>
             </div>
           </div>
         </section>
@@ -245,6 +254,7 @@ export function DesignSystemDemo() {
               </p>
             </FrostedSurface>
 
+            {/* Focal slot 3 of 3: the focal tier panel. */}
             <Glass
               activated={focalProofActive}
               className="eq-glass-runtime min-h-64"
@@ -284,6 +294,7 @@ export function DesignSystemDemo() {
           </div>
 
           <div className="mt-10 grid gap-5">
+            {/* Candidate 4 remains frosted when the three-slot budget is full. */}
             <Glass
               activated={focalProofActive}
               className="eq-glass-runtime min-h-52"

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
+  MAX_REFRACTION_ELEMENTS,
   acquireRefractionSlot,
   releaseRefractionSlot,
   resetRefractionBudgetForTests,
@@ -55,6 +56,7 @@ describe("FR-PUB-00 refraction focal-element budget", () => {
   });
 
   it("reserves refraction for at most three simultaneous elements", () => {
+    expect(MAX_REFRACTION_ELEMENTS).toBe(3);
     const first = acquireRefractionSlot();
     const second = acquireRefractionSlot();
     const third = acquireRefractionSlot();

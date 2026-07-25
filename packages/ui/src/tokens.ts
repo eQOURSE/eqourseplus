@@ -71,9 +71,11 @@ export const designTokens = {
   },
   glass: {
     regular: {
-      light: "rgba(255,255,255,0.55)",
-      dark: "rgba(35,45,70,0.45)",
-      blur: "18px",
+      light:
+        "linear-gradient(180deg,rgba(255,255,255,0.34) 0%,rgba(255,255,255,0.10) 45%,rgba(255,255,255,0.22) 100%)",
+      dark:
+        "linear-gradient(180deg,rgba(255,255,255,0.13) 0%,rgba(35,45,70,0.20) 45%,rgba(255,255,255,0.07) 100%)",
+      blur: "14px",
     },
     clear: {
       light: "rgba(255,255,255,0.25)",
@@ -81,10 +83,33 @@ export const designTokens = {
       blur: "8px",
     },
     focal: {
-      blur: "24px",
+      blur: "4px",
+      light:
+        "linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))",
+      dark:
+        "linear-gradient(180deg,rgba(255,255,255,0.08),rgba(35,45,70,0.14))",
     },
     specularMaxAlpha: 0.4,
+    hairlineMaxAlpha: 0.95,
     rimMaxAlpha: 0.18,
+  },
+  surfaces: {
+    paper: {
+      hsl: "160 30% 98%",
+      hex: "#F7FAF9",
+    },
+    light: {
+      sunken: "168 22% 88%",
+      background: "168 26% 93%",
+      card: "0 0% 100%",
+      elevated: "0 0% 100%",
+    },
+    dark: {
+      sunken: "242 30% 5%",
+      background: "242 34% 7%",
+      card: "242 24% 12%",
+      elevated: "242 22% 15%",
+    },
   },
 } as const;
 

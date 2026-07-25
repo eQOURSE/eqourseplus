@@ -98,6 +98,7 @@ export function GlassSegmentedControl<Value extends string = string>({
       {...props}
     >
       {options.length > 0 ? (
+        // Focal slot 2 of 3: the segmented selection lens.
         <Glass
           aria-hidden="true"
           activated={activated || interactionActivated}
@@ -109,16 +110,7 @@ export function GlassSegmentedControl<Value extends string = string>({
               aria-hidden="true"
               className="eq-glass-segmented__backing"
               data-testid="glass-segmented-backing"
-            >
-              {options.map((option) => (
-                <span
-                  className="eq-glass-segmented__backing-label"
-                  key={option.value}
-                >
-                  {option.label}
-                </span>
-              ))}
-            </div>
+            />
           }
         />
       ) : null}

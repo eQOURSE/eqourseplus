@@ -12,7 +12,12 @@ import {
   prefersReducedMotion,
 } from "../glass/capabilities";
 
-export type GlassButtonProps = ComponentPropsWithoutRef<"button">;
+export type GlassButtonVariant = "primary" | "secondary" | "ghost";
+
+export interface GlassButtonProps
+  extends ComponentPropsWithoutRef<"button"> {
+  variant?: GlassButtonVariant;
+}
 
 function canTrackPointer(): boolean {
   return !prefersReducedMotion() && !isLowEndDevice();
@@ -50,6 +55,7 @@ export const GlassButton = forwardRef<
     onPointerMove,
     onPointerUp,
     type = "button",
+    variant = "secondary",
     ...props
   },
   ref,
@@ -60,7 +66,7 @@ export const GlassButton = forwardRef<
     <button
       ref={ref}
       type={type}
-      className={`eq-glass-button eq-glass-surface eq-glass-tier-regular ${className}`.trim()}
+      className={`eq-glass-button eq-glass-button--${variant} eq-glass-surface eq-glass-tier-regular ${className}`.trim()}
       data-glass-visual-tier="regular"
       onPointerEnter={(event) => {
         pointerActive.current = canTrackPointer();

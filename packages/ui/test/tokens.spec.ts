@@ -29,3 +29,26 @@ describe("FR-FND-01 canonical eQOURSE design tokens", () => {
     });
   });
 });
+
+describe("FR-PUB-00B theme surface tokens", () => {
+  it("publishes both value ladders while retaining canonical paper", () => {
+    expect(designTokens.surfaces).toEqual({
+      paper: {
+        hsl: "160 30% 98%",
+        hex: "#F7FAF9",
+      },
+      light: {
+        sunken: "168 22% 88%",
+        background: "168 26% 93%",
+        card: "0 0% 100%",
+        elevated: "0 0% 100%",
+      },
+      dark: {
+        sunken: "242 30% 5%",
+        background: "242 34% 7%",
+        card: "242 24% 12%",
+        elevated: "242 22% 15%",
+      },
+    });
+  });
+});

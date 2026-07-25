@@ -21,6 +21,7 @@ import {
 import {
   DEFAULT_CURVATURE,
   createDisplacementDataUrl,
+  maxDisplacementPx,
 } from "../glass/displacement-map";
 import {
   FrostedSurface,
@@ -37,10 +38,33 @@ export interface GlassProps extends FrostedSurfaceProps {
 
 interface RefractionConfig {
   filterId: string;
+  height: number;
   mapUrl: string;
+  width: number;
 }
 
 const POST_LCP_INITIALIZATION_DELAY_MS = 12000;
+export const CHROMA_STAGGER = 0.045;
+
+export function calculateFilterRegion(
+  width: number,
+  height: number,
+  strength: number,
+) {
+  const safeWidth = Math.max(width, 1);
+  const safeHeight = Math.max(height, 1);
+  const margin = maxDisplacementPx(strength) + 8;
+  const horizontalMargin = (margin / safeWidth) * 100;
+  const verticalMargin = (margin / safeHeight) * 100;
+
+  return {
+    margin,
+    x: `${-horizontalMargin}%`,
+    y: `${-verticalMargin}%`,
+    width: `${100 + horizontalMargin * 2}%`,
+    height: `${100 + verticalMargin * 2}%`,
+  };
+}
 
 let filterRevision = 0;
 
@@ -135,7 +159,9 @@ export function Glass({
 
       setConfig({
         filterId: createFreshFilterId(),
+        height: bounds.height,
         mapUrl,
+        width: bounds.width,
       });
       filterGenerated = true;
 
@@ -263,9 +289,12 @@ export function Glass({
       surface.removeEventListener("touchstart", initializeAfterInteraction);
       releaseSlot();
     };
-  }, [activated, curvature, disabled, strength]);
+  }, [activated, curvature, disabled]);
 
   const tier = config ? "refraction" : "frosted";
+  const filterRegion = config
+    ? calculateFilterRegion(config.width, config.height, strength)
+    : null;
   const contentStyle: CSSProperties | undefined = config
     ? {
         filter: `url(#${config.filterId})`,
@@ -293,110 +322,118 @@ export function Glass({
         >
           <filter
             id={config.filterId}
-            x="-8%"
-            y="-8%"
-            width="116%"
-            height="116%"
+            x={filterRegion?.x}
+            y={filterRegion?.y}
+            width={filterRegion?.width}
+            height={filterRegion?.height}
             colorInterpolationFilters="sRGB"
           >
+            <feFlood
+              floodColor="rgb(128,128,128)"
+              floodOpacity="1"
+              result="map-bg"
+            />
             <feImage
               href={config.mapUrl}
               x="0"
               y="0"
-              width="100%"
-              height="100%"
+              width={config.width}
+              height={config.height}
               preserveAspectRatio="none"
-              result="displacement-map"
+              result="raw-map"
+            />
+            <feComposite
+              in="raw-map"
+              in2="map-bg"
+              operator="over"
+              result="map"
+            />
+            <feGaussianBlur
+              in="SourceGraphic"
+              stdDeviation="0.6"
+              result="blurred"
             />
             <feDisplacementMap
-              in="SourceGraphic"
-              in2="displacement-map"
+              in="blurred"
+              in2="map"
+              scale={strength * (1 + CHROMA_STAGGER)}
+              xChannelSelector="R"
+              yChannelSelector="G"
+              result="disp-r-raw"
+            />
+            <feColorMatrix
+              in="disp-r-raw"
+              type="matrix"
+              values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"
+              result="disp-r"
+            />
+            <feDisplacementMap
+              in="blurred"
+              in2="map"
               scale={strength}
               xChannelSelector="R"
               yChannelSelector="G"
-              result="refracted"
+              result="disp-g-raw"
             />
-
-            <feOffset
-              in="SourceAlpha"
-              dx="3.1"
-              dy="0"
-              result="primary-offset"
+            <feColorMatrix
+              in="disp-g-raw"
+              type="matrix"
+              values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0"
+              result="disp-g"
             />
-            <feComposite
-              in="primary-offset"
-              in2="SourceAlpha"
-              operator="out"
-              result="primary-edge"
+            <feDisplacementMap
+              in="blurred"
+              in2="map"
+              scale={strength * (1 - CHROMA_STAGGER)}
+              xChannelSelector="R"
+              yChannelSelector="G"
+              result="disp-b-raw"
             />
-            <feFlood
-              floodColor="#0F9B8E"
-              floodOpacity="0.42"
-              result="primary-flood"
-            />
-            <feComposite
-              in="primary-flood"
-              in2="primary-edge"
-              operator="in"
-              result="primary-fringe"
-            />
-
-            <feOffset
-              in="SourceAlpha"
-              dx="-3.1"
-              dy="0"
-              result="accent-offset"
+            <feColorMatrix
+              in="disp-b-raw"
+              type="matrix"
+              values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0"
+              result="disp-b"
             />
             <feComposite
-              in="accent-offset"
-              in2="SourceAlpha"
-              operator="out"
-              result="accent-edge"
-            />
-            <feFlood
-              floodColor="#7BE8C9"
-              floodOpacity="0.38"
-              result="accent-flood"
+              in="disp-r"
+              in2="disp-g"
+              operator="arithmetic"
+              k1="0"
+              k2="1"
+              k3="1"
+              k4="0"
+              result="disp-rg"
             />
             <feComposite
-              in="accent-flood"
-              in2="accent-edge"
-              operator="in"
-              result="accent-fringe"
+              in="disp-rg"
+              in2="disp-b"
+              operator="arithmetic"
+              k1="0"
+              k2="1"
+              k3="1"
+              k4="0"
+              result="lens"
             />
-
-            <feSpecularLighting
-              in="SourceAlpha"
-              surfaceScale="2"
-              specularConstant="0.42"
-              specularExponent="22"
-              lightingColor="#FFFFFF"
-              result="specular"
-            >
-              <fePointLight x="-120" y="-160" z="240" />
-            </feSpecularLighting>
+            <feColorMatrix
+              in="map"
+              type="matrix"
+              values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 1 0 -0.5019607843137255"
+              result="spec-mask"
+            />
+            <feGaussianBlur
+              in="spec-mask"
+              stdDeviation="0.8"
+              result="spec"
+            />
             <feComposite
-              in="specular"
-              in2="SourceAlpha"
-              operator="in"
-              result="specular-clipped"
-            />
-            <feBlend
-              in="refracted"
-              in2="primary-fringe"
-              mode="screen"
-              result="with-primary-fringe"
-            />
-            <feBlend
-              in="with-primary-fringe"
-              in2="accent-fringe"
-              mode="screen"
-              result="with-fringe"
-            />
-            <feBlend
-              in="with-fringe"
-              in2="specular-clipped"
-              mode="screen"
+              in="spec"
+              in2="lens"
+              operator="arithmetic"
+              k1="0"
+              k2="1"
+              k3="1"
+              k4="0"
             />
           </filter>
         </svg>
