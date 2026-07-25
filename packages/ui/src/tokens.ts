@@ -83,7 +83,7 @@ export const designTokens = {
     focal: {
       blur: "24px",
     },
-    specularMaxAlpha: 0.25,
+    specularMaxAlpha: 0.4,
     rimMaxAlpha: 0.18,
   },
 } as const;

@@ -319,7 +319,7 @@ export function Glass({
 
             <feOffset
               in="SourceAlpha"
-              dx="2.2"
+              dx="3.1"
               dy="0"
               result="primary-offset"
             />
@@ -343,7 +343,7 @@ export function Glass({
 
             <feOffset
               in="SourceAlpha"
-              dx="-2.2"
+              dx="-3.1"
               dy="0"
               result="accent-offset"
             />
@@ -368,8 +368,8 @@ export function Glass({
             <feSpecularLighting
               in="SourceAlpha"
               surfaceScale="2"
-              specularConstant="0.28"
-              specularExponent="18"
+              specularConstant="0.42"
+              specularExponent="22"
               lightingColor="#FFFFFF"
               result="specular"
             >

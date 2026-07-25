@@ -65,7 +65,7 @@
   --glass-clear: rgba(255, 255, 255, 0.25);
   --glass-clear-blur: 8px;
   --glass-focal: 24px;
-  --glass-specular: rgba(255, 255, 255, 0.25);
+  --glass-specular: rgba(255, 255, 255, 0.40);
   --glass-rim: hsl(var(--accent) / 0.18);
 }
 
@@ -186,6 +186,13 @@
   background: var(--glass-regular);
   box-shadow:
     inset 0 1px 0 var(--glass-specular),
+    var(--shadow-card);
+}
+
+.eq-glass-surface[data-glass-visual-tier="focal"] {
+  box-shadow:
+    inset 0 1px 0 var(--glass-specular),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.35),
     var(--shadow-card);
 }
 

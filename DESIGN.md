@@ -549,7 +549,7 @@ All animations are disabled:
 
 ### Rim/Specular/Chroma Tokens
 
-- Specular highlight = white ≤0.25 alpha.
+- Specular highlight = white ≤0.40 alpha.
 - Chromatic fringe = primary teal + accent mint only (no arbitrary RGB).
 - Rim light = `--accent` at ≤0.18 alpha.
 
