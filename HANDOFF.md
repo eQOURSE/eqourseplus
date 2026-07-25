@@ -63,6 +63,11 @@ Free-first cost posture (~₹0 build phase). GCP over AWS (existing billing). Co
 unnumbered work, asks on ambiguity, plans-first, honest PROGRESS gating.
 
 ## Watchlist / open items
+- Flat --primary (170 82% 32%) against white measures 3.76:1 — below AA at 16px/700. Not changed in FR-PUB-00B (system-wide blast radius). FR-PUB-01 CTAs must use the deepened teal plate (hsl(170 82% 26%) to hsl(174 72% 20%)), not flat --primary, for white labels. Recorded in DESIGN.md §13.
+- Dark theme is the stronger liquid-glass surface and is the reference for FR-PUB-01 material quality; light is legitimately quieter (less value range) and that is physics, not a defect.
+- Focal refraction initialises 12 s after an element enters the viewport (POST_LCP_INITIALIZATION_DELAY_MS). Any visual QA or Lighthouse run must scroll into view and wait 15 s, or it measures the frosted fallback. Virtual-time headless screenshots always show frosted.
+- .eq-glass-label-scrim is currently applied to every eyebrow; only the focal-card and hero-lens eyebrows actually need it. Cosmetic tidy-up, deferred.
+- Duplicate Vercel project `eqourseplus` still errors on its unrelated root-output config — delete or fix it.
 - GCP red banner "administrator must verify this account" — I must verify personally (urgent-ish).
 - Vercel 2FA — enable personally if not done.
 - Long-lead accounts to start early (Phase 1–2): RazorpayX/Cashfree company KYC (2–4 wks), IDfy/HyperVerge +
