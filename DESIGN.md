@@ -543,15 +543,53 @@ All animations are disabled:
 
 ### Glass Tiers
 
-- `--glass-regular`: tint `rgba(255,255,255,0.55)` light / `rgba(35,45,70,0.45)` dark, blur 18px.
+- `--glass-regular`: neutral white gradient `rgba(255,255,255,0.34)` → `rgba(255,255,255,0.10)` → `rgba(255,255,255,0.22)` in light; neutral white/navy gradient `rgba(255,255,255,0.13)` → `rgba(35,45,70,0.20)` → `rgba(255,255,255,0.07)` in dark; blur 14px.
 - `--glass-clear`: tint `rgba(255,255,255,0.25)` light / `rgba(35,45,70,0.25)` dark, blur 8px, for reading values through.
-- `--glass-focal`: real refraction, blur 24px + displacement.
+- `--glass-focal`: real refraction, blur ≤6px + displacement; focal tint alpha ≤0.14. Heavy blur destroys the detail produced by displacement.
+- Frosted-tier amplification may use `saturate(1.6–1.9) brightness(1.04–1.10)`; this amplifies transmitted colours and introduces no hue.
 
 ### Rim/Specular/Chroma Tokens
 
-- Specular highlight = white ≤0.40 alpha.
-- Chromatic fringe = primary teal + accent mint only (no arbitrary RGB).
+- Specular wash = white ≤0.40 alpha.
+- Specular hairline = white ≤0.95 alpha at ≤1.5px. A hairline is a light-catch, not a wash.
+- Optical per-channel separation of already-rendered content is permitted for the focal tier with a displacement-scale stagger ≤6%. Painted/flooded fringes remain primary teal + accent mint only. Physical aberration separates the content's own channels; the stagger must remain hairline-scale.
 - Rim light = `--accent` at ≤0.18 alpha.
+
+### Refractable Substrate
+
+- Sharp, never-blurred grid, diagonal hatch, and dot layers use only `--primary` and `--accent`, each at alpha ≤0.16. The initial four-layer alphas are `0.06 / 0.06 / 0.08 / 0.08`; raise frosted saturation, not substrate alpha, if more colour is needed.
+- The layer is masked away from body copy, remains static under `prefers-reduced-motion` and low-end gates, and may otherwise drift only within the 20–35s continuous-loop band.
+
+### Glass Optics Contract
+
+- The displacement profile is convex: rim pixels sample inward while the centre and exterior remain neutral.
+- Filter-region margin is at least maximum displacement + 8px.
+- The map is neutral outside the element rect using optical control gray `rgb(128,128,128)` and an explicit-pixel `feImage`.
+- The map blue channel carries the specular mask.
+- `color-interpolation-filters="sRGB"` is mandatory.
+- Optical control gray is map data, not a UI palette colour.
+
+### Theme Value Ladder
+
+- Light "Brand Mist": `surface-sunken 168 22% 88% < background 168 26% 93% < card 0 0% 100% = surface-elevated 0 0% 100%`.
+- Dark "Deep Navy Glass": `surface-sunken 242 30% 5% < background 242 34% 7% < card 242 24% 12% < surface-elevated 242 22% 15%`.
+- `--paper: 160 30% 98%` retains canonical `#F7FAF9` for reading surfaces. The light canvas moves down one value step because white glass cannot modulate a 98%-lightness surround.
+- Glass fills remain neutral. Brand hue reaches the eye only by transmission through ambient/substrate layers or a plate behind primary glass. The accent rim at ≤0.18 is the only tinted edge.
+
+### Glass Component States
+
+| Component | Rest | Hover / active | Focus-visible | Disabled |
+|---|---|---|---|---|
+| Nav | Neutral frosted bezel | — | Link rings | — |
+| Button — primary | Neutral glass over deep-teal plate; mint appears only as an upper-rim light sweep at ≤0.35 alpha | Lift / Gel squish | Brand ring | No bounce, half hairline, no transform |
+| Button — secondary | Neutral frosted bezel | Lift / Gel squish | Brand ring | No bounce, half hairline, no transform |
+| Button — ghost | Transparent at rest | Bezel appears / Gel squish | Brand ring | No bounce, half hairline, no transform |
+| Segmented control | Neutral frosted bezel | Brighter hairline / spring lens glide | Real-label ring | — |
+| Card / panel | Neutral surface bezel | Existing hover lift | — | — |
+| Theme toggle | Neutral frosted bezel | Brighter hairline / lens-thumb movement | Brand ring | — |
+
+- The primary button gets brand colour from `linear-gradient(135deg, hsl(170 82% 26%), hsl(174 72% 20%))` behind neutral glass, never from its glass fill. White bold labels measure 5.36:1 at the light stop and 8.29:1 at the dark stop.
+- The pre-existing flat `--primary` (`170 82% 32%`) with white is 4.06:1 at 16px/700 and is not changed here. FR-PUB-01 CTAs must use the deepened plate above rather than flat `--primary` for white labels.
 
 ### Timing
 
