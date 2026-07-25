@@ -358,5 +358,12 @@ describe("FR-PUB-00A interactive glass acceptance", () => {
         "Sharp substrate carries brand colour through neutral glass.",
       ),
     ).toBeInTheDocument();
+    expect(
+      container.querySelector(".eq-glass-stage > .eq-glass-substrate"),
+    ).toBeTruthy();
+    expect(container.querySelector(".eq-glass-tier-comparison")).toBeTruthy();
+    expect(
+      container.querySelectorAll(".eq-glass-label-scrim").length,
+    ).toBeGreaterThanOrEqual(5);
   });
 });

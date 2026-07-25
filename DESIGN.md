@@ -540,6 +540,7 @@ All animations are disabled:
 - Sky-blue `#38bdf8`
 - Teal-300 `#5eead4`
 - Use as slow-moving radial/linear gradient blobs, opacity ≤0.6, blur ≥60px, 18–35s loop (per §12 continuous-loop timing).
+- Rebalance intensity per theme with `--ambient-opacity-rest` / `--ambient-opacity-peak`: light `0.18 / 0.26`, dark `0.30 / 0.42`.
 
 ### Glass Tiers
 

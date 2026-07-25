@@ -187,6 +187,32 @@ describe("FR-PUB-00A focal lens rim and chroma polish", () => {
 });
 
 describe("FR-PUB-00B material and palette guards", () => {
+  it("rebalances ambient intensity per theme and uses it in both drift keyframes", () => {
+    expect(stylesSource).toMatch(/--ambient-opacity-rest:\s*0\.18;/);
+    expect(stylesSource).toMatch(/--ambient-opacity-peak:\s*0\.26;/);
+    expect(stylesSource).toMatch(
+      /\[data-theme="dark"\][\s\S]*?--ambient-opacity-rest:\s*0\.30;/,
+    );
+    expect(stylesSource).toMatch(
+      /\[data-theme="dark"\][\s\S]*?--ambient-opacity-peak:\s*0\.42;/,
+    );
+    expect(stylesSource).toMatch(
+      /\.eq-ambient-canvas__blob\s*\{[\s\S]*?filter:\s*blur\(80px\);[\s\S]*?opacity:\s*var\(--ambient-opacity-rest\)/,
+    );
+    expect(
+      stylesSource.match(/opacity:\s*var\(--ambient-opacity-rest\)/g),
+    ).toHaveLength(3);
+    expect(
+      stylesSource.match(/opacity:\s*var\(--ambient-opacity-peak\)/g),
+    ).toHaveLength(2);
+    expect(stylesSource).toMatch(
+      /\.eq-ambient-canvas__blob--teal\s*\{[\s\S]*?width:\s*30rem;[\s\S]*?height:\s*30rem;/,
+    );
+    expect(stylesSource).toMatch(
+      /\.eq-ambient-canvas__blob--navy\s*\{[\s\S]*?width:\s*30rem;[\s\S]*?height:\s*30rem;/,
+    );
+  });
+
   it("keeps the decorative ambient canvas outside document layout", () => {
     expect(stylesSource).toMatch(
       /\.eq-liquid-glass-demo\s*>\s*\.eq-ambient-canvas\s*\{[\s\S]*?position:\s*fixed/,
@@ -233,7 +259,7 @@ describe("FR-PUB-00B material and palette guards", () => {
 
   it("uses contrast-safe substrate alphas and only tokenized brand hues", () => {
     const substrateBlock = stylesSource.match(
-      /\.eq-glass-substrate\s*\{([\s\S]*?)\n\}/,
+      /(?:^|\n)\.eq-glass-substrate\s*\{([\s\S]*?)\n\}/,
     )?.[1];
     const alphas = Array.from(
       substrateBlock?.matchAll(
@@ -248,6 +274,50 @@ describe("FR-PUB-00B material and palette guards", () => {
     expect(substrateSource).toContain('aria-hidden="true"');
     expect(stylesSource).toMatch(
       /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.eq-glass-substrate[\s\S]*?animation:\s*none/,
+    );
+    expect(stylesSource).toMatch(/--substrate-mask-floor:\s*0\.34;/);
+    expect(substrateBlock).toMatch(
+      /mask-image:[\s\S]*?hsl\(0 0% 0% \/ var\(--substrate-mask-floor\)\)\s*100%/,
+    );
+    expect(substrateBlock).not.toMatch(/transparent\s+(?:72|100)%/);
+  });
+
+  it("keeps regular and clear tiers in the same neutral hue family", () => {
+    const lightRegular = stylesSource.match(
+      /--glass-regular:\s*(linear-gradient\([\s\S]*?\));\s*--glass-regular-blur/,
+    )?.[1];
+    const lightClear = stylesSource.match(
+      /--glass-clear:\s*(rgba\([^)]+\));/,
+    )?.[1];
+    const darkStart = stylesSource.indexOf('[data-theme="dark"]');
+    const darkBlock = stylesSource.slice(
+      darkStart,
+      stylesSource.indexOf("\n.eq-frosted", darkStart),
+    );
+    const darkRegular = darkBlock.match(
+      /--glass-regular:\s*(linear-gradient\([\s\S]*?\));\s*--glass-clear/,
+    )?.[1];
+    const darkClear = darkBlock.match(
+      /--glass-clear:\s*(rgba\([^)]+\));/,
+    )?.[1];
+    const regularAlphas = Array.from(
+      lightRegular?.matchAll(/rgba\(255,\s*255,\s*255,\s*([\d.]+)\)/g) ?? [],
+      (match) => Number(match[1]),
+    );
+
+    expect(lightRegular).toMatch(
+      /^linear-gradient\([^;]*rgba\(255,\s*255,\s*255,/,
+    );
+    expect(lightClear).toMatch(/^rgba\(255,\s*255,\s*255,/);
+    expect(darkRegular).toMatch(
+      /rgba\((?:255,\s*255,\s*255|35,\s*45,\s*70),/,
+    );
+    expect(darkClear).toMatch(/^rgba\(35,\s*45,\s*70,/);
+    expect(regularAlphas).not.toContain(0.25);
+    expect(stylesSource).toContain("--glass-regular-blur: 14px;");
+    expect(stylesSource).toContain("--glass-clear-blur: 8px;");
+    expect(stylesSource).toMatch(
+      /\.eq-glass-tier-comparison::before\s*\{[\s\S]*?background:\s*hsl\(var\(--background\) \/ 0\.24\)/,
     );
   });
 

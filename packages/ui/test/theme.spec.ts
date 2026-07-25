@@ -115,6 +115,75 @@ function composite(
   ) as [number, number, number];
 }
 
+function parseHex(value: string): [number, number, number] {
+  const match = value.match(/^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i);
+  if (!match) {
+    throw new Error(`Expected a six-digit hex color, received "${value}"`);
+  }
+  return [match[1], match[2], match[3]].map(
+    (channel) => Number.parseInt(channel, 16) / 255,
+  ) as [number, number, number];
+}
+
+function contrastRgb(
+  first: [number, number, number],
+  second: [number, number, number],
+) {
+  const firstLuminance = relativeLuminance(first);
+  const secondLuminance = relativeLuminance(second);
+  return (
+    (Math.max(firstLuminance, secondLuminance) + 0.05) /
+    (Math.min(firstLuminance, secondLuminance) + 0.05)
+  );
+}
+
+function worstAmbientSurface(
+  tokens: Record<string, string>,
+  surfaceToken: "background" | "surface-sunken",
+) {
+  const surface = hslToRgb(parseHsl(resolveToken(tokens, surfaceToken)));
+  const peak = Number(resolveToken(tokens, "ambient-opacity-peak"));
+  let compositeSurface = surface;
+
+  for (const ambientToken of [
+    "ambient-teal",
+    "ambient-mint",
+    "ambient-navy",
+    "ambient-sky-blue",
+    "ambient-teal-300",
+  ]) {
+    compositeSurface = composite(
+      parseHex(resolveToken(tokens, ambientToken)),
+      peak,
+      compositeSurface,
+    );
+  }
+
+  const primary = hslToRgb(parseHsl(resolveToken(tokens, "primary")));
+  const accent = hslToRgb(parseHsl(resolveToken(tokens, "accent")));
+  const substrateFloor = Number(
+    resolveToken(tokens, "substrate-mask-floor"),
+  );
+  for (const [color, alpha] of [
+    [primary, 0.06],
+    [primary, 0.06],
+    [accent, 0.08],
+    [primary, 0.08],
+  ] as const) {
+    compositeSurface = composite(
+      color,
+      alpha * substrateFloor,
+      compositeSurface,
+    );
+  }
+
+  return composite(
+    surface,
+    Number(resolveToken(tokens, "ambient-content-scrim")),
+    compositeSurface,
+  );
+}
+
 describe("FR-PUB-00 theme resolution", () => {
   it("defaults to light during SSR even when a dark system preference is supplied", () => {
     expect(
@@ -345,4 +414,86 @@ describe("FR-PUB-00B theme value ladders and contrast", () => {
       Object.fromEntries(ladder.map((token) => [token, firstLight[token]])),
     );
   });
+
+  it.each(["light", "dark"] as const)(
+    "keeps every %s label contract AA over the worst ambient and substrate composite",
+    (theme) => {
+      const tokens = themeDeclarations(theme);
+      const primary = hslToRgb(parseHsl(resolveToken(tokens, "primary")));
+      const foreground = hslToRgb(
+        parseHsl(resolveToken(tokens, "foreground")),
+      );
+      const muted = hslToRgb(
+        parseHsl(resolveToken(tokens, "muted-foreground")),
+      );
+      const navy = hslToRgb(
+        parseHsl(resolveToken(tokens, "brand-navy")),
+      );
+      const white = hslToRgb(parseHsl("0 0% 100%"));
+      const labelScrim = hslToRgb(
+        parseHsl(resolveToken(tokens, "ambient-label-scrim")),
+      );
+      const labelScrimAlpha = Number(
+        resolveToken(tokens, "ambient-label-scrim-alpha"),
+      );
+
+      for (const surfaceToken of [
+        "background",
+        "surface-sunken",
+      ] as const) {
+        const surface = worstAmbientSurface(tokens, surfaceToken);
+        expect(
+          contrastRgb(foreground, surface),
+          `${theme} foreground/${surfaceToken} ambient composite`,
+        ).toBeGreaterThanOrEqual(4.5);
+        expect(
+          contrastRgb(muted, surface),
+          `${theme} muted/${surfaceToken} ambient composite`,
+        ).toBeGreaterThanOrEqual(4.5);
+
+        const eyebrowSurface = composite(
+          labelScrim,
+          labelScrimAlpha,
+          surface,
+        );
+        expect(
+          contrastRgb(primary, eyebrowSurface),
+          `${theme} primary eyebrow/ambient composite`,
+        ).toBeGreaterThanOrEqual(4.5);
+        expect(
+          contrastRgb(muted, surface),
+          `${theme} inactive segmented label`,
+        ).toBeGreaterThanOrEqual(4.5);
+        expect(
+          contrastRgb(foreground, surface),
+          `${theme} disabled button label`,
+        ).toBeGreaterThanOrEqual(4.5);
+
+        for (const [highlight, alpha] of [
+          [primary, 0.55],
+          [hslToRgb(parseHsl(resolveToken(tokens, "accent"))), 0.75],
+        ] as const) {
+          const transmitted = composite(highlight, alpha, surface);
+          const neutralOverlay = composite(white, 0.4, transmitted);
+          expect(
+            contrastRgb(navy, neutralOverlay),
+            `${theme} active segmented label`,
+          ).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+
+      for (const plateStop of [
+        parseHsl("170 82% 26%"),
+        parseHsl("174 72% 20%"),
+      ]) {
+        expect(
+          contrastRgb(
+            white,
+            composite(white, 0.04, hslToRgb(plateStop)),
+          ),
+          `${theme} primary button label`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    },
+  );
 });

@@ -45,7 +45,7 @@ function SectionHeading({
 }) {
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+      <p className="eq-glass-label-scrim text-xs font-semibold uppercase tracking-[0.2em] text-primary">
         {eyebrow}
       </p>
       <h2
@@ -75,9 +75,9 @@ export function DesignSystemDemo() {
     >
       <AmbientCanvas paused={ambientPaused} />
 
-      <div className="relative mx-auto max-w-[1400px]">
+      <div className="eq-glass-stage relative mx-auto max-w-[1400px]">
+        <GlassSubstrate />
         <div className="eq-glass-sunken-band">
-          <GlassSubstrate />
         <GlassNav
           aria-label="Design system lab"
         >
@@ -106,7 +106,7 @@ export function DesignSystemDemo() {
           id="lab"
         >
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+            <p className="eq-glass-label-scrim text-xs font-semibold uppercase tracking-[0.22em] text-primary">
               FR-PUB-00A · Internal proof route
             </p>
             <h1 className="mt-4 max-w-3xl font-heading text-5xl font-extrabold leading-[0.98] tracking-[-0.05em] sm:text-6xl lg:text-7xl">
@@ -149,7 +149,7 @@ export function DesignSystemDemo() {
             data-focal-candidate="2"
             data-testid="hero-lens-showcase"
           >
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#7BE8C9]">
+            <p className="eq-glass-label-scrim text-[10px] font-bold uppercase tracking-[0.18em] text-[#7BE8C9]">
               Hero lens
             </p>
             <p className="mt-2 max-w-sm font-heading text-2xl font-bold text-white">
@@ -225,14 +225,14 @@ export function DesignSystemDemo() {
             </p>
           </div>
 
-          <div className="mt-10 grid gap-5 lg:grid-cols-3">
+          <div className="eq-glass-tier-comparison mt-10 grid gap-5 lg:grid-cols-3">
             <FrostedSurface
               className="min-h-64 p-7"
               data-testid="glass-tier-regular"
               glassTier="regular"
               variant="panel"
             >
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
+              <p className="eq-glass-label-scrim text-xs font-bold uppercase tracking-[0.16em] text-primary">
                 Regular · 18px
               </p>
               <p className="mt-5 font-heading text-2xl font-bold">
@@ -246,7 +246,7 @@ export function DesignSystemDemo() {
               glassTier="clear"
               variant="panel"
             >
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
+              <p className="eq-glass-label-scrim text-xs font-bold uppercase tracking-[0.16em] text-primary">
                 Clear · 8px
               </p>
               <p className="mt-5 font-heading text-2xl font-bold">
@@ -265,7 +265,7 @@ export function DesignSystemDemo() {
               variant="panel"
             >
               <div className="relative min-h-64 p-7">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#7BE8C9]">
+                <p className="eq-glass-label-scrim text-xs font-bold uppercase tracking-[0.16em] text-[#7BE8C9]">
                   Focal · 24px + displacement
                 </p>
                 <p className="mt-5 max-w-xs font-heading text-2xl font-bold text-white">
@@ -306,7 +306,7 @@ export function DesignSystemDemo() {
               variant="panel"
             >
               <div className="relative min-h-52 p-7">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#7BE8C9]">
+                <p className="eq-glass-label-scrim text-xs font-bold uppercase tracking-[0.16em] text-[#7BE8C9]">
                   Candidate 4 · fallback
                 </p>
                 <p className="mt-5 font-heading text-2xl font-bold text-white">
