@@ -41,6 +41,15 @@ describe("FR-PUB-01 metadata", () => {
     expect(layoutMetadata.metadataBase?.href).toBe("https://plus.eqourse.com/");
   });
 
+  it("uses the approved static brand image as the site icon", () => {
+    expect(layoutMetadata.icons).toEqual({
+      icon: {
+        url: "/opengraph-image",
+        type: "image/svg+xml",
+      },
+    });
+  });
+
   it("provides complete Open Graph and Twitter image metadata", () => {
     expect(pageMetadata.openGraph).toMatchObject({
       type: "website",

@@ -39,6 +39,12 @@ export const metadata: Metadata = {
     title: "eQOURSE+",
     description: "The talent platform by eQOURSE.",
   },
+  icons: {
+    icon: {
+      url: "/opengraph-image",
+      type: "image/svg+xml",
+    },
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
