@@ -80,6 +80,7 @@ describe("FR-PUB-03 freelancers page", () => {
       const isChromeLink =
         href === "/" ||
         href === "/freelancers" ||
+        href === "/vendors" ||
         href === "https://eqourse.com";
       expect(href.startsWith("#") || isChromeLink, href).toBe(true);
     }

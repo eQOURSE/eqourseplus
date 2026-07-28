@@ -272,13 +272,16 @@ export default function HomePage() {
               </a>
             ))}
           </div>
-          <a
-            className="home-freelancer-link"
-            href="/freelancers#top"
-          >
-            Explore working as a freelancer
-            <ArrowMark />
-          </a>
+          <div className="home-audience-links">
+            <a className="home-freelancer-link" href="/freelancers">
+              Explore working as a freelancer
+              <ArrowMark />
+            </a>
+            <a className="home-freelancer-link" href="/vendors">
+              Explore the vendor agency model
+              <ArrowMark />
+            </a>
+          </div>
         </div>
       </section>
 

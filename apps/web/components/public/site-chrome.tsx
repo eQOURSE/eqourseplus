@@ -23,7 +23,7 @@ export function ArrowMark() {
 }
 
 type SiteNavigationProps = {
-  page: "home" | "freelancers";
+  page: "home" | "freelancers" | "vendors";
 };
 
 export function SiteNavigation({ page }: SiteNavigationProps) {
@@ -57,8 +57,11 @@ export function SiteNavigation({ page }: SiteNavigationProps) {
               <a className="home-nav-link" href="#trust">
                 Trust
               </a>
-              <a className="home-nav-link" href="/freelancers#top">
+              <a className="home-nav-link" href="/freelancers">
                 For freelancers
+              </a>
+              <a className="home-nav-link" href="/vendors">
+                For vendors
               </a>
             </>
           ) : (
@@ -69,9 +72,16 @@ export function SiteNavigation({ page }: SiteNavigationProps) {
               <a
                 className="home-nav-link"
                 href="/freelancers"
-                aria-current="page"
+                aria-current={page === "freelancers" ? "page" : undefined}
               >
                 For freelancers
+              </a>
+              <a
+                className="home-nav-link"
+                href="/vendors"
+                aria-current={page === "vendors" ? "page" : undefined}
+              >
+                For vendors
               </a>
               <a className="home-nav-link" href="#how-it-works">
                 How it works

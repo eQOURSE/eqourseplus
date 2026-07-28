@@ -15,6 +15,7 @@ import {
 import { testimonials } from "../content/testimonials";
 import { Testimonials } from "../components/home/testimonials";
 import HomePage from "./page";
+import { RESOLVING_ROUTES } from "./public-routes";
 
 const pageSource = readFileSync(resolve(process.cwd(), "app/page.tsx"), "utf8");
 const testimonialSource = readFileSync(
@@ -118,11 +119,25 @@ describe("FR-PUB-01 home page", () => {
     const { container } = render(<HomePage />);
 
     for (const link of container.querySelectorAll<HTMLAnchorElement>("a[href]")) {
+      const href = link.getAttribute("href") ?? "";
       expect(
-        link.hash.length > 1 || link.href.startsWith("https://eqourse.com"),
-        link.getAttribute("href") ?? "",
+        link.hash.length > 1 ||
+          RESOLVING_ROUTES.some((route) => href === route) ||
+          link.href.startsWith("https://eqourse.com"),
+        href,
       ).toBe(true);
     }
+  });
+
+  it("contextually links to both public talent models", () => {
+    render(<HomePage />);
+
+    expect(
+      screen.getByRole("link", { name: "Explore working as a freelancer" }),
+    ).toHaveAttribute("href", "/freelancers");
+    expect(
+      screen.getByRole("link", { name: "Explore the vendor agency model" }),
+    ).toHaveAttribute("href", "/vendors");
   });
 
   it("marks every decorative svg as hidden and every image with alt text", () => {

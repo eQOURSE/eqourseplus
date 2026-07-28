@@ -450,6 +450,17 @@ body {
     transform var(--motion-hover) var(--ease-standard);
 }
 
+.home-audience-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 2rem;
+}
+
+.home-audience-links .home-freelancer-link {
+  margin-top: 0;
+}
+
 .home-freelancer-link:hover {
   background: hsl(var(--card) / 0.58);
   transform: translateX(0.35rem);
@@ -831,6 +842,59 @@ body {
   line-height: 1.75;
 }
 
+.vendor-faq {
+  background: hsl(var(--surface-sunken) / 0.72);
+}
+
+.vendor-faq-list {
+  margin-top: 4rem;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.vendor-faq details {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.vendor-faq summary {
+  min-height: 3rem;
+  padding: 1.5rem 0.75rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition:
+    color var(--motion-hover) var(--ease-standard),
+    background-color var(--motion-hover) var(--ease-standard);
+}
+
+.vendor-faq summary::marker {
+  color: hsl(var(--primary));
+}
+
+.vendor-faq summary:hover {
+  background: hsl(var(--card) / 0.58);
+}
+
+.vendor-faq summary:focus-visible {
+  outline: 2px solid hsl(var(--ring) / 0.6);
+  outline-offset: 3px;
+}
+
+.vendor-faq summary h3 {
+  display: inline;
+  margin: 0 0 0 0.65rem;
+  color: hsl(var(--foreground));
+  font-family: var(--font-heading);
+  font-size: clamp(1.2rem, 2.1vw, 1.7rem);
+  font-weight: 700;
+}
+
+.vendor-faq details > p {
+  max-width: 52rem;
+  margin: 0;
+  padding: 0 0.75rem 1.75rem 2.35rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.75;
+}
+
 @media (min-width: 48rem) {
   .home-section-heading--split {
     grid-template-columns: minmax(0, 1.2fr) minmax(16rem, 0.8fr);
@@ -962,6 +1026,10 @@ body {
   .home-freelancer-link,
   .freelancer-faq summary,
   .home-footer-link {
+    transition: none !important;
+  }
+
+  .vendor-faq summary {
     transition: none !important;
   }
 
