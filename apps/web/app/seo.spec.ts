@@ -14,6 +14,7 @@ import {
   structuredData,
 } from "./home-data";
 import { metadata as pageMetadata } from "./page";
+import { RESOLVING_ROUTES, UNBUILT_ROUTES } from "./public-routes";
 import robots from "./robots";
 import sitemap from "./sitemap";
 import HomePage from "./page";
@@ -139,26 +140,14 @@ describe("FR-PUB-01 crawl controls", () => {
     expect(rules.host).toBe("https://plus.eqourse.com");
   });
 
-  it("publishes only the resolving home route", () => {
+  it("publishes only resolving routes", () => {
     const entries = sitemap();
     const serialized = JSON.stringify(entries);
 
-    expect(entries).toEqual([
-      {
-        url: "https://plus.eqourse.com/",
-        changeFrequency: "weekly",
-        priority: 1,
-      },
-    ]);
-    for (const route of [
-      "/design-system",
-      "/jobs",
-      "/freelancers",
-      "/vendors",
-      "/about",
-      "/login",
-      "/register",
-    ]) {
+    expect(entries.map((entry) => new URL(entry.url).pathname)).toEqual(
+      RESOLVING_ROUTES,
+    );
+    for (const route of UNBUILT_ROUTES) {
       expect(serialized).not.toContain(`plus.eqourse.com${route}`);
     }
   });

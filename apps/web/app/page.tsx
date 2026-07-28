@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
-import { GlassNav, GlassSubstrate } from "@eqourse/ui";
+import { GlassSubstrate } from "@eqourse/ui";
 
-import {
-  HomeAmbientCanvas,
-  HomeThemeToggle,
-} from "../components/home/home-client-islands";
 import { Testimonials } from "../components/home/testimonials";
+import { PublicAmbientCanvas } from "../components/public/public-client-islands";
+import {
+  ArrowMark,
+  SiteFooter,
+  SiteNavigation,
+} from "../components/public/site-chrome";
 import { testimonials } from "../content/testimonials";
+import { serializeJsonLd } from "../lib/json-ld";
 import {
   HOME_DESCRIPTION,
   HOME_TITLE,
@@ -90,26 +93,6 @@ const categories = [
   },
 ] as const;
 
-function ArrowMark() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="20"
-      height="20"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M5 12h14m-5-5 5 5-5 5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function TrustMark() {
   return (
     <svg
@@ -135,42 +118,13 @@ function TrustMark() {
   );
 }
 
-function jsonLd(value: unknown) {
-  return JSON.stringify(value).replace(/</g, "\\u003c");
-}
-
 export default function HomePage() {
   return (
     <main className="home-shell">
-      <HomeAmbientCanvas />
+      <PublicAmbientCanvas />
       <GlassSubstrate />
 
-      <div className="home-nav-wrap">
-        <GlassNav
-          id="site-navigation"
-          data-home-region
-          aria-labelledby="site-navigation-title"
-        >
-          <span id="site-navigation-title" className="sr-only">
-            Primary navigation
-          </span>
-          <a className="home-wordmark home-nav-link" href="#hero">
-            eQOURSE<span aria-hidden="true">+</span>
-          </a>
-          <div className="home-nav-links">
-            <a className="home-nav-link" href="#how-it-works">
-              How it works
-            </a>
-            <a className="home-nav-link" href="#categories">
-              Services
-            </a>
-            <a className="home-nav-link" href="#trust">
-              Trust
-            </a>
-          </div>
-          <HomeThemeToggle />
-        </GlassNav>
-      </div>
+      <SiteNavigation page="home" />
 
       <section
         id="hero"
@@ -318,6 +272,13 @@ export default function HomePage() {
               </a>
             ))}
           </div>
+          <a
+            className="home-freelancer-link"
+            href="/freelancers#top"
+          >
+            Explore working as a freelancer
+            <ArrowMark />
+          </a>
         </div>
       </section>
 
@@ -357,36 +318,13 @@ export default function HomePage() {
 
       <Testimonials items={testimonials} />
 
-      <footer
-        id="site-footer"
-        className="home-footer"
-        data-home-region
-        aria-labelledby="footer-title"
-      >
-        <div className="home-section-inner home-footer-inner">
-          <div>
-            <p className="home-footer-wordmark">eQOURSE+</p>
-            <h2 id="footer-title">
-              eQOURSE+ — the talent platform by eQOURSE
-            </h2>
-            <p>EQOURSE ONLINE EDUCATIONERS LLP</p>
-          </div>
-          <a
-            className="home-footer-link"
-            href="https://eqourse.com"
-            aria-label="Visit eQOURSE"
-          >
-            Visit eQOURSE
-            <ArrowMark />
-          </a>
-        </div>
-      </footer>
+      <SiteFooter homeRegion />
 
       {structuredData.map((block) => (
         <script
           key={block["@type"]}
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: jsonLd(block) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(block) }}
         />
       ))}
     </main>

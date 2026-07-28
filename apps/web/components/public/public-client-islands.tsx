@@ -2,10 +2,10 @@
 
 import { AmbientCanvas, ThemeToggle } from "@eqourse/ui";
 
-export function HomeAmbientCanvas() {
+export function PublicAmbientCanvas() {
   return <AmbientCanvas />;
 }
 
-export function HomeThemeToggle() {
+export function PublicThemeToggle() {
   return <ThemeToggle />;
 }
