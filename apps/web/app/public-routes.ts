@@ -1,9 +1,12 @@
-export const RESOLVING_ROUTES = ["/", "/freelancers", "/vendors"] as const;
+export const RESOLVING_ROUTES = [
+  "/",
+  "/freelancers",
+  "/vendors",
+  "/about",
+] as const;
 
 export const UNBUILT_ROUTES = [
-  "/design-system",
   "/jobs",
-  "/about",
   "/login",
   "/register",
 ] as const;

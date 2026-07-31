@@ -126,7 +126,8 @@ describe("FR-PUB-04 vendors page", () => {
         "/",
         "/freelancers",
         "/vendors",
-        "https://eqourse.com",
+        "/about",
+        "https://www.eqourse.com/",
         "https://www.eqourse.com/casestudy",
       ].includes(href);
       expect(href.startsWith("#") || isChromeOrSourceLink, href).toBe(true);

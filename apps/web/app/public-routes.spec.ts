@@ -23,4 +23,10 @@ describe("public route registry", () => {
       expect(existsSync(pagePath(route)), `${route} page.tsx`).toBe(true);
     }
   });
+
+  it("lists a route as unbuilt only when its page does not exist", () => {
+    for (const route of UNBUILT_ROUTES) {
+      expect(existsSync(pagePath(route)), `${route} page.tsx`).toBe(false);
+    }
+  });
 });

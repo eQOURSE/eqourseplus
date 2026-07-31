@@ -105,9 +105,10 @@ describe("FR-PUB-01 structured data", () => {
   it("identifies the parent organization and verified social profile", () => {
     const organization = structuredData[0];
 
-    expect(organization.parentOrganization?.name).toBe(
-      "EQOURSE ONLINE EDUCATIONERS LLP",
+    expect(organization.parentOrganization?.["@id"]).toBe(
+      "https://www.eqourse.com/#organization",
     );
+    expect(organization.parentOrganization?.name).toBe("eQOURSE");
     expect(organization.sameAs).toContain("https://twitter.com/EQourse");
     expect(organization).not.toHaveProperty("logo");
   });

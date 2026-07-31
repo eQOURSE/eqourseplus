@@ -23,7 +23,7 @@ export function ArrowMark() {
 }
 
 type SiteNavigationProps = {
-  page: "home" | "freelancers" | "vendors";
+  page: "home" | "freelancers" | "vendors" | "about";
 };
 
 export function SiteNavigation({ page }: SiteNavigationProps) {
@@ -63,6 +63,9 @@ export function SiteNavigation({ page }: SiteNavigationProps) {
               <a className="home-nav-link" href="/vendors">
                 For vendors
               </a>
+              <a className="home-nav-link" href="/about">
+                About
+              </a>
             </>
           ) : (
             <>
@@ -83,12 +86,23 @@ export function SiteNavigation({ page }: SiteNavigationProps) {
               >
                 For vendors
               </a>
-              <a className="home-nav-link" href="#how-it-works">
-                How it works
+              <a
+                className="home-nav-link"
+                href="/about"
+                aria-current={page === "about" ? "page" : undefined}
+              >
+                About
               </a>
-              <a className="home-nav-link" href="#faq">
-                FAQ
-              </a>
+              {page !== "about" ? (
+                <>
+                  <a className="home-nav-link" href="#how-it-works">
+                    How it works
+                  </a>
+                  <a className="home-nav-link" href="#faq">
+                    FAQ
+                  </a>
+                </>
+              ) : null}
             </>
           )}
         </div>
@@ -120,7 +134,7 @@ export function SiteFooter({ homeRegion = false }: SiteFooterProps) {
         </div>
         <a
           className="home-footer-link"
-          href="https://eqourse.com"
+          href="https://www.eqourse.com/"
           aria-label="Visit eQOURSE"
         >
           Visit eQOURSE

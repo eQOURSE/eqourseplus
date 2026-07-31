@@ -81,7 +81,8 @@ describe("FR-PUB-03 freelancers page", () => {
         href === "/" ||
         href === "/freelancers" ||
         href === "/vendors" ||
-        href === "https://eqourse.com";
+        href === "/about" ||
+        href === "https://www.eqourse.com/";
       expect(href.startsWith("#") || isChromeLink, href).toBe(true);
     }
   });
