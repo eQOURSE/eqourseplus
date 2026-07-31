@@ -93,16 +93,6 @@ export function SiteNavigation({ page }: SiteNavigationProps) {
               >
                 About
               </a>
-              {page !== "about" ? (
-                <>
-                  <a className="home-nav-link" href="#how-it-works">
-                    How it works
-                  </a>
-                  <a className="home-nav-link" href="#faq">
-                    FAQ
-                  </a>
-                </>
-              ) : null}
             </>
           )}
         </div>

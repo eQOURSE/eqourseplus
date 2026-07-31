@@ -127,6 +127,22 @@ describe("FR-PUB-01 home page", () => {
         href,
       ).toBe(true);
     }
+
+    expect(
+      Array.from(
+        container.querySelectorAll<HTMLAnchorElement>(
+          "#site-navigation .home-nav-links a",
+        ),
+        (link) => link.getAttribute("href"),
+      ),
+    ).toEqual([
+      "#how-it-works",
+      "#categories",
+      "#trust",
+      "/freelancers",
+      "/vendors",
+      "/about",
+    ]);
   });
 
   it("contextually links to both public talent models", () => {
