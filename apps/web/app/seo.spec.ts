@@ -14,7 +14,11 @@ import {
   structuredData,
 } from "./home-data";
 import { metadata as pageMetadata } from "./page";
-import { RESOLVING_ROUTES, UNBUILT_ROUTES } from "./public-routes";
+import {
+  EXCLUDED_ROUTES,
+  RESOLVING_ROUTES,
+  UNBUILT_ROUTES,
+} from "./public-routes";
 import robots from "./robots";
 import sitemap from "./sitemap";
 import HomePage from "./page";
@@ -148,7 +152,7 @@ describe("FR-PUB-01 crawl controls", () => {
     expect(entries.map((entry) => new URL(entry.url).pathname)).toEqual(
       RESOLVING_ROUTES,
     );
-    for (const route of UNBUILT_ROUTES) {
+    for (const route of [...UNBUILT_ROUTES, ...EXCLUDED_ROUTES]) {
       expect(serialized).not.toContain(`plus.eqourse.com${route}`);
     }
   });

@@ -5,6 +5,8 @@ export const RESOLVING_ROUTES = [
   "/about",
 ] as const;
 
+export const EXCLUDED_ROUTES = ["/design-system"] as const;
+
 export const UNBUILT_ROUTES = [
   "/jobs",
   "/login",
