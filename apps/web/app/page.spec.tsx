@@ -138,7 +138,6 @@ describe("FR-PUB-01 home page", () => {
     ).toEqual([
       "#how-it-works",
       "#categories",
-      "#trust",
       "/freelancers",
       "/vendors",
       "/about",

@@ -54,9 +54,6 @@ export function SiteNavigation({ page }: SiteNavigationProps) {
               <a className="home-nav-link" href="#categories">
                 Services
               </a>
-              <a className="home-nav-link" href="#trust">
-                Trust
-              </a>
               <a className="home-nav-link" href="/freelancers">
                 For freelancers
               </a>
