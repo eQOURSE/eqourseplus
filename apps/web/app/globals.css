@@ -686,6 +686,45 @@ body {
   padding: clamp(5rem, 10vw, 9rem) 1.25rem;
 }
 
+.registration-country-field {
+  display: grid;
+  gap: 0.75rem;
+  width: min(100%, 32rem);
+  margin-top: 2rem;
+}
+
+.registration-country-field label {
+  color: hsl(var(--foreground));
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
+.registration-country-field select {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0 1rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  font: inherit;
+  color-scheme: light dark;
+}
+
+.registration-country-field select:disabled {
+  cursor: not-allowed;
+  background: hsl(var(--surface-sunken));
+  color: hsl(var(--muted-foreground));
+  opacity: 1;
+  -webkit-text-fill-color: hsl(var(--muted-foreground));
+}
+
+.registration-country-note {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.6;
+}
+
 .freelancer-journey {
   background: hsl(var(--surface-sunken) / 0.72);
 }

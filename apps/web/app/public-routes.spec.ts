@@ -9,6 +9,19 @@ import {
   UNBUILT_ROUTES,
 } from "./public-routes";
 
+const ALL_PUBLIC_ROUTES = [
+  "/",
+  "/about",
+  "/design-system",
+  "/freelancers",
+  "/jobs",
+  "/login",
+  "/register",
+  "/register/freelancer",
+  "/register/vendor",
+  "/vendors",
+] as const;
+
 function pagePath(route: string) {
   return route === "/"
     ? resolve(process.cwd(), "app/page.tsx")
@@ -16,6 +29,12 @@ function pagePath(route: string) {
 }
 
 describe("public route registry", () => {
+  it("preserves the frozen union of all public routes", () => {
+    expect(
+      [...RESOLVING_ROUTES, ...EXCLUDED_ROUTES, ...UNBUILT_ROUTES].sort(),
+    ).toEqual([...ALL_PUBLIC_ROUTES]);
+  });
+
   it("keeps resolving, excluded, and unbuilt routes mutually disjoint", () => {
     const registries: readonly (readonly string[])[] = [
       RESOLVING_ROUTES,

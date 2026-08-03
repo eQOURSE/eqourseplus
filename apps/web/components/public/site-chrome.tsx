@@ -23,7 +23,13 @@ export function ArrowMark() {
 }
 
 type SiteNavigationProps = {
-  page: "home" | "freelancers" | "vendors" | "about";
+  page:
+    | "home"
+    | "freelancers"
+    | "vendors"
+    | "about"
+    | "login"
+    | "register";
 };
 
 export function SiteNavigation({ page }: SiteNavigationProps) {
