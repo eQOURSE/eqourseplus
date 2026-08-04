@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -410,6 +411,48 @@ describe("FR-REG-01 freelancer registration API", () => {
     }).expect(200);
     expect(refreshed.body.accessToken).toEqual(expect.any(String));
     expect(await db.collection("users").findOne({ email: "legacy-login@example.com" })).not.toHaveProperty("countryCode");
+  });
+
+  it("rotates refresh tokens in MongoDB and rejects old-token reuse", async () => {
+    await db.collection("users").insertOne({
+      email: "mongo-rotation@example.com",
+      roleAssignments: [
+        { role: Role.FREELANCER, businessUnit: BusinessUnit.EQOURSE },
+      ],
+      refreshSessions: [],
+      createdAt: clock.now,
+      updatedAt: clock.now,
+    });
+    await post("/api/v1/auth/otp/request", {
+      email: "mongo-rotation@example.com",
+    }).expect(202);
+    const code = mailer.deliveries.findLast(
+      (item) => item.to === "mongo-rotation@example.com",
+    )?.code;
+    const login = await post("/api/v1/auth/otp/verify", {
+      email: "mongo-rotation@example.com",
+      otp: code,
+    }).expect(200);
+
+    const rotated = await post("/api/v1/auth/refresh", {
+      refreshToken: login.body.refreshToken,
+    }).expect(200);
+    expect(rotated.body.refreshToken).not.toBe(login.body.refreshToken);
+    await post("/api/v1/auth/refresh", {
+      refreshToken: login.body.refreshToken,
+    }).expect(401);
+
+    const rotatedDigest = createHash("sha256")
+      .update(rotated.body.refreshToken as string)
+      .digest("hex");
+    await db.collection("users").updateOne(
+      { email: "mongo-rotation@example.com" },
+      { $set: { "refreshSessions.$[session].revokedAt": null } },
+      { arrayFilters: [{ "session.digest": rotatedDigest }] },
+    );
+    await post("/api/v1/auth/refresh", {
+      refreshToken: rotated.body.refreshToken,
+    }).expect(401);
   });
 
   it("reclaims an expired unverified registration but never a verified account", async () => {

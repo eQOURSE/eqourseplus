@@ -1,5 +1,5 @@
 import { Injectable, Optional } from "@nestjs/common";
-import { connect, connection } from "mongoose";
+import { connect, connection, Types } from "mongoose";
 
 import { DatabaseConnectionService } from "../database/database-connection.service";
 import type {
@@ -112,9 +112,9 @@ export class MongooseAuthStore implements AuthStore {
     now: Date,
   ): Promise<boolean> {
     await this.ensureConnected();
-    const result = await UserModel.updateOne(
+    const result = await UserModel.collection.updateOne(
       {
-        _id: userId,
+        _id: new Types.ObjectId(userId),
         refreshSessions: {
           $elemMatch: {
             digest: currentDigest,
@@ -137,7 +137,12 @@ export class MongooseAuthStore implements AuthStore {
                         {
                           $and: [
                             { $eq: ["$$session.digest", currentDigest] },
-                            { $eq: [{ $type: "$$session.revokedAt" }, "missing"] },
+                            {
+                              $eq: [
+                                { $type: "$$session.revokedAt" },
+                                "missing",
+                              ],
+                            },
                             { $gt: ["$$session.expiresAt", now] },
                           ],
                         },
@@ -153,8 +158,7 @@ export class MongooseAuthStore implements AuthStore {
           },
         },
       ],
-      { updatePipeline: true },
-    ).exec();
+    );
     return result.modifiedCount === 1;
   }
 
