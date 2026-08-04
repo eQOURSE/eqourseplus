@@ -1,4 +1,4 @@
-# eQOURSE+ — SaaS Requirements Specification (SPEC.md) v2.6 — Global Edition
+# eQOURSE+ — SaaS Requirements Specification (SPEC.md) v2.7 — Global Edition
 > Workforce & Project Delivery Platform for eQOURSE (AI Data Services + Content Services) and Tutrain.
 > This file is the single source of truth for AI coding agents (Antigravity / Cursor / Claude Code / Kiro).
 > RULES FOR AGENTS: Implement only requirements listed here, by FR ID. Never invent endpoints, entities or
@@ -37,7 +37,7 @@ Priorities: [P1]=MVP Phase 1, [P2]=Phase 2, [P3]=Phase 3. Format: ID | Requireme
 
 | ID | Requirement | Acceptance |
 |---|---|---|
-| FR-REG-01 | [P1] Freelancer sign-up with email + phone OTP; duplicates blocked by phone/PAN/device fingerprint. | No second account with same phone, PAN or device. |
+| FR-REG-01 | [P1] Freelancer sign-up with email + phone OTP and country selection; duplicates hard-blocked by phone and PAN; device fingerprint recorded and flagged for verifier review, never auto-blocked. | No second account with same phone or PAN. A repeated device fingerprint creates a review flag visible to FR-REG-07, and does not by itself prevent sign-up. |
 | FR-REG-02 | [P1] Multi-step profile wizard (personal, education, taxonomy skills, languages, experience, samples, availability, rate) with save-and-resume. | Resume incomplete profile; completion % shown. |
 | FR-REG-03 | [P1] KYC capture: govt ID, selfie liveness, address proof via KYC API adapter. | ID validity + face-match score stored; raw Aadhaar never stored. |
 | FR-REG-04 | [P1] Bank penny-drop verification; PAN mandatory; UPI optional. | Name-match score stored; payouts blocked until verified. |
@@ -284,6 +284,32 @@ Normative seed rows (FR-FND-03):
 1. EQOURSE / AI Data Services / Annotation / Bounding Box
 2. EQOURSE / Content Services / Curriculum / null
 3. TUTRAIN / Tutoring / NEET Biology / null
+
+**users** — one document per platform account.
+```
+{
+  _id: ObjectId,
+  email: string,                               // required, unique, lowercase, trimmed
+  phone: string | null,                        // E.164 incl. country code; required for freelancer sign-up; unique when present
+  phoneVerifiedAt: Date | null,                // set on successful phone OTP
+  countryCode: string,                         // required, ISO 3166-1 alpha-2; drives FR-REG-11 document checklist and contract entity
+  pan: string | null,                          // India only, uppercase; unique when present; captured here, VERIFIED in FR-REG-04
+  roleAssignments: Array<{ role, businessUnit }>,   // required, default []
+  profileState: ProfileState,                  // required, default DRAFT (Section 6 enum)
+  deviceFingerprints: Array<{                  // append-only; never used to auto-block
+    hash: string, firstSeenAt: Date, lastSeenAt: Date
+  }>,
+  reviewFlags: Array<{                         // raised to the FR-REG-07 verifier queue
+    kind: "DUPLICATE_DEVICE", detail: string, raisedAt: Date, resolvedAt: Date | null
+  }>,
+  otpChallenge?: { digest, expiresAt, wrongAttempts },        // email OTP (FR-FND-02)
+  phoneOtpChallenge?: { digest, expiresAt, wrongAttempts },   // phone OTP (FR-REG-01)
+  refreshSessions: Array<{ digest, expiresAt, createdAt, revokedAt? }>,
+  createdAt: Date, updatedAt: Date
+}
+```
+Indexes: unique on `email`; sparse unique on `phone`; sparse unique on `pan`; index on `deviceFingerprints.hash`; index on `profileState`.
+Rules: `phone` and `pan` uniqueness use sparse indexes so the many accounts with a null value do not collide — the platform is global and only Indian users have a PAN. Raw OTPs are never stored, only digests. `pan` is captured at sign-up but not verified until FR-REG-04. A repeated `deviceFingerprints.hash` across accounts raises a `reviewFlags` entry and never blocks sign-up. `profileState` lives here only until FR-REG-02 introduces a dedicated profile model; if that FR creates a separate profiles collection, the field moves there and must never exist in both places at once.
 
 
 ## 20. Deployment (no physical servers)
