@@ -77,7 +77,7 @@ export class MongooseAuthStore implements AuthStore {
         "otpChallenge.wrongAttempts": { $lt: maxWrongAttempts },
       },
       { $inc: { "otpChallenge.wrongAttempts": 1 } },
-      { new: true },
+      { returnDocument: "after" },
     ).exec();
     if (
       updated?.otpChallenge &&
@@ -123,10 +123,37 @@ export class MongooseAuthStore implements AuthStore {
           },
         },
       },
-      {
-        $set: { "refreshSessions.$.revokedAt": now },
-        $push: { refreshSessions: replacement },
-      },
+      [
+        {
+          $set: {
+            refreshSessions: {
+              $concatArrays: [
+                {
+                  $map: {
+                    input: "$refreshSessions",
+                    as: "session",
+                    in: {
+                      $cond: [
+                        {
+                          $and: [
+                            { $eq: ["$$session.digest", currentDigest] },
+                            { $eq: [{ $type: "$$session.revokedAt" }, "missing"] },
+                            { $gt: ["$$session.expiresAt", now] },
+                          ],
+                        },
+                        { $mergeObjects: ["$$session", { revokedAt: now }] },
+                        "$$session",
+                      ],
+                    },
+                  },
+                },
+                [replacement],
+              ],
+            },
+          },
+        },
+      ],
+      { updatePipeline: true },
     ).exec();
     return result.modifiedCount === 1;
   }
@@ -173,6 +200,10 @@ export class MongooseAuthStore implements AuthStore {
     return {
       id: user.id,
       email: user.email,
+      ...(user.phone ? { phone: user.phone } : {}),
+      ...(user.phoneVerifiedAt !== undefined
+        ? { phoneVerifiedAt: user.phoneVerifiedAt }
+        : {}),
       roleAssignments: user.roleAssignments.map((assignment) => ({
         role: assignment.role,
         businessUnit: assignment.businessUnit,

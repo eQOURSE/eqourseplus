@@ -1,5 +1,6 @@
 export * from "./auth/role";
 export * from "./schemas/auth.schemas";
+export * from "./schemas/registration.schemas";
 export * from "./schemas/state.schemas";
 export * from "./states/earning-line-status";
 export * from "./states/payout-batch-state";

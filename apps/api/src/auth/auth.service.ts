@@ -27,6 +27,7 @@ export class AuthService {
   async requestOtp(email: string): Promise<void> {
     const user = await this.store.findByEmail(email);
     if (!user) return;
+    if (user.phone && !user.phoneVerifiedAt) return;
 
     const now = this.clock.now();
     const expiresAt = new Date(now.getTime() + this.config.otpTtlMilliseconds);
@@ -42,6 +43,7 @@ export class AuthService {
   async verifyOtp(email: string, code: string): Promise<TokenPair> {
     const user = await this.store.findByEmail(email);
     if (!user) throw this.invalidCredentials();
+    if (user.phone && !user.phoneVerifiedAt) throw this.invalidCredentials();
 
     const result = await this.store.verifyOtp(
       user.id,

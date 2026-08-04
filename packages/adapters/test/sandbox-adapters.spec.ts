@@ -7,6 +7,7 @@ import {
   SandboxLLMAdapter,
   SandboxPayoutAdapter,
   SandboxProctorAdapter,
+  SandboxSmsAdapter,
   SandboxStorageAdapter,
 } from "../src";
 
@@ -38,6 +39,7 @@ describe("FR-FND-01 sandbox adapters", () => {
     ["proctor", SandboxProctorAdapter, "startSession"],
     ["storage", SandboxStorageAdapter, "createSignedUrl"],
     ["LLM", SandboxLLMAdapter, "generate"],
+    ["SMS", SandboxSmsAdapter, "sendOtp"],
   ] as const)("uses an injected deterministic resolver for %s", async (_, Adapter, method) => {
     const resolver = vi.fn(async (request: { id: string }) => ({
       requestId: request.id,

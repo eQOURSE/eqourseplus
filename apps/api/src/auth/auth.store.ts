@@ -16,6 +16,8 @@ export interface RefreshSession {
 export interface StoredUser {
   id: string;
   email: string;
+  phone?: string;
+  phoneVerifiedAt?: Date | null;
   roleAssignments: RoleAssignment[];
   otpChallenge?: OtpChallenge;
   refreshSessions: RefreshSession[];
