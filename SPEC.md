@@ -1,4 +1,4 @@
-# eQOURSE+ — SaaS Requirements Specification (SPEC.md) v2.7 — Global Edition
+# eQOURSE+ — SaaS Requirements Specification (SPEC.md) v2.8 — Global Edition
 > Workforce & Project Delivery Platform for eQOURSE (AI Data Services + Content Services) and Tutrain.
 > This file is the single source of truth for AI coding agents (Antigravity / Cursor / Claude Code / Kiro).
 > RULES FOR AGENTS: Implement only requirements listed here, by FR ID. Never invent endpoints, entities or
@@ -290,10 +290,10 @@ Normative seed rows (FR-FND-03):
 {
   _id: ObjectId,
   email: string,                               // required, unique, lowercase, trimmed
-  phone: string | null,                        // E.164 incl. country code; required for freelancer sign-up; unique when present
+  phone: string,                               // E.164 incl. country code; required for freelancer sign-up; unique when present; ABSENT when unknown — never stored as explicit null
   phoneVerifiedAt: Date | null,                // set on successful phone OTP
   countryCode: string,                         // required, ISO 3166-1 alpha-2; drives FR-REG-11 document checklist and contract entity
-  pan: string | null,                          // India only, uppercase; unique when present; captured here, VERIFIED in FR-REG-04
+  pan: string,                                 // India only, uppercase; unique when present; ABSENT when unknown — never stored as explicit null
   roleAssignments: Array<{ role, businessUnit }>,   // required, default []
   profileState: ProfileState,                  // required, default DRAFT (Section 6 enum)
   deviceFingerprints: Array<{                  // append-only; never used to auto-block
@@ -309,7 +309,7 @@ Normative seed rows (FR-FND-03):
 }
 ```
 Indexes: unique on `email`; sparse unique on `phone`; sparse unique on `pan`; index on `deviceFingerprints.hash`; index on `profileState`.
-Rules: `phone` and `pan` uniqueness use sparse indexes so the many accounts with a null value do not collide — the platform is global and only Indian users have a PAN. Raw OTPs are never stored, only digests. `pan` is captured at sign-up but not verified until FR-REG-04. A repeated `deviceFingerprints.hash` across accounts raises a `reviewFlags` entry and never blocks sign-up. `profileState` lives here only until FR-REG-02 introduces a dedicated profile model; if that FR creates a separate profiles collection, the field moves there and must never exist in both places at once.
+Rules: `phone` and `pan` uniqueness relies on sparse indexes **and** on the field being absent rather than null. A sparse index skips a missing field but still indexes an explicitly stored BSON `null`, so writing `null` would make the second such document collide and reject every account without a PAN — which is most of them, since the platform is global and only Indian users have one. Application-level null is therefore persisted as an omitted field and mapped back to logical null on read. Raw OTPs are never stored, only digests. `pan` is captured at sign-up but not verified until FR-REG-04. A repeated `deviceFingerprints.hash` across accounts raises a `reviewFlags` entry and never blocks sign-up. `profileState` lives here only until FR-REG-02 introduces a dedicated profile model; if that FR creates a separate profiles collection, the field moves there and must never exist in both places at once.
 
 
 ## 20. Deployment (no physical servers)
