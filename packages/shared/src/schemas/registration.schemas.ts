@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const normalizedEmailSchema = z.string().trim().toLowerCase().pipe(z.email());
-const e164PhoneSchema = z.string().trim().regex(/^\+[1-9]\d{7,14}$/);
+export const e164PhoneSchema = z.string().trim().regex(/^\+[1-9]\d{7,14}$/);
 const countryCodeSchema = z
   .string()
   .trim()

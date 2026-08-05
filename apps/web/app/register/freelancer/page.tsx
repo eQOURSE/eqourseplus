@@ -3,15 +3,14 @@ import { GlassSubstrate } from "@eqourse/ui";
 
 import { PublicAmbientCanvas } from "../../../components/public/public-client-islands";
 import {
-  ArrowMark,
   SiteFooter,
   SiteNavigation,
 } from "../../../components/public/site-chrome";
-import { CountrySelectStub } from "../country-select-stub";
 import {
   FREELANCER_REGISTER_DESCRIPTION,
   FREELANCER_REGISTER_TITLE,
 } from "../register-data";
+import { FreelancerRegistrationForm } from "./freelancer-registration-form";
 
 export const metadata: Metadata = {
   title: FREELANCER_REGISTER_TITLE,
@@ -42,19 +41,13 @@ export default function FreelancerRegistrationPage() {
           <span />
         </div>
         <div className="freelancer-hero-content">
-          <p className="home-eyebrow">Freelancer registration</p>
-          <h1 id="freelancer-register-title">Freelancer registration.</h1>
-          <p className="freelancer-hero-copy">
-            Freelancer registration is not open yet. eQOURSE+ is being built,
-            and sign-up will open here.
-          </p>
-          <CountrySelectStub />
-          <div className="home-hero-actions">
-            <a className="home-freelancer-link" href="/register">
-              Back to role choice
-              <ArrowMark />
-            </a>
-          </div>
+          <FreelancerRegistrationForm />
+          <noscript>
+            <p className="registration-noscript">
+              Registration requires JavaScript. Enable JavaScript in your
+              browser, then reload this page to continue.
+            </p>
+          </noscript>
         </div>
       </section>
 

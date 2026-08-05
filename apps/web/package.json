@@ -9,6 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@eqourse/shared": "workspace:*",
     "@eqourse/ui": "workspace:*",
     "@sentry/nextjs": "9.17.0",
     "class-variance-authority": "^0.7.1",

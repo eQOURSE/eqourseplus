@@ -8,7 +8,7 @@ export const FREELANCER_REGISTER_TITLE =
   "Freelancer Registration | eQOURSE+";
 
 export const FREELANCER_REGISTER_DESCRIPTION =
-  "Freelancer registration for eQOURSE+ is not open yet. The country step and the rest of sign-up open with registration.";
+  "Create your eQOURSE+ freelancer account with country selection and verification for your email address and phone number.";
 
 export const VENDOR_REGISTER_TITLE = "Vendor Registration | eQOURSE+";
 

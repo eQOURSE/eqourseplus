@@ -63,7 +63,7 @@ const routeCases: readonly {
     title: FREELANCER_REGISTER_TITLE,
     titleLength: 34,
     description: FREELANCER_REGISTER_DESCRIPTION,
-    descriptionLength: 118,
+    descriptionLength: 120,
     source: readFileSync(
       resolve(process.cwd(), "app/register/freelancer/page.tsx"),
       "utf8",
@@ -115,7 +115,7 @@ describe("FR-PUB-06 registration routes", () => {
       "Freelancer Registration | eQOURSE+",
     );
     expect(FREELANCER_REGISTER_DESCRIPTION).toBe(
-      "Freelancer registration for eQOURSE+ is not open yet. The country step and the rest of sign-up open with registration.",
+      "Create your eQOURSE+ freelancer account with country selection and verification for your email address and phone number.",
     );
     expect(VENDOR_REGISTER_TITLE).toBe("Vendor Registration | eQOURSE+");
     expect(VENDOR_REGISTER_DESCRIPTION).toBe(
@@ -136,7 +136,7 @@ describe("FR-PUB-06 registration routes", () => {
 
   it.each(routeCases)(
     "contains zero digits, internal jargon, and unsupported claims for $name",
-    ({ Page }) => {
+    ({ name, Page }) => {
       const { container } = render(<Page />);
       const visibleText = container.textContent ?? "";
 
@@ -145,9 +145,17 @@ describe("FR-PUB-06 registration routes", () => {
       expect(visibleText).not.toMatch(
         /\u20b9|\u0024|\u20ac|\u00a3|\b(?:Razorpay|Cashfree|Stripe|PayPal|DocuSign|Dropbox Sign|Digio|Leegality|IDfy|HyperVerge|Sumsub|Onfido|Persona|Veriff)\b|\b(?:commission|take[- ]?rate|margin|fee percentage|settlement|turnaround|SLA|headcount|capacity)\b|\bearn\b|\bper (?:hour|task)\b/i,
       );
-      expect(visibleText).not.toMatch(
-        /\b(?:PAN|GSTIN|UEN|CIN|LLPIN)\b|\b(?:tax|company) registration number\b/i,
-      );
+      const allowedIdentifiers =
+        name === "freelancer registration" ? ["PAN"] : [];
+      const identifiers =
+        visibleText.match(
+          /\b(?:PAN|GSTIN|UEN|CIN|LLPIN)\b|\b(?:tax|company) registration number\b/gi,
+        ) ?? [];
+      expect(
+        identifiers.filter(
+          (identifier) => !allowedIdentifiers.includes(identifier),
+        ),
+      ).toEqual([]);
       expect(visibleText).not.toMatch(
         /\b\d{1,5}\s+(?:[A-Z][\w.-]*\s+){0,4}(?:Street|Road|Avenue|Lane|Drive|Boulevard)\b/i,
       );
@@ -231,12 +239,10 @@ describe("FR-PUB-06 registration routes", () => {
     ).toHaveAttribute("href", "/register/vendor");
   });
 
-  it.each([
-    ["freelancer", FreelancerRegistrationPage],
-    ["vendor", VendorRegistrationPage],
-  ] as const)(
-    "renders an accessible disabled country selector for the %s path",
-    (_, Page) => {
+  it(
+    "renders an accessible disabled country selector for the vendor path",
+    () => {
+      const Page = VendorRegistrationPage;
       const { container } = render(<Page />);
       const select = screen.getByLabelText("Country");
       const note = screen.getByText("Country selection opens with registration.");
@@ -256,6 +262,18 @@ describe("FR-PUB-06 registration routes", () => {
       expect(select.nextElementSibling).toBe(note);
     },
   );
+
+  it("keeps the freelancer route server-only while rendering a client form island", () => {
+    const source = readFileSync(
+      resolve(process.cwd(), "app/register/freelancer/page.tsx"),
+      "utf8",
+    );
+
+    expect(source).not.toMatch(/["']use client["']/);
+    expect(source).not.toContain("fetch(");
+    expect(source).not.toMatch(/action\s*=/);
+    expect(source).toContain("<FreelancerRegistrationForm />");
+  });
 
   it.each([
     ["freelancer", FreelancerRegistrationPage],

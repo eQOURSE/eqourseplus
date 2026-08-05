@@ -725,6 +725,151 @@ body {
   line-height: 1.6;
 }
 
+.registration-form-shell {
+  width: min(100%, 42rem);
+}
+
+.registration-form {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 2rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border-radius: calc(var(--radius) * 1.5);
+  background: hsl(var(--card) / 0.88);
+  box-shadow: var(--shadow-card);
+}
+
+.registration-form .home-section-title {
+  margin: 0 0 0.25rem;
+}
+
+.registration-field {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.registration-field label {
+  color: hsl(var(--foreground));
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
+.registration-field input,
+.registration-field select {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0 1rem;
+  border: 1px solid hsl(var(--primary));
+  border-radius: var(--radius);
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  font: inherit;
+  color-scheme: light dark;
+  transition:
+    border-color var(--motion-micro) var(--ease-standard),
+    box-shadow var(--motion-micro) var(--ease-standard);
+}
+
+.registration-field input:focus-visible,
+.registration-field select:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  box-shadow: var(--shadow-soft);
+}
+
+.registration-field input:disabled,
+.registration-field select:disabled {
+  cursor: not-allowed;
+  background: hsl(var(--surface-sunken));
+  color: hsl(var(--muted-foreground));
+  opacity: 1;
+}
+
+.registration-field-help,
+.registration-field-error,
+.registration-form-message,
+.registration-noscript {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.registration-field-help {
+  color: hsl(var(--muted-foreground));
+}
+
+.registration-field-error,
+.registration-form-message,
+.registration-noscript {
+  color: hsl(var(--destructive));
+  font-weight: 700;
+}
+
+.registration-form-message:empty {
+  display: none;
+}
+
+.registration-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.registration-submit,
+.registration-secondary {
+  min-height: 3rem;
+  padding: 0.75rem 1.25rem;
+  border: 1px solid hsl(var(--primary));
+  border-radius: 9999px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    transform var(--motion-hover) var(--ease-standard),
+    box-shadow var(--motion-hover) var(--ease-standard);
+}
+
+.registration-submit {
+  background: var(--gradient-primary);
+  color: hsl(var(--primary-foreground));
+  box-shadow: var(--shadow-soft);
+}
+
+.registration-secondary {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+}
+
+.registration-submit:hover:not(:disabled),
+.registration-secondary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+
+.registration-submit:focus-visible,
+.registration-secondary:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.registration-submit:disabled,
+.registration-secondary:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.registration-noscript {
+  width: min(100%, 42rem);
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid hsl(var(--primary));
+  border-radius: var(--radius);
+  background: hsl(var(--card));
+}
+
+.registration-confirmation {
+  padding-block: 1rem;
+}
+
 .freelancer-journey {
   background: hsl(var(--surface-sunken) / 0.72);
 }
