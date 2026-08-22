@@ -37,7 +37,7 @@ export interface UserRecord {
     digest: string;
     expiresAt: Date;
     createdAt: Date;
-    revokedAt?: Date;
+    revokedAt?: Date | null;
   }>;
 }
 

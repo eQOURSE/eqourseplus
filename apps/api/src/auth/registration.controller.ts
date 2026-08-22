@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Header,
   HttpCode,
   Inject,
   Post,
@@ -30,7 +31,6 @@ interface FingerprintRequest {
 }
 
 @Public()
-@UseGuards(ThrottlerGuard)
 @Controller("api/v1/auth/register")
 export class RegistrationController {
   constructor(
@@ -41,6 +41,7 @@ export class RegistrationController {
   ) {}
 
   @Post("request")
+  @UseGuards(ThrottlerGuard)
   @HttpCode(202)
   async requestRegistration(
     @Body(new ZodBodyPipe(registrationRequestSchema)) body: RegistrationRequest,
@@ -57,9 +58,11 @@ export class RegistrationController {
 
   @Post("verify")
   @UseGuards(
+    ThrottlerGuard,
     OtpIdentifierRateLimitGuard,
     PhoneOtpIdentifierRateLimitGuard,
   )
+  @Header("Cache-Control", "no-store")
   @HttpCode(200)
   verifyRegistration(
     @Body(new ZodBodyPipe(registrationVerifySchema))

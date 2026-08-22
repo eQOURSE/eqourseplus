@@ -182,6 +182,7 @@ describe("FR-REG-01 freelancer registration API", () => {
       phone: body.phone,
       ...codes,
     }).expect(200);
+    expect(response.headers["cache-control"]).toContain("no-store");
     return response.body as TokenPair;
   }
 
@@ -356,6 +357,40 @@ describe("FR-REG-01 freelancer registration API", () => {
     }).expect(429);
   });
 
+  it("retains the IP cap on registration verification across distinct identifiers", async () => {
+    const sharedIp = "203.0.113.182";
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await post("/api/v1/auth/register/verify", {
+        email: `registration-spray-${attempt}@example.com`,
+        phone: `+9198765400${attempt.toString().padStart(2, "0")}`,
+        emailOtp: "000000",
+        phoneOtp: "000000",
+      }, sharedIp).expect(401);
+    }
+    await post("/api/v1/auth/register/verify", {
+      email: "registration-spray-final@example.com",
+      phone: "+919876540099",
+      emailOtp: "000000",
+      phoneOtp: "000000",
+    }, sharedIp).expect(429);
+  });
+
+  it("retains the IP cap on registration requests across distinct identifiers", async () => {
+    const sharedIp = "203.0.113.183";
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await requestRegistration({
+        email: `registration-request-${attempt}@example.com`,
+        phone: `+9198765410${attempt.toString().padStart(2, "0")}`,
+        countryCode: "IN",
+      }, sharedIp);
+    }
+    await post("/api/v1/auth/register/request", {
+      email: "registration-request-final@example.com",
+      phone: "+919876541099",
+      countryCode: "IN",
+    }, sharedIp).expect(429);
+  });
+
   it("creates the normative users indexes with exact sparse and unique flags", async () => {
     const indexes = await db.collection("users").indexes();
     expect(indexes).toEqual(expect.arrayContaining([
@@ -450,9 +485,61 @@ describe("FR-REG-01 freelancer registration API", () => {
       { $set: { "refreshSessions.$[session].revokedAt": null } },
       { arrayFilters: [{ "session.digest": rotatedDigest }] },
     );
+
     await post("/api/v1/auth/refresh", {
       refreshToken: rotated.body.refreshToken,
     }).expect(401);
+  });
+
+  it("classifies explicit BSON null as inactive without blocking an active MongoDB session", async () => {
+    const email = "mongo-null-classification@example.com";
+    await db.collection("users").insertOne({
+      email,
+      roleAssignments: [
+        { role: Role.FREELANCER, businessUnit: BusinessUnit.EQOURSE },
+      ],
+      refreshSessions: [],
+      createdAt: clock.now,
+      updatedAt: clock.now,
+    });
+
+    await post("/api/v1/auth/otp/request", { email }).expect(202);
+    const firstCode = mailer.deliveries.findLast(
+      (item) => item.to === email,
+    )?.code;
+    const nullSession = await post("/api/v1/auth/otp/verify", {
+      email,
+      otp: firstCode,
+    }).expect(200);
+    const nullDigest = createHash("sha256")
+      .update(nullSession.body.refreshToken as string)
+      .digest("hex");
+    await db.collection("users").updateOne(
+      { email },
+      { $set: { "refreshSessions.$[session].revokedAt": null } },
+      { arrayFilters: [{ "session.digest": nullDigest }] },
+    );
+
+    await post("/api/v1/auth/otp/request", { email }).expect(202);
+    const secondCode = mailer.deliveries.findLast(
+      (item) => item.to === email,
+    )?.code;
+    const activeSession = await post("/api/v1/auth/otp/verify", {
+      email,
+      otp: secondCode,
+    }).expect(200);
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await post("/api/v1/auth/refresh", {
+        refreshToken: nullSession.body.refreshToken,
+      }).expect(401);
+    }
+    await post("/api/v1/auth/refresh", {
+      refreshToken: nullSession.body.refreshToken,
+    }).expect(429);
+    await post("/api/v1/auth/refresh", {
+      refreshToken: activeSession.body.refreshToken,
+    }).expect(200);
   });
 
   it("reclaims an expired unverified registration but never a verified account", async () => {

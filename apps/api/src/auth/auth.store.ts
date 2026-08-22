@@ -10,7 +10,7 @@ export interface RefreshSession {
   digest: string;
   expiresAt: Date;
   createdAt: Date;
-  revokedAt?: Date;
+  revokedAt?: Date | null;
 }
 
 export interface StoredUser {

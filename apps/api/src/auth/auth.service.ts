@@ -1,4 +1,9 @@
-import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { ThrottlerException } from "@nestjs/throttler";
 import type { MailerAdapter } from "@eqourse/adapters";
 import { createHmac, randomInt } from "node:crypto";
 
@@ -10,9 +15,13 @@ import {
   OTP_MAX_WRONG_ATTEMPTS,
 } from "./auth.constants";
 import type { AuthConfig } from "./auth.config";
+import { InMemoryAuthRateLimitStore } from "./auth-rate-limit.store";
 import type { AuthStore, StoredUser } from "./auth.store";
 import type { AuthClock, TokenPair } from "./auth.types";
 import { JwtTokenService } from "./jwt-token.service";
+import { activeRefreshSessionPredicate } from "./refresh-session";
+
+type SessionRateLimitOperation = "refresh" | "logout";
 
 @Injectable()
 export class AuthService {
@@ -22,6 +31,8 @@ export class AuthService {
     @Inject(AUTH_CONFIG) private readonly config: AuthConfig,
     @Inject(AUTH_CLOCK) private readonly clock: AuthClock,
     @Inject(JwtTokenService) private readonly tokens: JwtTokenService,
+    @Inject(InMemoryAuthRateLimitStore)
+    private readonly rateLimits: InMemoryAuthRateLimitStore,
   ) {}
 
   async requestOtp(email: string): Promise<void> {
@@ -57,20 +68,16 @@ export class AuthService {
 
   async refresh(refreshToken: string): Promise<TokenPair> {
     const now = this.clock.now();
-    let userId: string;
-    try {
-      userId = this.tokens.verifyRefresh(refreshToken, now).sub;
-    } catch {
-      throw this.invalidCredentials();
-    }
-
-    const user = await this.store.findById(userId);
-    if (!user) throw this.invalidCredentials();
+    const { digest, user } = await this.classifyRefreshSession(
+      "refresh",
+      refreshToken,
+      now,
+    );
 
     const replacement = this.tokens.issuePair(user.id, now);
     const rotated = await this.store.rotateRefreshSession(
       user.id,
-      this.tokens.digest(refreshToken),
+      digest,
       replacement.refreshSession,
       now,
     );
@@ -83,18 +90,58 @@ export class AuthService {
 
   async logout(refreshToken: string): Promise<void> {
     const now = this.clock.now();
-    let userId: string;
-    try {
-      userId = this.tokens.verifyRefresh(refreshToken, now).sub;
-    } catch {
-      throw this.invalidCredentials();
-    }
+    const { digest, user } = await this.classifyRefreshSession(
+      "logout",
+      refreshToken,
+      now,
+    );
     const revoked = await this.store.revokeRefreshSession(
-      userId,
-      this.tokens.digest(refreshToken),
+      user.id,
+      digest,
       now,
     );
     if (!revoked) throw this.invalidCredentials();
+  }
+
+  private async classifyRefreshSession(
+    operation: SessionRateLimitOperation,
+    refreshToken: string,
+    now: Date,
+  ): Promise<{ digest: string; user: StoredUser }> {
+    let subject: string;
+    try {
+      subject = this.tokens.verifyRefresh(refreshToken, now).sub;
+    } catch {
+      this.consumeRateLimit(`auth-${operation}:invalid`, now);
+      throw this.invalidCredentials();
+    }
+
+    const digest = this.tokens.digest(refreshToken);
+    const user = await this.store.findById(subject);
+    const active =
+      user?.refreshSessions.some(
+        (session) =>
+          session.digest === digest &&
+          activeRefreshSessionPredicate.test(session, now),
+      ) ?? false;
+    this.consumeRateLimit(
+      `auth-${operation}:${active ? "active" : "inactive"}:${subject}`,
+      now,
+    );
+    if (!user || !active) throw this.invalidCredentials();
+    return { digest, user };
+  }
+
+  private consumeRateLimit(key: string, now: Date): void {
+    const permitted = this.rateLimits.consume(
+      key,
+      now,
+      this.config.authRateLimitMaxRequests,
+      this.config.authRateLimitWindowMilliseconds,
+    );
+    if (!permitted) {
+      throw new ThrottlerException("Too many session requests");
+    }
   }
 
   private async issueInitialTokens(user: StoredUser): Promise<TokenPair> {

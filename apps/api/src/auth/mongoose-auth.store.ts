@@ -9,6 +9,7 @@ import type {
   RefreshSession,
   StoredUser,
 } from "./auth.store";
+import { activeRefreshSessionPredicate } from "./refresh-session";
 import { UserModel, type UserDocument } from "./user.schema";
 
 @Injectable()
@@ -118,8 +119,7 @@ export class MongooseAuthStore implements AuthStore {
         refreshSessions: {
           $elemMatch: {
             digest: currentDigest,
-            revokedAt: { $exists: false },
-            expiresAt: { $gt: now },
+            ...activeRefreshSessionPredicate.mongoFilter(now),
           },
         },
       },
@@ -137,13 +137,10 @@ export class MongooseAuthStore implements AuthStore {
                         {
                           $and: [
                             { $eq: ["$$session.digest", currentDigest] },
-                            {
-                              $eq: [
-                                { $type: "$$session.revokedAt" },
-                                "missing",
-                              ],
-                            },
-                            { $gt: ["$$session.expiresAt", now] },
+                            activeRefreshSessionPredicate.mongoExpression(
+                              "$$session",
+                              now,
+                            ),
                           ],
                         },
                         { $mergeObjects: ["$$session", { revokedAt: now }] },
@@ -172,7 +169,10 @@ export class MongooseAuthStore implements AuthStore {
       {
         _id: userId,
         refreshSessions: {
-          $elemMatch: { digest, revokedAt: { $exists: false } },
+          $elemMatch: {
+            digest,
+            ...activeRefreshSessionPredicate.mongoFilter(now),
+          },
         },
       },
       { $set: { "refreshSessions.$.revokedAt": now } },
@@ -223,7 +223,9 @@ export class MongooseAuthStore implements AuthStore {
         digest: session.digest,
         expiresAt: session.expiresAt,
         createdAt: session.createdAt,
-        ...(session.revokedAt ? { revokedAt: session.revokedAt } : {}),
+        ...(session.revokedAt === undefined
+          ? {}
+          : { revokedAt: session.revokedAt }),
       })),
     };
   }

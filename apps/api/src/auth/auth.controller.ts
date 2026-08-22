@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Header,
   HttpCode,
   Inject,
   Post,
@@ -23,12 +24,12 @@ import { Public } from "./public.decorator";
 import { ZodBodyPipe } from "./zod-body.pipe";
 
 @Public()
-@UseGuards(ThrottlerGuard)
 @Controller("api/v1/auth")
 export class AuthController {
   constructor(@Inject(AuthService) private readonly authService: AuthService) {}
 
   @Post("otp/request")
+  @UseGuards(ThrottlerGuard)
   @HttpCode(202)
   async requestOtp(
     @Body(new ZodBodyPipe(otpRequestSchema)) body: OtpRequest,
@@ -38,7 +39,8 @@ export class AuthController {
   }
 
   @Post("otp/verify")
-  @UseGuards(OtpIdentifierRateLimitGuard)
+  @UseGuards(ThrottlerGuard, OtpIdentifierRateLimitGuard)
+  @Header("Cache-Control", "no-store")
   @HttpCode(200)
   verifyOtp(
     @Body(new ZodBodyPipe(otpVerifySchema)) body: OtpVerifyRequest,
@@ -47,6 +49,7 @@ export class AuthController {
   }
 
   @Post("refresh")
+  @Header("Cache-Control", "no-store")
   @HttpCode(200)
   refresh(
     @Body(new ZodBodyPipe(refreshTokenSchema)) body: RefreshTokenRequest,

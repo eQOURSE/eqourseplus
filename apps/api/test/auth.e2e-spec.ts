@@ -21,6 +21,8 @@ import type {
   StoredUser,
 } from "../src/auth/auth.store";
 import { InMemoryAuthRateLimitStore } from "../src/auth/auth-rate-limit.store";
+import { JwtTokenService } from "../src/auth/jwt-token.service";
+import { activeRefreshSessionPredicate } from "../src/auth/refresh-session";
 
 class MutableClock {
   now = new Date("2026-07-20T10:00:00.000Z");
@@ -103,8 +105,7 @@ class InMemoryAuthStore implements AuthStore {
     const current = sessions.find(
       (session) =>
         session.digest === currentDigest &&
-        !session.revokedAt &&
-        session.expiresAt > now,
+        activeRefreshSessionPredicate.test(session, now),
     );
     if (!current) return false;
     current.revokedAt = now;
@@ -118,7 +119,9 @@ class InMemoryAuthStore implements AuthStore {
     now: Date,
   ): Promise<boolean> {
     const session = this.requireUser(userId).refreshSessions.find(
-      (candidate) => candidate.digest === digest && !candidate.revokedAt,
+      (candidate) =>
+        candidate.digest === digest &&
+        activeRefreshSessionPredicate.test(candidate, now),
     );
     if (!session) return false;
     session.revokedAt = now;
@@ -146,6 +149,7 @@ describe("FR-FND-02 auth core", () => {
   let store: InMemoryAuthStore;
   let mailer: SandboxMailerAdapter;
   let clock: MutableClock;
+  let tokens: JwtTokenService;
 
   const users = [
     {
@@ -204,6 +208,7 @@ describe("FR-FND-02 auth core", () => {
     };
     express.set("trust proxy", true);
     await app.init();
+    tokens = app.get(JwtTokenService);
   });
 
   afterEach(async () => {
@@ -228,6 +233,35 @@ describe("FR-FND-02 auth core", () => {
     return response.body as { accessToken: string; refreshToken: string };
   }
 
+  async function issueRefreshToken(userId: string): Promise<string> {
+    const issued = tokens.issuePair(userId, clock.now);
+    await store.addRefreshSession(userId, issued.refreshSession);
+    return issued.refreshToken;
+  }
+
+  function addUser(id: string): void {
+    store.users.set(id, {
+      id,
+      email: `${id}@example.com`,
+      roleAssignments: [],
+      refreshSessions: [],
+    });
+  }
+
+  function refresh(refreshToken: string, ip = "203.0.113.200") {
+    return request(app.getHttpServer())
+      .post("/api/v1/auth/refresh")
+      .set("x-forwarded-for", ip)
+      .send({ refreshToken });
+  }
+
+  function logout(refreshToken: string, ip = "203.0.113.200") {
+    return request(app.getHttpServer())
+      .post("/api/v1/auth/logout")
+      .set("x-forwarded-for", ip)
+      .send({ refreshToken });
+  }
+
   it("rejects invalid auth request bodies with HTTP 400", async () => {
     await request(app.getHttpServer())
       .post("/api/v1/auth/otp/request")
@@ -247,10 +281,11 @@ describe("FR-FND-02 auth core", () => {
     expect(mailer.deliveries).toHaveLength(1);
 
     const code = mailer.deliveries[0]?.code;
-    await request(app.getHttpServer())
+    const verified = await request(app.getHttpServer())
       .post("/api/v1/auth/otp/verify")
       .send({ email: "freelancer@example.com", otp: code })
       .expect(200);
+    expect(verified.headers["cache-control"]).toContain("no-store");
     await request(app.getHttpServer())
       .post("/api/v1/auth/otp/verify")
       .send({ email: "freelancer@example.com", otp: code })
@@ -289,6 +324,22 @@ describe("FR-FND-02 auth core", () => {
       .expect(429);
   });
 
+  it("retains the IP cap on OTP verification across distinct identifiers", async () => {
+    const sharedIp = "203.0.113.181";
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await request(app.getHttpServer())
+        .post("/api/v1/auth/otp/verify")
+        .set("x-forwarded-for", sharedIp)
+        .send({ email: `spray-${attempt}@example.com`, otp: "000000" })
+        .expect(401);
+    }
+    await request(app.getHttpServer())
+      .post("/api/v1/auth/otp/verify")
+      .set("x-forwarded-for", sharedIp)
+      .send({ email: "spray-final@example.com", otp: "000000" })
+      .expect(429);
+  });
+
   it("rejects an expired OTP", async () => {
     await request(app.getHttpServer())
       .post("/api/v1/auth/otp/request")
@@ -316,12 +367,131 @@ describe("FR-FND-02 auth core", () => {
       .post("/api/v1/auth/refresh")
       .send({ refreshToken: first.refreshToken })
       .expect(200);
+    expect(response.headers["cache-control"]).toContain("no-store");
     expect(response.body.refreshToken).not.toBe(first.refreshToken);
 
     await request(app.getHttpServer())
       .post("/api/v1/auth/refresh")
       .send({ refreshToken: first.refreshToken })
       .expect(401);
+  });
+
+  it("allows many subjects to refresh from one server IP", async () => {
+    const serverIp = "203.0.113.200";
+    const refreshTokens: string[] = [];
+    for (let index = 0; index < 6; index += 1) {
+      const id = `shared-ip-user-${index}`;
+      addUser(id);
+      refreshTokens.push(await issueRefreshToken(id));
+    }
+
+    for (const refreshToken of refreshTokens) {
+      await request(app.getHttpServer())
+        .post("/api/v1/auth/refresh")
+        .set("x-forwarded-for", serverIp)
+        .send({ refreshToken })
+        .expect(200);
+    }
+  });
+
+  it("rate-limits one refresh subject without rotating the blocked token or blocking logout", async () => {
+    const id = "limited-refresh-user";
+    addUser(id);
+    let current = await issueRefreshToken(id);
+    const logoutToken = await issueRefreshToken(id);
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const response = await refresh(current).expect(200);
+      current = response.body.refreshToken as string;
+    }
+    await refresh(current).expect(429);
+    await logout(logoutToken).expect(204);
+
+    clock.advance(60_000 + 1);
+    await refresh(current, "203.0.113.201").expect(200);
+  });
+
+  it("isolates active refresh buckets by verified subject", async () => {
+    addUser("bucket-user-a");
+    addUser("bucket-user-b");
+    let tokenA = await issueRefreshToken("bucket-user-a");
+    const tokenB = await issueRefreshToken("bucket-user-b");
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const response = await refresh(tokenA).expect(200);
+      tokenA = response.body.refreshToken as string;
+    }
+    await refresh(tokenA).expect(429);
+    await refresh(tokenB).expect(200);
+    await refresh(tokenA).expect(429);
+  });
+
+  it("isolates inactive replays from the subject's current active refresh token", async () => {
+    const id = "inactive-replay-user";
+    addUser(id);
+    const original = await issueRefreshToken(id);
+    const rotated = await refresh(original).expect(200);
+    const active = rotated.body.refreshToken as string;
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await refresh(original).expect(401);
+    }
+    await refresh(original).expect(429);
+    await refresh(active, "203.0.113.202").expect(200);
+  });
+
+  it("treats an explicit revokedAt null as inactive in the fake store", async () => {
+    const id = "null-revocation-user";
+    addUser(id);
+    const nullRevoked = await issueRefreshToken(id);
+    const stored = store.users.get(id)?.refreshSessions[0];
+    if (!stored) throw new Error("Expected a stored refresh session");
+    stored.revokedAt = null;
+    const active = await issueRefreshToken(id);
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await refresh(nullRevoked).expect(401);
+    }
+    await refresh(nullRevoked).expect(429);
+    await refresh(active, "203.0.113.205").expect(200);
+  });
+
+  it("uses an endpoint-scoped constant bucket for malformed and forged refresh JWTs", async () => {
+    const malformed = "x".repeat(32);
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await refresh(malformed).expect(401);
+    }
+    await refresh(malformed).expect(429);
+
+    clock.advance(60_000 + 1);
+    addUser("forged-token-user");
+    const signed = await issueRefreshToken("forged-token-user");
+    const parts = signed.split(".");
+    if (!parts[2]) throw new Error("Expected a signed JWT");
+    parts[2] = `${parts[2][0] === "a" ? "b" : "a"}${parts[2].slice(1)}`;
+    const forged = parts.join(".");
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await refresh(forged, "203.0.113.203").expect(401);
+    }
+    await refresh(forged, "203.0.113.203").expect(429);
+  });
+
+  it("does not revoke a session when the logout active bucket is exhausted", async () => {
+    const id = "limited-logout-user";
+    addUser(id);
+    const sessions: string[] = [];
+    for (let index = 0; index < 6; index += 1) {
+      sessions.push(await issueRefreshToken(id));
+    }
+
+    for (const refreshToken of sessions.slice(0, 5)) {
+      await logout(refreshToken).expect(204);
+    }
+    const preserved = sessions[5] as string;
+    await logout(preserved).expect(429);
+
+    clock.advance(60_000 + 1);
+    await refresh(preserved, "203.0.113.204").expect(200);
   });
 
   it("rejects an expired refresh token with HTTP 401", async () => {
