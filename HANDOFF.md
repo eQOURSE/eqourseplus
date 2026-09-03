@@ -10,7 +10,7 @@ senior advisor: you write my Codex prompts, review Codex's verdicts before I app
 guide infra/dashboard work, and flag security issues. Assume that role and rhythm immediately.
 
 ## Source of truth (all in repo: github.com/eQOURSE/eqourseplus, branch main)
-- SPEC.md (v2.10, ~60 FR IDs w/ acceptance criteria, Part A core + Part B global/build guide, Section 19.2
+- SPEC.md (v2.11, ~60 FR IDs w/ acceptance criteria, Part A core + Part B global/build guide, Section 19.2
   grows one collection schema at a time, Section 22 = FND/PUB foundation FRs) — spec is LAW; agents may not
   build unnumbered work; ambiguity → stop and ask → we patch spec (version bump each time).
 - AGENTS.md (14 rules: one FR per session, tests-first, state machines as enums+guards, adapters for all
