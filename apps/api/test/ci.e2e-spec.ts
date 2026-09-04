@@ -188,7 +188,7 @@ describe("FR-FND-05 API deployment", () => {
     ).toBeGreaterThanOrEqual(2);
     expect(
       workflow.match(
-        /--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest/g,
+        /--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest(?:,RESEND_API_KEY=RESEND_API_KEY:latest)?/g,
       )?.length,
     ).toBeGreaterThanOrEqual(2);
     expect(
@@ -229,13 +229,42 @@ describe("FR-FND-05 API deployment", () => {
       '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}"',
     );
     expect(productionJob).toContain(
-      '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}"',
+      '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}"',
     );
     expect(stagingJob).toContain(
       "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest",
     );
     expect(productionJob).toContain(
-      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest",
+      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest",
+    );
+  });
+
+  it("keeps staging email sandboxed and configures production Resend explicitly", () => {
+    const workflow = readFileSync(workflowPath, "utf8");
+    const stagingJob = workflow.slice(
+      workflow.indexOf("  staging-deploy:"),
+      workflow.indexOf("  production-deploy:"),
+    );
+    const productionJob = workflow.slice(
+      workflow.indexOf("  production-deploy:"),
+    );
+
+    expect(stagingJob).toContain('MAILER_PROVIDER: "sandbox"');
+    expect(stagingJob).toContain(
+      '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}"',
+    );
+    expect(stagingJob).not.toContain("RESEND_API_KEY=RESEND_API_KEY:latest");
+
+    expect(productionJob).toContain('MAILER_PROVIDER: "resend"');
+    expect(productionJob).toContain("OTP_EMAIL_FROM: ${{ vars.OTP_EMAIL_FROM }}");
+    expect(productionJob).toContain(
+      "Missing required runtime configuration: OTP_EMAIL_FROM",
+    );
+    expect(productionJob).toContain(
+      '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}"',
+    );
+    expect(productionJob).toContain(
+      "RESEND_API_KEY=RESEND_API_KEY:latest",
     );
   });
 
@@ -263,6 +292,11 @@ describe("FR-FND-05 API deployment", () => {
     expect(runbook).toContain("GCP_WORKLOAD_IDENTITY_PROVIDER");
     expect(runbook).toContain("GCP_DEPLOY_SERVICE_ACCOUNT");
     expect(runbook).toContain("CORS_ORIGINS");
+    expect(runbook).toContain("RESEND_API_KEY");
+    expect(runbook).toContain("OTP_EMAIL_FROM");
+    expect(runbook).toMatch(/SPF[\s\S]+DKIM[\s\S]+DMARC/i);
+    expect(runbook).toMatch(/GoDaddy[\s\S]+add-only/i);
+    expect(runbook).toMatch(/Google Workspace MX/i);
     expect(runbook).toContain("--set-env-vars");
     expect(runbook).toMatch(/not a Secret Manager secret/i);
     expect(runbook).toMatch(/production.+required reviewer/is);

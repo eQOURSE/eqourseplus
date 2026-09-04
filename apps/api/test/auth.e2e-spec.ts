@@ -402,6 +402,23 @@ describe("FR-FND-02 auth core", () => {
       .expect(401);
   });
 
+  it("does not reveal whether an email exists when requesting an OTP", async () => {
+    const existing = await request(app.getHttpServer())
+      .post("/api/v1/auth/otp/request")
+      .set("x-forwarded-for", "198.51.100.210")
+      .send({ email: "freelancer@example.com" })
+      .expect(202);
+    const unknown = await request(app.getHttpServer())
+      .post("/api/v1/auth/otp/request")
+      .set("x-forwarded-for", "198.51.100.211")
+      .send({ email: "unknown@example.com" })
+      .expect(202);
+
+    expect(unknown.body).toEqual(existing.body);
+    expect(mailer.deliveries).toHaveLength(1);
+    expect(mailer.deliveries[0]?.to).toBe("freelancer@example.com");
+  });
+
   it("invalidates an OTP after five wrong attempts", async () => {
     await request(app.getHttpServer())
       .post("/api/v1/auth/otp/request")

@@ -73,6 +73,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CORS_ORIGINS: "http://localhost:3000"
+      MAILER_PROVIDER: "sandbox"
     permissions:
       contents: read
       id-token: write
@@ -116,7 +117,7 @@ jobs:
           --port=8080
           --min-instances=0
           --allow-unauthenticated
-          --set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}"
+          --set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}"
           --set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest
           --startup-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=0,timeoutSeconds=2,periodSeconds=5,failureThreshold=12
           --liveness-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=10,timeoutSeconds=2,periodSeconds=30,failureThreshold=3
@@ -145,6 +146,8 @@ jobs:
       name: production
     env:
       CORS_ORIGINS: "https://plus.eqourse.com"
+      MAILER_PROVIDER: "resend"
+      OTP_EMAIL_FROM: ${{ vars.OTP_EMAIL_FROM }}
     permissions:
       contents: read
       id-token: write
@@ -154,6 +157,10 @@ jobs:
         run: |
           if [ -z "${CORS_ORIGINS:-}" ]; then
             echo "::error::Missing required runtime configuration: CORS_ORIGINS"
+            exit 1
+          fi
+          if [ -z "${OTP_EMAIL_FROM:-}" ]; then
+            echo "::error::Missing required runtime configuration: OTP_EMAIL_FROM"
             exit 1
           fi
 
@@ -179,8 +186,8 @@ jobs:
           --port=8080
           --min-instances=0
           --allow-unauthenticated
-          --set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}"
-          --set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest
+          --set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}"
+          --set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest
           --startup-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=0,timeoutSeconds=2,periodSeconds=5,failureThreshold=12
           --liveness-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=10,timeoutSeconds=2,periodSeconds=30,failureThreshold=3
           --quiet

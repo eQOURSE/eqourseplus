@@ -3,11 +3,16 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { INestApplication } from "@nestjs/common";
+import {
+  ServiceUnavailableException,
+  type INestApplication,
+} from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
   SandboxMailerAdapter,
   SandboxSmsAdapter,
+  type MailerAdapter,
+  type OtpDelivery,
   type SmsOtpDelivery,
 } from "@eqourse/adapters";
 import { BusinessUnit, ProfileState, Role } from "@eqourse/shared";
@@ -71,6 +76,20 @@ class MutableClock {
   }
 }
 
+class ControllableMailerAdapter implements MailerAdapter {
+  readonly sandbox = new SandboxMailerAdapter();
+  failure: Error | undefined;
+
+  get deliveries(): OtpDelivery[] {
+    return this.sandbox.deliveries;
+  }
+
+  async sendOtp(delivery: OtpDelivery): Promise<void> {
+    if (this.failure) throw this.failure;
+    await this.sandbox.sendOtp(delivery);
+  }
+}
+
 const require = createRequire(import.meta.url);
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const apiDirectory = path.resolve(testDirectory, "..");
@@ -80,7 +99,7 @@ describe("FR-REG-01 freelancer registration API", () => {
   let memoryServer: MongoMemoryServer;
   let migrationClient: mongo.MongoClient;
   let db: mongo.Db;
-  let mailer: SandboxMailerAdapter;
+  let mailer: ControllableMailerAdapter;
   let sms: SandboxSmsAdapter;
   let clock: MutableClock;
   let requestNumber = 0;
@@ -105,7 +124,7 @@ describe("FR-REG-01 freelancer registration API", () => {
     ({ client: migrationClient, db } = await migrateMongo.database.connect());
     await migrateMongo.up(db, migrationClient);
 
-    mailer = new SandboxMailerAdapter();
+    mailer = new ControllableMailerAdapter();
     sms = new SandboxSmsAdapter(async () => undefined);
     clock = new MutableClock();
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -128,6 +147,7 @@ describe("FR-REG-01 freelancer registration API", () => {
   beforeEach(async () => {
     await db.collection("users").deleteMany({});
     mailer.deliveries.length = 0;
+    mailer.failure = undefined;
     sms.deliveries.length = 0;
     clock.reset();
   });
@@ -588,5 +608,40 @@ describe("FR-REG-01 freelancer registration API", () => {
     await verifyRegistration(replacement);
     clock.advance(10 * 60 * 1000 + 1);
     await post("/api/v1/auth/register/request", { ...replacement, email: "attacker@example.com" }).expect(409);
+  });
+
+  it("pins the 10-minute lockout after email delivery fails", async () => {
+    mailer.failure = new ServiceUnavailableException({
+      statusCode: 503,
+      error: "Service Unavailable",
+      code: "EMAIL_DELIVERY_UNAVAILABLE",
+      message: "Email delivery is temporarily unavailable",
+    });
+
+    await post("/api/v1/auth/register/request", baseRegistration).expect(503);
+    const failedRecord = await db.collection("users").findOne({
+      email: baseRegistration.email,
+    });
+    expect(failedRecord).not.toBeNull();
+    expect(sms.deliveries).toHaveLength(0);
+
+    mailer.failure = undefined;
+    const immediateRetry = await post(
+      "/api/v1/auth/register/request",
+      baseRegistration,
+    ).expect(409);
+    expect(immediateRetry.body.code).toBe("REGISTRATION_CONFLICT");
+    expect(JSON.stringify(immediateRetry.body)).not.toContain(
+      baseRegistration.email,
+    );
+    expect(await db.collection("users").countDocuments()).toBe(1);
+
+    clock.advance(10 * 60 * 1000 + 1);
+    await requestRegistration(baseRegistration);
+    const reclaimedRecord = await db.collection("users").findOne({
+      email: baseRegistration.email,
+    });
+    expect(reclaimedRecord?._id).toEqual(failedRecord?._id);
+    expect(await db.collection("users").countDocuments()).toBe(1);
   });
 });

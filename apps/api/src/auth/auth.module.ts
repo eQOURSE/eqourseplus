@@ -2,7 +2,7 @@ import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { JwtModule } from "@nestjs/jwt";
 import { ThrottlerModule } from "@nestjs/throttler";
-import { SandboxMailerAdapter, SandboxSmsAdapter } from "@eqourse/adapters";
+import { SandboxSmsAdapter } from "@eqourse/adapters";
 
 import {
   AUTH_CLOCK,
@@ -26,6 +26,7 @@ import { RegistrationController } from "./registration.controller";
 import { RegistrationService } from "./registration.service";
 import { DeviceFingerprintService } from "./device-fingerprint.service";
 import { RolesGuard } from "./roles.guard";
+import { createMailerAdapter } from "./resend-mailer.adapter";
 
 @Module({
   imports: [
@@ -49,7 +50,7 @@ import { RolesGuard } from "./roles.guard";
     },
     {
       provide: MAILER_ADAPTER,
-      useFactory: (): SandboxMailerAdapter => new SandboxMailerAdapter(),
+      useFactory: () => createMailerAdapter(process.env),
     },
     {
       provide: SMS_ADAPTER,

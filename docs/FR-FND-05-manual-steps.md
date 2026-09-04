@@ -9,7 +9,9 @@ the FR-FND-05 API pipeline. They do not deploy to Vercel or Utho.
 to `main`.** The staging workflow fires on the merge itself, so Artifact
 Registry, both service accounts, Workload Identity Federation, `MONGODB_URI`,
 `JWT_SECRET`, the per-service `CORS_ORIGINS` values, the GitHub repository
-variables, and the protected `production` environment must already exist.
+variables, and the protected `production` environment must already exist. Before
+enabling real email delivery, also complete Section 10 without changing any
+existing company-mail DNS record.
 
 Run the following commands in PowerShell from a terminal where `gcloud` is
 authenticated as a project IAM administrator. The GitHub CLI commands also
@@ -290,3 +292,81 @@ the web CSRF check compare exact origins, so a trailing slash fails the match.
 deployment does not re-inline the value, even when the build cache is disabled.
 A fresh git-triggered build is required. `API_URL` and `APP_URL` are read at
 runtime and take effect immediately.
+
+## 10. Configure Resend email delivery
+
+SPEC.md Section 20 approves Resend/SES for email delivery. The API deliberately
+uses the in-memory sandbox mailer unless `MAILER_PROVIDER=resend` is configured.
+The deployment workflow keeps staging on `sandbox` and configures production as
+`resend`; production therefore fails at startup if its sender or API key is
+missing instead of silently claiming to send an OTP.
+
+### Create and verify the provider account
+
+1. Create the Resend account under the company-owned login and enable account
+   security controls offered by the provider.
+2. In Resend, add the sending domain or dedicated sending subdomain that will be
+   used by `OTP_EMAIL_FROM`.
+3. Copy each DNS host, type and value from Resend exactly. Do not copy an API key
+   into DNS, this repository, a shell history, a ticket, or chat.
+4. Wait until Resend reports the domain verified before enabling the production
+   provider.
+
+### Add SPF, DKIM and DMARC safely in GoDaddy
+
+The authoritative `eqourse.com` DNS zone is at GoDaddy. It is **add-only** and
+already hosts the Google Workspace MX records for live company mail. Add the
+provider-verification records; never replace, edit, or delete the Google
+Workspace MX records or any unrelated existing record. A mistaken replacement
+can stop company email. If a requested host already exists or GoDaddy proposes
+replacing a record, stop and investigate instead of confirming the change.
+
+Add or confirm all three authentication controls:
+
+- **SPF:** add the exact Resend-supplied TXT record on its requested sending host.
+  A hostname must not publish two SPF policies; if that host already has an SPF
+  record, stop and resolve the collision rather than replacing it. A dedicated
+  sending subdomain avoids modifying the root domain's mail policy.
+- **DKIM:** add every Resend-supplied DKIM TXT or CNAME record with the exact
+  selector, host and value. Do not reuse or replace Google Workspace selectors.
+- **DMARC:** confirm that the organizational/sending domain has one DMARC TXT
+  policy. If none exists, add a deliberate initial monitoring policy such as
+  `v=DMARC1; p=none`; if one already exists, keep it and confirm alignment rather
+  than creating a second policy. Tightening enforcement is a separate mail-admin
+  decision after reviewing reports.
+
+After propagation, verify SPF, DKIM and DMARC independently and confirm Resend's
+domain page is green. Send a provider test only to a controlled company inbox;
+do not use a real user's address for setup testing.
+
+### Store runtime configuration
+
+Create the Resend API key as a GCP Secret Manager secret by pasting only the raw
+value at the secure prompt:
+
+```powershell
+gcloud secrets create RESEND_API_KEY --replication-policy=automatic --data-file=- `
+  --project=$ProjectId
+
+gcloud secrets add-iam-policy-binding RESEND_API_KEY `
+  --project=$ProjectId `
+  --member="serviceAccount:$RuntimeServiceAccount" `
+  --role="roles/secretmanager.secretAccessor"
+```
+
+Store the verified sender as a non-secret GitHub repository variable. Use a
+verified address without a comma in its display name because Cloud Run parses
+comma-separated environment assignments:
+
+```powershell
+gh variable set OTP_EMAIL_FROM `
+  --repo $GitHubRepository `
+  --body "verified-sender-address-from-resend"
+
+gcloud secrets describe RESEND_API_KEY --project=$ProjectId
+gh variable get OTP_EMAIL_FROM --repo $GitHubRepository
+```
+
+The production deployment injects `RESEND_API_KEY` from Secret Manager and sets
+`MAILER_PROVIDER=resend` plus `OTP_EMAIL_FROM`. Staging, local development and CI
+remain on the sandbox adapter and require no provider credentials.
