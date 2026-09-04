@@ -4,7 +4,7 @@ Last completed FR: FR-REG-02A — 2026-09-04 — Authenticated session transport
 
 ## Phase 0 — Foundation (wk 1–2) — SPEC.md Section 22.1, strictly in order
 - [x] FR-FND-01 scaffold (2026-07-17)  - [x] FR-FND-02 auth core (2026-07-20)  - [x] FR-FND-03 db wiring (2026-07-21)
-- [x] FR-FND-04 CI (2026-07-21)  - [x] FR-FND-05 deployments (2026-07-23)  - [x] FR-FND-06 observability (2026-07-23)
+- [x] FR-FND-04 CI (2026-07-21)  - [x] FR-FND-05 deployments (2026-07-23; deployment-config defect fixed 2026-09-04 — explicit per-service `CORS_ORIGINS` plus fail-fast workflow preflight; 309 tests green, lint and production build clean)  - [x] FR-FND-06 observability (2026-07-23)
 ## Phase 1 — Public site + SEO (wk 3–4) — SPEC.md Section 22.2
 - Watchlist: FR-PUB-02 `/jobs` is deliberately deferred; keep `/jobs` out of `RESOLVING_ROUTES`, public navigation, and the sitemap until its listing and detail `page.tsx` routes exist.
 - [x] FR-PUB-00 public design-system foundation (2026-07-24)

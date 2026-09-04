@@ -8,8 +8,8 @@ the FR-FND-05 API pipeline. They do not deploy to Vercel or Utho.
 **Run every step in Sections 1–6 while the PR is still open, before merging it
 to `main`.** The staging workflow fires on the merge itself, so Artifact
 Registry, both service accounts, Workload Identity Federation, `MONGODB_URI`,
-`JWT_SECRET`, the GitHub repository variables, and the protected `production`
-environment must already exist.
+`JWT_SECRET`, the per-service `CORS_ORIGINS` values, the GitHub repository
+variables, and the protected `production` environment must already exist.
 
 Run the following commands in PowerShell from a terminal where `gcloud` is
 authenticated as a project IAM administrator. The GitHub CLI commands also
@@ -155,7 +155,23 @@ Cloud Run connection using the documented temporary `0.0.0.0/0` decision,
 SCRAM least-privilege credentials, and TLS. Never apply that rule to a cluster
 holding real user data.
 
-## 5. Set the non-secret GitHub repository variables
+## 5. Confirm the non-secret runtime configuration and set repository variables
+
+`CORS_ORIGINS` is not a Secret Manager secret. It is required runtime
+configuration that the workflow sets directly on each service with
+`--set-env-vars`:
+
+- `eqplus-api-staging`: `http://localhost:3000`
+- `eqplus-api`: `https://plus.eqourse.com`
+
+Staging is deliberately limited to the local web origin. Vercel preview URLs
+cannot make browser-originated calls to the staging API until a stable preview
+origin exists. The browser-originated registration and OTP-request endpoints
+therefore cannot be exercised from per-branch previews.
+
+`--set-env-vars` replaces the service's complete plain environment-variable
+group. Before adding another plain variable outside this workflow, update the
+workflow's complete list so a later deployment cannot remove it silently.
 
 Get the full provider resource name and store it with the deploy service-account
 email as GitHub repository variables:
@@ -222,9 +238,11 @@ reviewer. Only then merge the PR.
 
 The staging job builds and pushes the commit-SHA image, deploys
 `eqplus-api-staging` in `asia-south1` with `min-instances=0`, public invocation,
+`CORS_ORIGINS=http://localhost:3000` as non-secret runtime configuration,
 Secret Manager injection for `MONGODB_URI` and `JWT_SECRET`, and HTTP
 startup/liveness probes. It then calls `/health` and fails if the endpoint does
-not return a successful response.
+not return a successful response. Production receives
+`CORS_ORIGINS=https://plus.eqourse.com` only after manual approval.
 
 After that succeeds, the `Deploy production API` job must be visibly waiting
 for approval. Approve it only when you intend to promote that exact commit image.

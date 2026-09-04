@@ -199,6 +199,46 @@ describe("FR-FND-05 API deployment", () => {
     ).toBeGreaterThanOrEqual(2);
   });
 
+  it("fails fast and deploys each service with its explicit CORS origin", () => {
+    const workflow = readFileSync(workflowPath, "utf8");
+    const stagingJob = workflow.slice(
+      workflow.indexOf("  staging-deploy:"),
+      workflow.indexOf("  production-deploy:"),
+    );
+    const productionJob = workflow.slice(
+      workflow.indexOf("  production-deploy:"),
+    );
+
+    expect(stagingJob).toContain(
+      'CORS_ORIGINS: "http://localhost:3000"',
+    );
+    expect(productionJob).toContain(
+      'CORS_ORIGINS: "https://plus.eqourse.com"',
+    );
+    expect(stagingJob).toContain("Validate staging runtime configuration");
+    expect(productionJob).toContain(
+      "Validate production runtime configuration",
+    );
+    expect(stagingJob).toContain(
+      "Missing required runtime configuration: CORS_ORIGINS",
+    );
+    expect(productionJob).toContain(
+      "Missing required runtime configuration: CORS_ORIGINS",
+    );
+    expect(stagingJob).toContain(
+      '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}"',
+    );
+    expect(productionJob).toContain(
+      '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}"',
+    );
+    expect(stagingJob).toContain(
+      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest",
+    );
+    expect(productionJob).toContain(
+      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest",
+    );
+  });
+
   it("documents the pre-merge, main-only WIF and Secret Manager setup", () => {
     const runbook = readFileSync(deploymentRunbookPath, "utf8");
 
@@ -222,6 +262,9 @@ describe("FR-FND-05 API deployment", () => {
     );
     expect(runbook).toContain("GCP_WORKLOAD_IDENTITY_PROVIDER");
     expect(runbook).toContain("GCP_DEPLOY_SERVICE_ACCOUNT");
+    expect(runbook).toContain("CORS_ORIGINS");
+    expect(runbook).toContain("--set-env-vars");
+    expect(runbook).toMatch(/not a Secret Manager secret/i);
     expect(runbook).toMatch(/production.+required reviewer/is);
   });
 });

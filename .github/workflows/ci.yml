@@ -71,11 +71,20 @@ jobs:
     needs: ci
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    env:
+      CORS_ORIGINS: "http://localhost:3000"
     permissions:
       contents: read
       id-token: write
 
     steps:
+      - name: Validate staging runtime configuration
+        run: |
+          if [ -z "${CORS_ORIGINS:-}" ]; then
+            echo "::error::Missing required runtime configuration: CORS_ORIGINS"
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
 
       - name: Authenticate to Google Cloud with Workload Identity Federation
@@ -107,6 +116,7 @@ jobs:
           --port=8080
           --min-instances=0
           --allow-unauthenticated
+          --set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}"
           --set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest
           --startup-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=0,timeoutSeconds=2,periodSeconds=5,failureThreshold=12
           --liveness-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=10,timeoutSeconds=2,periodSeconds=30,failureThreshold=3
@@ -133,11 +143,20 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
+    env:
+      CORS_ORIGINS: "https://plus.eqourse.com"
     permissions:
       contents: read
       id-token: write
 
     steps:
+      - name: Validate production runtime configuration
+        run: |
+          if [ -z "${CORS_ORIGINS:-}" ]; then
+            echo "::error::Missing required runtime configuration: CORS_ORIGINS"
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
 
       - name: Authenticate to Google Cloud with Workload Identity Federation
@@ -160,6 +179,7 @@ jobs:
           --port=8080
           --min-instances=0
           --allow-unauthenticated
+          --set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}"
           --set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest
           --startup-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=0,timeoutSeconds=2,periodSeconds=5,failureThreshold=12
           --liveness-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=10,timeoutSeconds=2,periodSeconds=30,failureThreshold=3
