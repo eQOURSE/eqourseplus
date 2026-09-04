@@ -66,6 +66,15 @@ afterEach(() => {
 });
 
 describe("FR-REG-01 freelancer registration form", () => {
+  it("does not embed token fields or values in the server-rendered payload", () => {
+    const serverMarkup = renderToString(<FreelancerRegistrationForm />);
+
+    expect(serverMarkup).not.toContain("accessToken");
+    expect(serverMarkup).not.toContain("refreshToken");
+    expect(serverMarkup).not.toContain("secret-access");
+    expect(serverMarkup).not.toContain("secret-refresh");
+  });
+
   it("server-renders an accessible loading fallback before enabling country options", async () => {
     const serverMarkup = renderToString(<FreelancerRegistrationForm />);
 
@@ -271,7 +280,7 @@ describe("FR-REG-01 freelancer registration form", () => {
       await screen.findByRole("heading", { name: "Your account is created." }),
     ).toBeVisible();
     expect(fetchMock.mock.calls[1]).toEqual([
-      "http://localhost:4000/api/v1/auth/register/verify",
+      "/api/auth/register/verify",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

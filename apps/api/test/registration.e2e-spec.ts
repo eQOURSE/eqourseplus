@@ -359,22 +359,23 @@ describe("FR-REG-01 freelancer registration API", () => {
     }).expect(429);
   });
 
-  it("retains the IP cap on registration verification across distinct identifiers", async () => {
+  it("allows distinct users to verify registrations from one web-server IP", async () => {
     const sharedIp = "203.0.113.182";
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      await post("/api/v1/auth/register/verify", {
-        email: `registration-spray-${attempt}@example.com`,
-        phone: `+9198765400${attempt.toString().padStart(2, "0")}`,
-        emailOtp: "000000",
-        phoneOtp: "000000",
-      }, sharedIp).expect(401);
+    const registrations = Array.from({ length: 6 }, (_, index) => ({
+      email: `registration-shared-ip-${index}@example.com`,
+      phone: `+9198765400${index.toString().padStart(2, "0")}`,
+      countryCode: "IN",
+    }));
+    for (const registration of registrations) {
+      await requestRegistration(registration);
     }
-    await post("/api/v1/auth/register/verify", {
-      email: "registration-spray-final@example.com",
-      phone: "+919876540099",
-      emailOtp: "000000",
-      phoneOtp: "000000",
-    }, sharedIp).expect(429);
+    for (const registration of registrations) {
+      await post("/api/v1/auth/register/verify", {
+        email: registration.email,
+        phone: registration.phone,
+        ...codesFor(registration.email, registration.phone),
+      }, sharedIp).expect(200);
+    }
   });
 
   it("retains the IP cap on registration requests across distinct identifiers", async () => {

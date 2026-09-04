@@ -1,3 +1,8 @@
+import {
+  ACCESS_TOKEN_TTL_SECONDS,
+  REFRESH_TOKEN_TTL_SECONDS,
+} from "@eqourse/shared";
+
 export interface AuthConfig {
   jwtSecret: string;
   otpTtlMilliseconds: number;
@@ -21,8 +26,8 @@ export function loadAuthConfig(environment: AuthEnvironment): AuthConfig {
   return {
     jwtSecret,
     otpTtlMilliseconds: 10 * 60 * 1000,
-    accessTokenTtlSeconds: 15 * 60,
-    refreshTokenTtlSeconds: 30 * 24 * 60 * 60,
+    accessTokenTtlSeconds: ACCESS_TOKEN_TTL_SECONDS,
+    refreshTokenTtlSeconds: REFRESH_TOKEN_TTL_SECONDS,
     authRateLimitWindowMilliseconds: 60 * 1000,
     authRateLimitMaxRequests: 5,
   };

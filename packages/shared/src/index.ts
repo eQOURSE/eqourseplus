@@ -1,4 +1,5 @@
 export * from "./auth/role";
+export * from "./auth/token-ttl";
 export * from "./schemas/auth.schemas";
 export * from "./schemas/registration.schemas";
 export * from "./schemas/state.schemas";

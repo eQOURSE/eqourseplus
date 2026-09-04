@@ -44,7 +44,7 @@ export class AuthController {
 
   @Public()
   @Post("otp/verify")
-  @UseGuards(ThrottlerGuard, OtpIdentifierRateLimitGuard)
+  @UseGuards(OtpIdentifierRateLimitGuard)
   @Header("Cache-Control", "no-store")
   @HttpCode(200)
   verifyOtp(

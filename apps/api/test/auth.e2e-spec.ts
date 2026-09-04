@@ -434,20 +434,30 @@ describe("FR-FND-02 auth core", () => {
       .expect(429);
   });
 
-  it("retains the IP cap on OTP verification across distinct identifiers", async () => {
+  it("allows distinct users to verify OTPs from one web-server IP", async () => {
     const sharedIp = "203.0.113.181";
-    for (let attempt = 0; attempt < 5; attempt += 1) {
+    const usersToVerify = Array.from({ length: 6 }, (_, index) => ({
+      id: `shared-ip-user-${index}`,
+      email: `shared-ip-user-${index}@example.com`,
+    }));
+    for (const user of usersToVerify) {
+      addUser(user.id);
+      await request(app.getHttpServer())
+        .post("/api/v1/auth/otp/request")
+        .set("x-forwarded-for", `198.51.100.${usersToVerify.indexOf(user) + 1}`)
+        .send({ email: user.email })
+        .expect(202);
+    }
+    for (const user of usersToVerify) {
+      const code = mailer.deliveries.findLast(
+        (delivery) => delivery.to === user.email,
+      )?.code;
       await request(app.getHttpServer())
         .post("/api/v1/auth/otp/verify")
         .set("x-forwarded-for", sharedIp)
-        .send({ email: `spray-${attempt}@example.com`, otp: "000000" })
-        .expect(401);
+        .send({ email: user.email, otp: code })
+        .expect(200);
     }
-    await request(app.getHttpServer())
-      .post("/api/v1/auth/otp/verify")
-      .set("x-forwarded-for", sharedIp)
-      .send({ email: "spray-final@example.com", otp: "000000" })
-      .expect(429);
   });
 
   it("rejects an expired OTP", async () => {

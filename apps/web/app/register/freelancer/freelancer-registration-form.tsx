@@ -189,7 +189,7 @@ export function FreelancerRegistrationForm() {
     setErrors({});
     setSubmitting(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/auth/register/verify"), {
+      const response = await fetch("/api/auth/register/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(result.data),

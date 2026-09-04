@@ -58,7 +58,6 @@ export class RegistrationController {
 
   @Post("verify")
   @UseGuards(
-    ThrottlerGuard,
     OtpIdentifierRateLimitGuard,
     PhoneOtpIdentifierRateLimitGuard,
   )
