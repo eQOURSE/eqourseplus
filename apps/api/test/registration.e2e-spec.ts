@@ -19,9 +19,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AppModule } from "../src/app.module";
 import {
   AUTH_CLOCK,
+  AUTH_STORE,
   MAILER_ADAPTER,
   SMS_ADAPTER,
 } from "../src/auth/auth.constants";
+import type { AuthStore } from "../src/auth/auth.store";
 import { UserModel } from "../src/auth/user.schema";
 
 interface MigrateMongoConfig {
@@ -447,6 +449,37 @@ describe("FR-REG-01 freelancer registration API", () => {
     expect(refreshed.body.accessToken).toEqual(expect.any(String));
     expect(await db.collection("users").findOne({ email: "legacy-login@example.com" })).not.toHaveProperty("countryCode");
   });
+
+  it.each([
+    { label: "present", storedValue: ProfileState.SUBMITTED },
+    { label: "absent", storedValue: undefined },
+    { label: "explicit null", storedValue: null },
+  ])(
+    "maps a $label MongoDB profileState to an enum-valued StoredUser",
+    async ({ label, storedValue }) => {
+      const inserted = await db.collection("users").insertOne({
+        email: `profile-state-${label.replace(" ", "-")}@example.com`,
+        roleAssignments: [],
+        refreshSessions: [],
+        ...(storedValue === undefined ? {} : { profileState: storedValue }),
+        createdAt: clock.now,
+        updatedAt: clock.now,
+      });
+      const authStore = app.get<AuthStore>(AUTH_STORE);
+
+      expect((await authStore.findById(inserted.insertedId.toHexString()))?.profileState).toBe(
+        storedValue === ProfileState.SUBMITTED
+          ? ProfileState.SUBMITTED
+          : ProfileState.DRAFT,
+      );
+      const raw = await db.collection("users").findOne({ _id: inserted.insertedId });
+      if (storedValue === undefined) {
+        expect(raw).not.toHaveProperty("profileState");
+      } else {
+        expect(raw?.profileState).toBe(storedValue);
+      }
+    },
+  );
 
   it("rotates refresh tokens in MongoDB and rejects old-token reuse", async () => {
     await db.collection("users").insertOne({

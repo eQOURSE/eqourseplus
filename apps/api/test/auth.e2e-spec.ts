@@ -3,6 +3,7 @@ import { Controller, Get } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
   BusinessUnit,
+  ProfileState,
   type RoleAssignment,
   Role,
 } from "@eqourse/shared";
@@ -39,6 +40,7 @@ class InMemoryAuthStore implements AuthStore {
     users: Array<{
       id: string;
       email: string;
+      profileState: ProfileState;
       roleAssignments: RoleAssignment[];
     }>,
   ) {
@@ -155,6 +157,7 @@ describe("FR-FND-02 auth core", () => {
     {
       id: "freelancer-1",
       email: "freelancer@example.com",
+      profileState: ProfileState.DRAFT,
       roleAssignments: [
         { role: Role.FREELANCER, businessUnit: BusinessUnit.EQOURSE },
       ],
@@ -162,6 +165,7 @@ describe("FR-FND-02 auth core", () => {
     {
       id: "pm-1",
       email: "pm@example.com",
+      profileState: ProfileState.SUBMITTED,
       roleAssignments: [
         { role: Role.PROJECT_MANAGER, businessUnit: BusinessUnit.EQOURSE },
       ],
@@ -169,6 +173,7 @@ describe("FR-FND-02 auth core", () => {
     {
       id: "pm-tutrain",
       email: "pm-tutrain@example.com",
+      profileState: ProfileState.UNDER_REVIEW,
       roleAssignments: [
         { role: Role.PROJECT_MANAGER, businessUnit: BusinessUnit.TUTRAIN },
       ],
@@ -176,6 +181,7 @@ describe("FR-FND-02 auth core", () => {
     {
       id: "super-admin-1",
       email: "admin@example.com",
+      profileState: ProfileState.APPROVED,
       roleAssignments: [
         { role: Role.SUPER_ADMIN, businessUnit: BusinessUnit.TUTRAIN },
       ],
@@ -243,6 +249,7 @@ describe("FR-FND-02 auth core", () => {
     store.users.set(id, {
       id,
       email: `${id}@example.com`,
+      profileState: ProfileState.DRAFT,
       roleAssignments: [],
       refreshSessions: [],
     });
@@ -261,6 +268,109 @@ describe("FR-FND-02 auth core", () => {
       .set("x-forwarded-for", ip)
       .send({ refreshToken });
   }
+
+  it("keeps every existing auth handler public after moving controller metadata", async () => {
+    await request(app.getHttpServer())
+      .post("/api/v1/auth/otp/request")
+      .send({ email: "freelancer@example.com" })
+      .expect(202);
+    const code = mailer.deliveries.findLast(
+      (delivery) => delivery.to === "freelancer@example.com",
+    )?.code;
+    const verified = await request(app.getHttpServer())
+      .post("/api/v1/auth/otp/verify")
+      .send({ email: "freelancer@example.com", otp: code })
+      .expect(200);
+    const refreshed = await request(app.getHttpServer())
+      .post("/api/v1/auth/refresh")
+      .send({ refreshToken: verified.body.refreshToken })
+      .expect(200);
+    await request(app.getHttpServer())
+      .post("/api/v1/auth/logout")
+      .send({ refreshToken: refreshed.body.refreshToken })
+      .expect(204);
+  });
+
+  it("returns exactly the authenticated caller session without sensitive fields", async () => {
+    const stored = store.users.get("freelancer-1");
+    if (!stored) throw new Error("Expected the freelancer fixture");
+    stored.phone = "+919876543210";
+    stored.otpChallenge = {
+      digest: "otp-digest",
+      expiresAt: new Date(clock.now.getTime() + 60_000),
+      wrongAttempts: 0,
+    };
+    const issued = tokens.issuePair(stored.id, clock.now);
+
+    const response = await request(app.getHttpServer())
+      .get("/api/v1/auth/session")
+      .auth(issued.accessToken, { type: "bearer" })
+      .expect(200);
+
+    expect(response.body).toEqual({
+      userId: "freelancer-1",
+      email: "freelancer@example.com",
+      roleAssignments: [
+        { role: Role.FREELANCER, businessUnit: BusinessUnit.EQOURSE },
+      ],
+      profileState: ProfileState.DRAFT,
+    });
+    expect(Object.keys(response.body).sort()).toEqual(
+      ["email", "profileState", "roleAssignments", "userId"].sort(),
+    );
+    const serialized = JSON.stringify(response.body);
+    for (const prohibited of [
+      "phone",
+      "pan",
+      "otpChallenge",
+      "refreshSessions",
+      "deviceFingerprints",
+      "reviewFlags",
+      "accessToken",
+      "refreshToken",
+    ]) {
+      expect(serialized).not.toContain(prohibited);
+    }
+    expect(serialized).not.toContain(issued.accessToken);
+    expect(serialized).not.toContain(issued.refreshToken);
+    expect(response.headers["cache-control"]).toContain("no-store");
+  });
+
+  it("rejects missing, malformed, expired and wrong-type session credentials", async () => {
+    await request(app.getHttpServer()).get("/api/v1/auth/session").expect(401);
+
+    await request(app.getHttpServer())
+      .get("/api/v1/auth/session")
+      .auth("malformed-access-token", { type: "bearer" })
+      .expect(401);
+
+    const issued = tokens.issuePair("freelancer-1", clock.now);
+    clock.advance(15 * 60 * 1000 + 1);
+    await request(app.getHttpServer())
+      .get("/api/v1/auth/session")
+      .auth(issued.accessToken, { type: "bearer" })
+      .expect(401);
+
+    const current = tokens.issuePair("freelancer-1", clock.now);
+    await request(app.getHttpServer())
+      .get("/api/v1/auth/session")
+      .auth(current.refreshToken, { type: "bearer" })
+      .expect(401);
+  });
+
+  it("uses the same 401 body for malformed tokens and missing subjects", async () => {
+    const malformed = await request(app.getHttpServer())
+      .get("/api/v1/auth/session")
+      .auth("malformed-access-token", { type: "bearer" })
+      .expect(401);
+    const missingSubjectToken = tokens.issuePair("deleted-user", clock.now);
+    const missingSubject = await request(app.getHttpServer())
+      .get("/api/v1/auth/session")
+      .auth(missingSubjectToken.accessToken, { type: "bearer" })
+      .expect(401);
+
+    expect(missingSubject.body).toEqual(malformed.body);
+  });
 
   it("rejects invalid auth request bodies with HTTP 400", async () => {
     await request(app.getHttpServer())

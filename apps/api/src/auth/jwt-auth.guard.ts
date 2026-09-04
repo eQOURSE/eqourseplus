@@ -33,7 +33,7 @@ export class JwtAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const authorization = request.headers.authorization;
     if (!authorization?.startsWith("Bearer ")) {
-      throw new UnauthorizedException("Authentication required");
+      throw new UnauthorizedException("Invalid or expired access token");
     }
 
     let userId: string;
@@ -47,7 +47,9 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     const user = await this.store.findById(userId);
-    if (!user) throw new UnauthorizedException("Invalid access token subject");
+    if (!user) {
+      throw new UnauthorizedException("Invalid or expired access token");
+    }
     request.authUser = user;
     return true;
   }
