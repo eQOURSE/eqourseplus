@@ -265,3 +265,28 @@ gcloud run services describe eqplus-api-staging `
 ```
 
 The request must return HTTP 200 with `{"status":"ok"}`.
+
+## 9. Configure the Vercel Production web environment
+
+The `eqourseplus-web` Vercel project requires all three of these variables in
+the **Production** environment:
+
+| Variable | Production value | Read by | Purpose |
+| --- | --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | The Cloud Run production URL | Browser code, inlined at build time | Used only for direct `register/request` and `otp/request` calls so the API receives the real client's device-fingerprint inputs |
+| `API_URL` | The same Cloud Run production URL | Next.js server only, at runtime | `apiFetch` calls from every `/api/auth/*` Route Handler |
+| `APP_URL` | `https://plus.eqourse.com` | Next.js server only, at runtime | Exact-origin allow-list for CSRF validation |
+
+Create these as Vercel **Config**, not Secret, values. They are public URLs, and
+`NEXT_PUBLIC_*` values are intentionally compiled into the browser bundle. Keep
+the localhost values in `.env.example` as development defaults; production
+values live in the Vercel Production environment.
+
+Enter every value with **no trailing slash**. The API's `CORS_ORIGINS` check and
+the web CSRF check compare exact origins, so a trailing slash fails the match.
+
+`NEXT_PUBLIC_*` variables are inlined at build time. Adding
+`NEXT_PUBLIC_API_URL` and choosing Vercel's **Redeploy** action on an existing
+deployment does not re-inline the value, even when the build cache is disabled.
+A fresh git-triggered build is required. `API_URL` and `APP_URL` are read at
+runtime and take effect immediately.
