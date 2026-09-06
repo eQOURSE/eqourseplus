@@ -74,6 +74,7 @@ jobs:
     env:
       CORS_ORIGINS: "http://localhost:3000"
       MAILER_PROVIDER: "sandbox"
+      SMS_PROVIDER: "sandbox"
     permissions:
       contents: read
       id-token: write
@@ -117,7 +118,7 @@ jobs:
           --port=8080
           --min-instances=0
           --allow-unauthenticated
-          --set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}"
+          --set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",SMS_PROVIDER="${SMS_PROVIDER}"
           --set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest
           --startup-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=0,timeoutSeconds=2,periodSeconds=5,failureThreshold=12
           --liveness-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=10,timeoutSeconds=2,periodSeconds=30,failureThreshold=3
@@ -148,6 +149,12 @@ jobs:
       CORS_ORIGINS: "https://plus.eqourse.com"
       MAILER_PROVIDER: "resend"
       OTP_EMAIL_FROM: ${{ vars.OTP_EMAIL_FROM }}
+      SMS_PROVIDER: "amazesms"
+      AMAZESMS_USER: ${{ vars.AMAZESMS_USER }}
+      AMAZESMS_SENDER: ${{ vars.AMAZESMS_SENDER }}
+      AMAZESMS_ENTITY_ID: ${{ vars.AMAZESMS_ENTITY_ID }}
+      AMAZESMS_TEMPLATE_ID: ${{ vars.AMAZESMS_TEMPLATE_ID }}
+      SMS_OTP_TEMPLATE: ${{ vars.SMS_OTP_TEMPLATE }}
     permissions:
       contents: read
       id-token: write
@@ -161,6 +168,26 @@ jobs:
           fi
           if [ -z "${OTP_EMAIL_FROM:-}" ]; then
             echo "::error::Missing required runtime configuration: OTP_EMAIL_FROM"
+            exit 1
+          fi
+          if [ -z "${AMAZESMS_USER:-}" ]; then
+            echo "::error::Missing required runtime configuration: AMAZESMS_USER"
+            exit 1
+          fi
+          if [ -z "${AMAZESMS_SENDER:-}" ]; then
+            echo "::error::Missing required runtime configuration: AMAZESMS_SENDER"
+            exit 1
+          fi
+          if [ -z "${AMAZESMS_ENTITY_ID:-}" ]; then
+            echo "::error::Missing required runtime configuration: AMAZESMS_ENTITY_ID"
+            exit 1
+          fi
+          if [ -z "${AMAZESMS_TEMPLATE_ID:-}" ]; then
+            echo "::error::Missing required runtime configuration: AMAZESMS_TEMPLATE_ID"
+            exit 1
+          fi
+          if [ -z "${SMS_OTP_TEMPLATE:-}" ]; then
+            echo "::error::Missing required runtime configuration: SMS_OTP_TEMPLATE"
             exit 1
           fi
 
@@ -186,8 +213,8 @@ jobs:
           --port=8080
           --min-instances=0
           --allow-unauthenticated
-          --set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}"
-          --set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest
+          --set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}",SMS_PROVIDER="${SMS_PROVIDER}",AMAZESMS_USER="${AMAZESMS_USER}",AMAZESMS_SENDER="${AMAZESMS_SENDER}",AMAZESMS_ENTITY_ID="${AMAZESMS_ENTITY_ID}",AMAZESMS_TEMPLATE_ID="${AMAZESMS_TEMPLATE_ID}",SMS_OTP_TEMPLATE="${SMS_OTP_TEMPLATE}"
+          --set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,AMAZESMS_AUTHKEY=AMAZESMS_AUTHKEY:latest
           --startup-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=0,timeoutSeconds=2,periodSeconds=5,failureThreshold=12
           --liveness-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=10,timeoutSeconds=2,periodSeconds=30,failureThreshold=3
           --quiet

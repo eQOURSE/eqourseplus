@@ -13,6 +13,7 @@ import {
   SandboxSmsAdapter,
   type MailerAdapter,
   type OtpDelivery,
+  type SmsAdapter,
   type SmsOtpDelivery,
 } from "@eqourse/adapters";
 import { BusinessUnit, ProfileState, Role } from "@eqourse/shared";
@@ -90,6 +91,20 @@ class ControllableMailerAdapter implements MailerAdapter {
   }
 }
 
+class ControllableSmsAdapter implements SmsAdapter {
+  readonly sandbox = new SandboxSmsAdapter(async () => undefined);
+  failure: Error | undefined;
+
+  get deliveries(): SmsOtpDelivery[] {
+    return this.sandbox.deliveries;
+  }
+
+  async sendOtp(delivery: SmsOtpDelivery): Promise<void> {
+    if (this.failure) throw this.failure;
+    await this.sandbox.sendOtp(delivery);
+  }
+}
+
 const require = createRequire(import.meta.url);
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const apiDirectory = path.resolve(testDirectory, "..");
@@ -100,7 +115,7 @@ describe("FR-REG-01 freelancer registration API", () => {
   let migrationClient: mongo.MongoClient;
   let db: mongo.Db;
   let mailer: ControllableMailerAdapter;
-  let sms: SandboxSmsAdapter;
+  let sms: ControllableSmsAdapter;
   let clock: MutableClock;
   let requestNumber = 0;
 
@@ -125,7 +140,7 @@ describe("FR-REG-01 freelancer registration API", () => {
     await migrateMongo.up(db, migrationClient);
 
     mailer = new ControllableMailerAdapter();
-    sms = new SandboxSmsAdapter(async () => undefined);
+    sms = new ControllableSmsAdapter();
     clock = new MutableClock();
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(MAILER_ADAPTER)
@@ -149,6 +164,7 @@ describe("FR-REG-01 freelancer registration API", () => {
     mailer.deliveries.length = 0;
     mailer.failure = undefined;
     sms.deliveries.length = 0;
+    sms.failure = undefined;
     clock.reset();
   });
 
@@ -626,6 +642,42 @@ describe("FR-REG-01 freelancer registration API", () => {
     expect(sms.deliveries).toHaveLength(0);
 
     mailer.failure = undefined;
+    const immediateRetry = await post(
+      "/api/v1/auth/register/request",
+      baseRegistration,
+    ).expect(409);
+    expect(immediateRetry.body.code).toBe("REGISTRATION_CONFLICT");
+    expect(JSON.stringify(immediateRetry.body)).not.toContain(
+      baseRegistration.email,
+    );
+    expect(await db.collection("users").countDocuments()).toBe(1);
+
+    clock.advance(10 * 60 * 1000 + 1);
+    await requestRegistration(baseRegistration);
+    const reclaimedRecord = await db.collection("users").findOne({
+      email: baseRegistration.email,
+    });
+    expect(reclaimedRecord?._id).toEqual(failedRecord?._id);
+    expect(await db.collection("users").countDocuments()).toBe(1);
+  });
+
+  it("pins partial delivery and the 10-minute lockout after SMS delivery fails", async () => {
+    sms.failure = new ServiceUnavailableException({
+      statusCode: 503,
+      error: "Service Unavailable",
+      code: "SMS_DELIVERY_UNAVAILABLE",
+      message: "SMS delivery is temporarily unavailable",
+    });
+
+    await post("/api/v1/auth/register/request", baseRegistration).expect(503);
+    const failedRecord = await db.collection("users").findOne({
+      email: baseRegistration.email,
+    });
+    expect(failedRecord).not.toBeNull();
+    expect(mailer.deliveries).toHaveLength(1);
+    expect(sms.deliveries).toHaveLength(0);
+
+    sms.failure = undefined;
     const immediateRetry = await post(
       "/api/v1/auth/register/request",
       baseRegistration,

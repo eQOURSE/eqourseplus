@@ -1,4 +1,4 @@
-# eQOURSE+ — SaaS Requirements Specification (SPEC.md) v2.12 — Global Edition
+# eQOURSE+ — SaaS Requirements Specification (SPEC.md) v2.13 — Global Edition
 > Workforce & Project Delivery Platform for eQOURSE (AI Data Services + Content Services) and Tutrain.
 > This file is the single source of truth for AI coding agents (Antigravity / Cursor / Claude Code / Kiro).
 > RULES FOR AGENTS: Implement only requirements listed here, by FR ID. Never invent endpoints, entities or
@@ -315,7 +315,7 @@ Rules: `phone` and `pan` uniqueness relies on sparse indexes **and** on the fiel
 
 ## 20. Deployment (no physical servers)
 Vercel (Next.js, plus.eqourse.com CNAME, PR previews = web staging) · GCP Cloud Run asia-south1 (NestJS API + future BullMQ workers; Node 22 LTS; Docker; staging + approval-gated prod services; Workload Identity Federation from GitHub Actions) · Upstash Redis · MongoDB Atlas · Cloudflare R2 (buckets: kyc-docs encrypted-private,
-project-assets, deliverables; pre-signed URLs) · Resend/SES + MSG91/WhatsApp Cloud · Auth0 or Keycloak ·
+project-assets, deliverables; pre-signed URLs) · Resend/SES + AmazeSMS/MSG91/WhatsApp Cloud · Auth0 or Keycloak ·
 GitHub Actions CI/CD (prod migrations manual-gated) · Secrets: Doppler → synced to Vercel/Railway; never in repo;
 per-env sandbox keys (all providers have sandboxes — staging uses them) · Sentry + BetterStack + Atlas alerts.
 

@@ -2,7 +2,6 @@ import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { JwtModule } from "@nestjs/jwt";
 import { ThrottlerModule } from "@nestjs/throttler";
-import { SandboxSmsAdapter } from "@eqourse/adapters";
 
 import {
   AUTH_CLOCK,
@@ -27,6 +26,7 @@ import { RegistrationService } from "./registration.service";
 import { DeviceFingerprintService } from "./device-fingerprint.service";
 import { RolesGuard } from "./roles.guard";
 import { createMailerAdapter } from "./resend-mailer.adapter";
+import { createSmsAdapter } from "./amazesms-sms.adapter";
 
 @Module({
   imports: [
@@ -54,8 +54,7 @@ import { createMailerAdapter } from "./resend-mailer.adapter";
     },
     {
       provide: SMS_ADAPTER,
-      useFactory: (): SandboxSmsAdapter =>
-        new SandboxSmsAdapter(async () => undefined),
+      useFactory: () => createSmsAdapter(process.env),
     },
     MongooseRegistrationStore,
     {
