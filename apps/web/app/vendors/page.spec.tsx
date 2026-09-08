@@ -125,6 +125,7 @@ describe("FR-PUB-04 vendors page", () => {
       const isChromeOrSourceLink = [
         "/",
         "/freelancers",
+        "/jobs",
         "/vendors",
         "/about",
         "https://www.eqourse.com/",

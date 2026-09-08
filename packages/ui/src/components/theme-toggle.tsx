@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-
+import { Sun, Moon } from "lucide-react"
 import {
   THEME_STORAGE_KEY,
   applyTheme,
@@ -66,11 +66,11 @@ export function ThemeToggle() {
       onClick={toggleTheme}
     >
       <span className="eq-theme-toggle__track" aria-hidden="true">
-        <span className="eq-theme-toggle__label eq-theme-toggle__label--light">
-          Light
+        <span className="eq-theme-toggle__label eq-theme-toggle__label--light ">
+          <Sun aria-hidden="true" />
         </span>
-        <span className="eq-theme-toggle__label eq-theme-toggle__label--dark">
-          Dark
+        <span className="eq-theme-toggle__label eq-theme-toggle__label--dark ">
+          <Moon aria-hidden="true" />
         </span>
         <span className="eq-theme-toggle__thumb" />
       </span>
