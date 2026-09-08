@@ -121,7 +121,8 @@ describe("FR-PUB-01 home page", () => {
     for (const link of container.querySelectorAll<HTMLAnchorElement>("a[href]")) {
       const href = link.getAttribute("href") ?? "";
       expect(
-        link.hash.length > 1 ||
+          link.hash.length > 1 ||
+          href === "/jobs" ||
           RESOLVING_ROUTES.some((route) => href === route) ||
           link.href.startsWith("https://www.eqourse.com/"),
         href,

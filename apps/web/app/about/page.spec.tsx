@@ -108,6 +108,7 @@ describe("FR-PUB-05 about page", () => {
           [
             "/",
             "/freelancers",
+            "/jobs",
             "/vendors",
             "/about",
             "https://www.eqourse.com/",
@@ -167,7 +168,9 @@ describe("FR-PUB-05 about page", () => {
     expect(blocks[0]?.parentOrganization).toEqual({
       "@id": "https://www.eqourse.com/#organization",
     });
-    expect(blocks[1]?.itemListElement.map((item: { name: string }) => item.name))
+    expect(
+      blocks[1]?.itemListElement.map((item: { name: string }) => item.name),
+    )
       .toEqual(["Home", "About"]);
   });
 

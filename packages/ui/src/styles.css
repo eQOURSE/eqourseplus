@@ -1094,6 +1094,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   align-items: center;
+  justify-content: center;
   width: 8rem;
   min-height: 2.5rem;
   padding: 0.25rem;
@@ -1125,6 +1126,9 @@
 
 .eq-theme-toggle__label {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   z-index: 2;
   font-family: var(--font-body);
   font-size: 0.75rem;
