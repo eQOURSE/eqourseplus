@@ -15,6 +15,7 @@ const pageSource = readFileSync(
 const APPROVED_LINKS = [
   "/",
   "/freelancers",
+  "/jobs",
   "/vendors",
   "/about",
   "/login",

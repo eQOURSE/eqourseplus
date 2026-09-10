@@ -27,6 +27,7 @@ type SiteNavigationProps = {
     | "home"
     | "freelancers"
     | "vendors"
+    | "jobs"
     | "about"
     | "login"
     | "register";
@@ -131,6 +132,10 @@ export function SiteFooter({ homeRegion = false }: SiteFooterProps) {
           aria-label="Visit eQOURSE"
         >
           Visit eQOURSE
+          <ArrowMark />
+        </a>
+        <a className="home-footer-link" href="/jobs">
+          Jobs
           <ArrowMark />
         </a>
       </div>

@@ -80,6 +80,7 @@ describe("FR-PUB-03 freelancers page", () => {
       const isChromeLink =
         href === "/" ||
         href === "/freelancers" ||
+        href === "/jobs" ||
         href === "/vendors" ||
         href === "/about" ||
         href === "https://www.eqourse.com/";

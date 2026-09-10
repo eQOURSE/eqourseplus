@@ -108,6 +108,7 @@ describe("FR-PUB-05 about page", () => {
           [
             "/",
             "/freelancers",
+            "/jobs",
             "/vendors",
             "/about",
             "https://www.eqourse.com/",
