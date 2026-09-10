@@ -12,6 +12,7 @@ import { ThrottlerGuard } from "@nestjs/throttler";
 import {
   registrationRequestSchema,
   registrationVerifySchema,
+  type RegistrationRequestAccepted,
   type RegistrationRequest,
   type RegistrationVerifyRequest,
 } from "@eqourse/shared";
@@ -46,14 +47,17 @@ export class RegistrationController {
   async requestRegistration(
     @Body(new ZodBodyPipe(registrationRequestSchema)) body: RegistrationRequest,
     @Req() request: FingerprintRequest,
-  ): Promise<{ status: "accepted" }> {
+  ): Promise<RegistrationRequestAccepted> {
     const fingerprintHash = this.fingerprints.hash({
       ip: request.ip ?? request.socket?.remoteAddress ?? "",
       userAgent: this.header(request, "user-agent"),
       acceptLanguage: this.header(request, "accept-language"),
     });
-    await this.registration.requestRegistration(body, fingerprintHash);
-    return { status: "accepted" };
+    const channels = await this.registration.requestRegistration(
+      body,
+      fingerprintHash,
+    );
+    return { status: "accepted", channels };
   }
 
   @Post("verify")

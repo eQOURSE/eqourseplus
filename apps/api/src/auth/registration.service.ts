@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
@@ -6,7 +7,11 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import type { MailerAdapter, SmsAdapter } from "@eqourse/adapters";
-import { ProfileState, type RegistrationRequest } from "@eqourse/shared";
+import {
+  ProfileState,
+  type RegistrationChannels,
+  type RegistrationRequest,
+} from "@eqourse/shared";
 import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 
 import type { AuthConfig } from "./auth.config";
@@ -43,10 +48,12 @@ export class RegistrationService {
   async requestRegistration(
     request: RegistrationRequest,
     fingerprintHash: string,
-  ): Promise<void> {
+  ): Promise<RegistrationChannels> {
     const now = this.clock.now();
     const emailCode = this.createCode();
-    const phoneCode = this.createCode();
+    const phoneCode = this.config.phoneVerificationRequired
+      ? this.createCode()
+      : undefined;
     const expiresAt = new Date(now.getTime() + this.config.otpTtlMilliseconds);
     const values: RegistrationValues = {
       email: request.email,
@@ -55,7 +62,16 @@ export class RegistrationService {
       ...(request.pan ? { pan: request.pan } : {}),
       profileState: ProfileState.DRAFT,
       emailChallenge: this.challenge("email", request.email, emailCode, expiresAt),
-      phoneChallenge: this.challenge("phone", request.phone, phoneCode, expiresAt),
+      ...(phoneCode
+        ? {
+            phoneChallenge: this.challenge(
+              "phone",
+              request.phone,
+              phoneCode,
+              expiresAt,
+            ),
+          }
+        : {}),
       deviceFingerprint: {
         hash: fingerprintHash,
         firstSeenAt: now,
@@ -105,35 +121,45 @@ export class RegistrationService {
       code: emailCode,
       expiresAt,
     });
-    await this.sms.sendOtp({
-      to: request.phone,
-      code: phoneCode,
-      expiresAt,
-    });
+    if (phoneCode) {
+      await this.sms.sendOtp({
+        to: request.phone,
+        code: phoneCode,
+        expiresAt,
+      });
+      return ["email", "phone"];
+    }
+    return ["email"];
   }
 
   async verifyRegistration(
     email: string,
     phone: string,
     emailCode: string,
-    phoneCode: string,
+    phoneCode?: string,
   ): Promise<TokenPair> {
+    if (this.config.phoneVerificationRequired !== (phoneCode !== undefined)) {
+      throw new BadRequestException(
+        "Verification codes do not match the required channels",
+      );
+    }
+
     const now = this.clock.now();
     const pending = await this.store.findPendingRegistration(email, phone);
     if (!pending) throw this.invalidCredentials();
 
     const emailDigest = this.digestOtp("email", email, emailCode);
-    const phoneDigest = this.digestOtp("phone", phone, phoneCode);
+    const phoneDigest = phoneCode
+      ? this.digestOtp("phone", phone, phoneCode)
+      : undefined;
     const emailValid = this.challengeMatches(
       pending.emailChallenge,
       emailDigest,
       now,
     );
-    const phoneValid = this.challengeMatches(
-      pending.phoneChallenge,
-      phoneDigest,
-      now,
-    );
+    const phoneValid = phoneDigest
+      ? this.challengeMatches(pending.phoneChallenge, phoneDigest, now)
+      : true;
     if (!emailValid || !phoneValid) {
       await this.store.recordFailedVerification(
         pending.id,

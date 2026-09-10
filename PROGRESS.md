@@ -19,7 +19,7 @@ Last completed FR: FR-PUB-02 jobs pages — 2026-09-10 — The `/jobs` listing a
 - [ ] FR-SEO-01 programmatic SEO engine (deferred — see HANDOFF watchlist)
 - [x] Manual (not code): GSC property + links from eqourse.com live (2026-07-30)
 ## Phase 2 — Freelancer onboarding (wk 5–8)
-- [x] FR-REG-01 freelancer sign-up (2026-08-05; email delivery completed 2026-09-05; SMS delivery completed 2026-09-07) — Dedicated dual-OTP API, sparse-unique migration, device-review flags, two-step `/register/freelancer` browser flow, production Resend email OTPs, and HTTPS-only AmazeSMS phone OTPs with configurable DLT text. Real-Mongo tests pin both persisted-before-send and partial-delivery ten-minute lockouts.
+- [x] FR-REG-01 freelancer sign-up (2026-08-05; email delivery completed 2026-09-05; SMS delivery completed 2026-09-07; phone verification made configurable 2026-09-10) — Email OTP is always required; phone OTP is server-configurable and defaults off while phone collection, E.164 validation and sparse uniqueness remain mandatory. `register/request` reports issued channels so the two-step `/register/freelancer` flow follows the API without a build-time flag. Production Resend and HTTPS-only AmazeSMS adapters remain available. Real-Mongo tests pin both modes, field-agnostic conflicts, persisted-before-send behavior, flag-flip rejection, and delivery lockouts.
 - [x] FR-REG-02A authenticated session transport (2026-09-04) — API session read plus same-origin web cookie transport, CSRF checks, refresh rotation/retry and server-side logout; proven against `GET /api/v1/auth/session`.
 - [ ] FR-REG-02  - [ ] FR-REG-03  - [ ] FR-REG-04  - [ ] FR-REG-05
 - [ ] FR-REG-06  - [ ] FR-REG-07  - [ ] FR-REG-11  - [ ] FR-REG-12  - [ ] FR-REG-14

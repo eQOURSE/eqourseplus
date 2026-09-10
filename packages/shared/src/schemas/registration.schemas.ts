@@ -31,10 +31,24 @@ export const registrationVerifySchema = z.strictObject({
   email: normalizedEmailSchema,
   phone: e164PhoneSchema,
   emailOtp: otpSchema,
-  phoneOtp: otpSchema,
+  phoneOtp: otpSchema.optional(),
+});
+
+export const registrationChannelsSchema = z.union([
+  z.tuple([z.literal("email")]),
+  z.tuple([z.literal("email"), z.literal("phone")]),
+]);
+
+export const registrationRequestAcceptedSchema = z.strictObject({
+  status: z.literal("accepted"),
+  channels: registrationChannelsSchema,
 });
 
 export type RegistrationRequest = z.infer<typeof registrationRequestSchema>;
 export type RegistrationVerifyRequest = z.infer<
   typeof registrationVerifySchema
+>;
+export type RegistrationChannels = z.infer<typeof registrationChannelsSchema>;
+export type RegistrationRequestAccepted = z.infer<
+  typeof registrationRequestAcceptedSchema
 >;
