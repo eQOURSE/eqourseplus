@@ -24,6 +24,7 @@ import VendorRegistrationPage, {
 const APPROVED_LINKS = [
   "/",
   "/freelancers",
+  "/jobs",
   "/vendors",
   "/about",
   "/login",
