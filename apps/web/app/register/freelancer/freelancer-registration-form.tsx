@@ -2,8 +2,10 @@
 
 import {
   e164PhoneSchema,
+  registrationRequestAcceptedSchema,
   registrationRequestSchema,
   registrationVerifySchema,
+  type RegistrationChannels,
   type RegistrationRequest,
 } from "@eqourse/shared";
 import {
@@ -56,6 +58,7 @@ export function FreelancerRegistrationForm() {
   const [pan, setPan] = useState("");
   const [emailOtp, setEmailOtp] = useState("");
   const [phoneOtp, setPhoneOtp] = useState("");
+  const [channels, setChannels] = useState<RegistrationChannels | null>(null);
   const [identity, setIdentity] = useState<Pick<
     RegistrationRequest,
     "email" | "phone"
@@ -158,7 +161,16 @@ export function FreelancerRegistrationForm() {
         return;
       }
 
+      const accepted = registrationRequestAcceptedSchema.safeParse(
+        await response.json(),
+      );
+      if (!accepted.success) {
+        setFormMessage("We could not send your verification codes. Try again.");
+        return;
+      }
+
       setIdentity({ email: result.data.email, phone: result.data.phone });
+      setChannels(accepted.data.channels);
       setPan("");
       setStep("verification");
     } catch {
@@ -176,7 +188,7 @@ export function FreelancerRegistrationForm() {
       email: identity?.email ?? "",
       phone: identity?.phone ?? "",
       emailOtp,
-      phoneOtp,
+      ...(channels?.[1] === "phone" ? { phoneOtp } : {}),
     });
     if (!result.success) {
       const nextErrors = errorsFromIssues(result.error.issues);
@@ -198,7 +210,9 @@ export function FreelancerRegistrationForm() {
       if (!response.ok) {
         setFormMessage(
           response.status === 401
-            ? "Those verification codes are invalid or have expired. Check both codes and try again."
+            ? channels?.[1] === "phone"
+              ? "Those verification codes are invalid or have expired. Check both codes and try again."
+              : "That verification code is invalid or has expired. Check the code and try again."
             : response.status === 429
               ? "Too many attempts. Wait a little, then try again."
               : "We could not verify your codes. Try again.",
@@ -228,6 +242,7 @@ export function FreelancerRegistrationForm() {
   function returnToDetails(): void {
     setEmailOtp("");
     setPhoneOtp("");
+    setChannels(null);
     setErrors({});
     setFormMessage("");
     setStep("details");
@@ -239,8 +254,10 @@ export function FreelancerRegistrationForm() {
         <p className="home-eyebrow">Freelancer registration</p>
         <h1 id="freelancer-register-title">Your account is created.</h1>
         <p className="freelancer-hero-copy">
-          Your email address and phone number are verified. Your account is
-          under review.
+          {channels?.[1] === "phone"
+            ? "Your email address and phone number are verified."
+            : "Your email address is verified."}{" "}
+          Your account is under review.
         </p>
         <div className="home-hero-actions">
           <a className="home-freelancer-link" href="/">
@@ -261,8 +278,10 @@ export function FreelancerRegistrationForm() {
       </h1>
       <p className="freelancer-hero-copy">
         {step === "details"
-          ? "Enter your details, then verify both your email address and phone number."
-          : "We sent a code to your email address and another to your phone."}
+          ? "Enter your details, then verify the contact channels we send."
+          : channels?.[1] === "phone"
+            ? "We sent a code to your email address and another to your phone."
+            : "We sent a code to your email address."}
       </p>
 
       {step === "details" ? (
@@ -425,33 +444,35 @@ export function FreelancerRegistrationForm() {
             ) : null}
           </div>
 
-          <div className="registration-field">
-            <label htmlFor="registration-phone-otp">Phone verification code</label>
-            <input
-              ref={phoneOtpRef}
-              id="registration-phone-otp"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              value={phoneOtp}
-              disabled={submitting}
-              aria-invalid={Boolean(errors.phoneOtp)}
-              aria-describedby={describedBy(
-                "registration-phone-otp-help",
-                "registration-phone-otp-error",
-                Boolean(errors.phoneOtp),
-              )}
-              onChange={(event) => setPhoneOtp(event.target.value)}
-            />
-            <p id="registration-phone-otp-help" className="registration-field-help">
-              Enter the six-digit code sent by text message.
-            </p>
-            {errors.phoneOtp ? (
-              <p id="registration-phone-otp-error" className="registration-field-error">
-                {errors.phoneOtp}
+          {channels?.[1] === "phone" ? (
+            <div className="registration-field">
+              <label htmlFor="registration-phone-otp">Phone verification code</label>
+              <input
+                ref={phoneOtpRef}
+                id="registration-phone-otp"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={phoneOtp}
+                disabled={submitting}
+                aria-invalid={Boolean(errors.phoneOtp)}
+                aria-describedby={describedBy(
+                  "registration-phone-otp-help",
+                  "registration-phone-otp-error",
+                  Boolean(errors.phoneOtp),
+                )}
+                onChange={(event) => setPhoneOtp(event.target.value)}
+              />
+              <p id="registration-phone-otp-help" className="registration-field-help">
+                Enter the six-digit code sent by text message.
               </p>
-            ) : null}
-          </div>
+              {errors.phoneOtp ? (
+                <p id="registration-phone-otp-error" className="registration-field-error">
+                  {errors.phoneOtp}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           <p className="registration-form-message" aria-live="polite">
             {formMessage}

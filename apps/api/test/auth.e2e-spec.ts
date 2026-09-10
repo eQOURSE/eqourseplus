@@ -383,6 +383,32 @@ describe("FR-FND-02 auth core", () => {
     expect(() => loadAuthConfig({})).toThrow(/JWT_SECRET/);
   });
 
+  it("defaults phone verification off and accepts only documented flag values", () => {
+    const environment = {
+      JWT_SECRET: "test-only-jwt-secret-at-least-32-characters",
+    };
+
+    expect(loadAuthConfig(environment).phoneVerificationRequired).toBe(false);
+    expect(
+      loadAuthConfig({
+        ...environment,
+        PHONE_VERIFICATION_REQUIRED: "true",
+      }).phoneVerificationRequired,
+    ).toBe(true);
+    expect(
+      loadAuthConfig({
+        ...environment,
+        PHONE_VERIFICATION_REQUIRED: "false",
+      }).phoneVerificationRequired,
+    ).toBe(false);
+    expect(() =>
+      loadAuthConfig({
+        ...environment,
+        PHONE_VERIFICATION_REQUIRED: "ture",
+      }),
+    ).toThrow("PHONE_VERIFICATION_REQUIRED must be true or false");
+  });
+
   it("delivers a single-use OTP through the sandbox mailer", async () => {
     await request(app.getHttpServer())
       .post("/api/v1/auth/otp/request")

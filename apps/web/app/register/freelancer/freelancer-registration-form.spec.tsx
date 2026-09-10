@@ -17,8 +17,10 @@ import { FreelancerRegistrationForm } from "./freelancer-registration-form";
 
 const fetchMock = vi.fn<typeof fetch>();
 
-function acceptedResponse(): Response {
-  return new Response(JSON.stringify({ status: "accepted" }), {
+function acceptedResponse(
+  channels: ["email"] | ["email", "phone"] = ["email", "phone"],
+): Response {
+  return new Response(JSON.stringify({ status: "accepted", channels }), {
     status: 202,
     headers: { "Content-Type": "application/json" },
   });
@@ -296,6 +298,38 @@ describe("FR-REG-01 freelancer registration form", () => {
     expect(window.sessionStorage).toHaveLength(0);
     expect(document.body).not.toHaveTextContent("secret-access");
     expect(document.body).not.toHaveTextContent("secret-refresh");
+  });
+
+  it("renders and submits only the email code when only email was issued", async () => {
+    fetchMock
+      .mockResolvedValueOnce(acceptedResponse(["email"]))
+      .mockResolvedValueOnce(tokenResponse());
+    await renderReadyForm();
+    await submitValidDetails();
+
+    expect(screen.getByLabelText("Email verification code")).toBeVisible();
+    expect(screen.queryByLabelText("Phone verification code")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Email verification code"), {
+      target: { value: "123456" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Verify and create account" }),
+    );
+
+    await screen.findByRole("heading", { name: "Your account is created." });
+    expect(fetchMock.mock.calls[1]).toEqual([
+      "/api/auth/register/verify",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "person@example.com",
+          phone: "+14155552671",
+          emailOtp: "123456",
+        }),
+      },
+    ]);
+    expect(screen.getByText(/email address is verified/i)).toBeVisible();
   });
 
   it("keeps verification active after an unauthorized response", async () => {
