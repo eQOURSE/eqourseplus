@@ -1,6 +1,6 @@
 import { GlassNav } from "@eqourse/ui";
-
 import { PublicThemeToggle } from "./public-client-islands";
+import { MobileNavigation } from "./mobile-navigation";
 
 export function ArrowMark() {
   return (
@@ -35,7 +35,6 @@ type SiteNavigationProps = {
 
 export function SiteNavigation({ page }: SiteNavigationProps) {
   const isHome = page === "home";
-
   return (
     <div className="home-nav-wrap">
       <GlassNav
@@ -47,12 +46,12 @@ export function SiteNavigation({ page }: SiteNavigationProps) {
           Primary navigation
         </span>
         <a
-          className="home-wordmark home-nav-link"
+          className="home-wordmark home-nav-link !items-baseline"
           href={isHome ? "#hero" : "/"}
         >
-          eQOURSE<span aria-hidden="true">+</span>
+          eQOURSE<span aria-hidden="true" className=" font-bold !text-3xl">+</span>
         </a>
-        <div className="home-nav-links">
+        <MobileNavigation actions={<PublicThemeToggle />}>
           {isHome ? (
             <>
               <a className="home-nav-link" href="#how-it-works">
@@ -99,8 +98,7 @@ export function SiteNavigation({ page }: SiteNavigationProps) {
               </a>
             </>
           )}
-        </div>
-        <PublicThemeToggle />
+        </MobileNavigation>
       </GlassNav>
     </div>
   );
