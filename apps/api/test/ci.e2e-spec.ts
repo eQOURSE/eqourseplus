@@ -268,7 +268,7 @@ describe("FR-FND-05 API deployment", () => {
     );
   });
 
-  it("keeps staging SMS sandboxed and configures production AmazeSMS explicitly", () => {
+  it("keeps the SMS port sandboxed in staging and production", () => {
     const workflow = readFileSync(workflowPath, "utf8");
     const stagingJob = workflow.slice(
       workflow.indexOf("  staging-deploy:"),
@@ -279,24 +279,12 @@ describe("FR-FND-05 API deployment", () => {
     );
 
     expect(stagingJob).toContain('SMS_PROVIDER: "sandbox"');
-    expect(stagingJob).not.toContain("AMAZESMS_AUTHKEY=AMAZESMS_AUTHKEY:latest");
-
-    expect(productionJob).toContain('SMS_PROVIDER: "amazesms"');
-    for (const variable of [
-      "AMAZESMS_USER",
-      "AMAZESMS_SENDER",
-      "AMAZESMS_ENTITY_ID",
-      "AMAZESMS_TEMPLATE_ID",
-      "SMS_OTP_TEMPLATE",
-    ]) {
-      expect(productionJob).toContain(`${variable}: \${{ vars.${variable} }}`);
-      expect(productionJob).toContain(
-        `Missing required runtime configuration: ${variable}`,
-      );
-      expect(productionJob).toContain(`${variable}="\${${variable}}"`);
-    }
+    expect(productionJob).toContain('SMS_PROVIDER: "sandbox"');
     expect(productionJob).toContain(
-      "AMAZESMS_AUTHKEY=AMAZESMS_AUTHKEY:latest",
+      '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}",SMS_PROVIDER="${SMS_PROVIDER}"',
+    );
+    expect(productionJob).toContain(
+      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest",
     );
   });
 
@@ -326,16 +314,6 @@ describe("FR-FND-05 API deployment", () => {
     expect(runbook).toContain("CORS_ORIGINS");
     expect(runbook).toContain("RESEND_API_KEY");
     expect(runbook).toContain("OTP_EMAIL_FROM");
-    expect(runbook).toContain("SMS_PROVIDER");
-    expect(runbook).toContain("AMAZESMS_USER");
-    expect(runbook).toContain("AMAZESMS_AUTHKEY");
-    expect(runbook).toContain("AMAZESMS_SENDER");
-    expect(runbook).toContain("AMAZESMS_ENTITY_ID");
-    expect(runbook).toContain("AMAZESMS_TEMPLATE_ID");
-    expect(runbook).toContain("SMS_OTP_TEMPLATE");
-    expect(runbook).toContain("https://amazesms.in/api/pushsms");
-    expect(runbook).toMatch(/first real send[\s\S]+https[\s\S]+STOP/i);
-    expect(runbook).toMatch(/never[\s\S]+fall back[\s\S]+plaintext/i);
     expect(runbook).toMatch(/SPF[\s\S]+DKIM[\s\S]+DMARC/i);
     expect(runbook).toMatch(/GoDaddy[\s\S]+add-only/i);
     expect(runbook).toMatch(/Google Workspace MX/i);

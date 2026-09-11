@@ -9,7 +9,6 @@ import {
   AUTH_STORE,
   MAILER_ADAPTER,
   REGISTRATION_STORE,
-  SMS_ADAPTER,
 } from "./auth.constants";
 import { loadAuthConfig } from "./auth.config";
 import { AuthController } from "./auth.controller";
@@ -20,13 +19,11 @@ import { JwtTokenService } from "./jwt-token.service";
 import { MongooseAuthStore } from "./mongoose-auth.store";
 import { MongooseRegistrationStore } from "./mongoose-registration.store";
 import { OtpIdentifierRateLimitGuard } from "./otp-identifier-rate-limit.guard";
-import { PhoneOtpIdentifierRateLimitGuard } from "./phone-otp-identifier-rate-limit.guard";
 import { RegistrationController } from "./registration.controller";
 import { RegistrationService } from "./registration.service";
 import { DeviceFingerprintService } from "./device-fingerprint.service";
 import { RolesGuard } from "./roles.guard";
 import { createMailerAdapter } from "./resend-mailer.adapter";
-import { createSmsAdapter } from "./amazesms-sms.adapter";
 
 @Module({
   imports: [
@@ -52,10 +49,6 @@ import { createSmsAdapter } from "./amazesms-sms.adapter";
       provide: MAILER_ADAPTER,
       useFactory: () => createMailerAdapter(process.env),
     },
-    {
-      provide: SMS_ADAPTER,
-      useFactory: () => createSmsAdapter(process.env),
-    },
     MongooseRegistrationStore,
     {
       provide: REGISTRATION_STORE,
@@ -63,7 +56,6 @@ import { createSmsAdapter } from "./amazesms-sms.adapter";
     },
     InMemoryAuthRateLimitStore,
     OtpIdentifierRateLimitGuard,
-    PhoneOtpIdentifierRateLimitGuard,
     DeviceFingerprintService,
     JwtTokenService,
     AuthService,

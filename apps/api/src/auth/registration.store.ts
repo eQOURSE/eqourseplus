@@ -11,7 +11,6 @@ export interface RegistrationValues {
   pan?: string;
   profileState: ProfileState;
   emailChallenge: OtpChallenge;
-  phoneChallenge?: OtpChallenge;
   deviceFingerprint: {
     hash: string;
     firstSeenAt: Date;
@@ -22,7 +21,6 @@ export interface RegistrationValues {
 export interface PendingRegistration {
   id: string;
   emailChallenge?: OtpChallenge;
-  phoneChallenge?: OtpChallenge;
 }
 
 export type RegistrationWriteResult =
@@ -52,14 +50,12 @@ export interface RegistrationStore {
   completeRegistration(
     userId: string,
     emailDigest: string,
-    phoneDigest: string | undefined,
     session: RefreshSession,
     now: Date,
   ): Promise<boolean>;
   recordFailedVerification(
     userId: string,
     emailFailed: boolean,
-    phoneFailed: boolean,
     now: Date,
     maxWrongAttempts: number,
   ): Promise<void>;

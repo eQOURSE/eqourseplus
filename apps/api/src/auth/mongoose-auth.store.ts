@@ -210,10 +210,6 @@ export class MongooseAuthStore implements AuthStore {
         profileState === undefined || profileState === null
           ? ProfileState.DRAFT
           : profileState,
-      ...(user.phone ? { phone: user.phone } : {}),
-      ...(user.phoneVerifiedAt !== undefined
-        ? { phoneVerifiedAt: user.phoneVerifiedAt }
-        : {}),
       roleAssignments: user.roleAssignments.map((assignment) => ({
         role: assignment.role,
         businessUnit: assignment.businessUnit,

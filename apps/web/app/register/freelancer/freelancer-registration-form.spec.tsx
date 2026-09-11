@@ -17,10 +17,8 @@ import { FreelancerRegistrationForm } from "./freelancer-registration-form";
 
 const fetchMock = vi.fn<typeof fetch>();
 
-function acceptedResponse(
-  channels: ["email"] | ["email", "phone"] = ["email", "phone"],
-): Response {
-  return new Response(JSON.stringify({ status: "accepted", channels }), {
+function acceptedResponse(): Response {
+  return new Response(JSON.stringify({ status: "accepted", channels: ["email"] }), {
     status: 202,
     headers: { "Content-Type": "application/json" },
   });
@@ -49,9 +47,9 @@ async function submitValidDetails(countryCode = "US"): Promise<void> {
     target: { value: " +14155552671 " },
   });
   fireEvent.click(
-    screen.getByRole("button", { name: "Send verification codes" }),
+    screen.getByRole("button", { name: "Send verification code" }),
   );
-  await screen.findByRole("heading", { name: "Verification codes" });
+  await screen.findByRole("heading", { name: "Verification code" });
 }
 
 beforeEach(() => {
@@ -154,7 +152,7 @@ describe("FR-REG-01 freelancer registration form", () => {
       target: { value: "4155552671" },
     });
     fireEvent.click(
-      screen.getByRole("button", { name: "Send verification codes" }),
+      screen.getByRole("button", { name: "Send verification code" }),
     );
 
     expect(await screen.findByText("Enter a valid email address.")).toBeVisible();
@@ -170,7 +168,7 @@ describe("FR-REG-01 freelancer registration form", () => {
     await renderReadyForm();
     const country = screen.getByLabelText("Country");
     fireEvent.click(
-      screen.getByRole("button", { name: "Send verification codes" }),
+      screen.getByRole("button", { name: "Send verification code" }),
     );
 
     expect(await screen.findByText("Choose your country.")).toBeVisible();
@@ -203,10 +201,10 @@ describe("FR-REG-01 freelancer registration form", () => {
       target: { value: " abcde1234f " },
     });
     fireEvent.click(
-      screen.getByRole("button", { name: "Send verification codes" }),
+      screen.getByRole("button", { name: "Send verification code" }),
     );
 
-    await screen.findByRole("heading", { name: "Verification codes" });
+    await screen.findByRole("heading", { name: "Verification code" });
     const [url, options] = fetchMock.mock.calls[0] ?? [];
     expect(url).toBe("https://api.eqourse.test/api/v1/auth/register/request");
     expect(options).toMatchObject({
@@ -252,7 +250,7 @@ describe("FR-REG-01 freelancer registration form", () => {
       target: { value: "+14155552671" },
     });
     fireEvent.click(
-      screen.getByRole("button", { name: "Send verification codes" }),
+      screen.getByRole("button", { name: "Send verification code" }),
     );
 
     const message = await screen.findByText(
@@ -262,7 +260,7 @@ describe("FR-REG-01 freelancer registration form", () => {
     expect(message.textContent).not.toMatch(/phone|PAN/i);
   });
 
-  it("posts both OTPs together and shows confirmation without persisting tokens", async () => {
+  it("posts the email OTP and shows confirmation without persisting tokens", async () => {
     fetchMock
       .mockResolvedValueOnce(acceptedResponse())
       .mockResolvedValueOnce(tokenResponse());
@@ -270,9 +268,6 @@ describe("FR-REG-01 freelancer registration form", () => {
     await submitValidDetails();
     fireEvent.change(screen.getByLabelText("Email verification code"), {
       target: { value: "123456" },
-    });
-    fireEvent.change(screen.getByLabelText("Phone verification code"), {
-      target: { value: "654321" },
     });
     fireEvent.click(
       screen.getByRole("button", { name: "Verify and create account" }),
@@ -290,7 +285,6 @@ describe("FR-REG-01 freelancer registration form", () => {
           email: "person@example.com",
           phone: "+14155552671",
           emailOtp: "123456",
-          phoneOtp: "654321",
         }),
       },
     ]);
@@ -302,7 +296,7 @@ describe("FR-REG-01 freelancer registration form", () => {
 
   it("renders and submits only the email code when only email was issued", async () => {
     fetchMock
-      .mockResolvedValueOnce(acceptedResponse(["email"]))
+      .mockResolvedValueOnce(acceptedResponse())
       .mockResolvedValueOnce(tokenResponse());
     await renderReadyForm();
     await submitValidDetails();
@@ -341,19 +335,16 @@ describe("FR-REG-01 freelancer registration form", () => {
     fireEvent.change(screen.getByLabelText("Email verification code"), {
       target: { value: "123456" },
     });
-    fireEvent.change(screen.getByLabelText("Phone verification code"), {
-      target: { value: "654321" },
-    });
     fireEvent.click(
       screen.getByRole("button", { name: "Verify and create account" }),
     );
 
     expect(
       await screen.findByText(
-        "Those verification codes are invalid or have expired. Check both codes and try again.",
+        "That verification code is invalid or has expired. Check the code and try again.",
       ),
     ).toBeVisible();
-    expect(screen.getByRole("heading", { name: "Verification codes" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Verification code" })).toBeVisible();
     expect(
       screen.queryByRole("heading", { name: "Your account is created." }),
     ).toBeNull();
@@ -375,10 +366,10 @@ describe("FR-REG-01 freelancer registration form", () => {
       target: { value: "ABCDE1234F" },
     });
     fireEvent.click(
-      screen.getByRole("button", { name: "Send verification codes" }),
+      screen.getByRole("button", { name: "Send verification code" }),
     );
 
-    await screen.findByRole("heading", { name: "Verification codes" });
+    await screen.findByRole("heading", { name: "Verification code" });
     expect(screen.queryByText(/PAN/i)).toBeNull();
     expect(document.body).not.toHaveTextContent("ABCDE1234F");
   });

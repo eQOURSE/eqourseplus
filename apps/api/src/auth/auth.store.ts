@@ -17,8 +17,6 @@ export interface StoredUser {
   id: string;
   email: string;
   profileState: ProfileState;
-  phone?: string;
-  phoneVerifiedAt?: Date | null;
   roleAssignments: RoleAssignment[];
   otpChallenge?: OtpChallenge;
   refreshSessions: RefreshSession[];

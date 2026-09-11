@@ -285,7 +285,6 @@ describe("FR-REG-02A same-origin session transport", () => {
           email: "person@example.com",
           phone: "+14155552671",
           emailOtp: "123456",
-          phoneOtp: "654321",
         }),
       }),
     );
@@ -324,7 +323,6 @@ describe("FR-REG-02A same-origin session transport", () => {
           email: "person@example.com",
           phone: "+14155552671",
           emailOtp: "123456",
-          phoneOtp: "654321",
         }),
       }),
     );

@@ -1,12 +1,11 @@
 import {
-  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
   Logger,
   UnauthorizedException,
 } from "@nestjs/common";
-import type { MailerAdapter, SmsAdapter } from "@eqourse/adapters";
+import type { MailerAdapter } from "@eqourse/adapters";
 import {
   ProfileState,
   type RegistrationChannels,
@@ -21,7 +20,6 @@ import {
   MAILER_ADAPTER,
   OTP_MAX_WRONG_ATTEMPTS,
   REGISTRATION_STORE,
-  SMS_ADAPTER,
 } from "./auth.constants";
 import type { OtpChallenge } from "./auth.store";
 import type { AuthClock, TokenPair } from "./auth.types";
@@ -39,7 +37,6 @@ export class RegistrationService {
   constructor(
     @Inject(REGISTRATION_STORE) private readonly store: RegistrationStore,
     @Inject(MAILER_ADAPTER) private readonly mailer: MailerAdapter,
-    @Inject(SMS_ADAPTER) private readonly sms: SmsAdapter,
     @Inject(AUTH_CONFIG) private readonly config: AuthConfig,
     @Inject(AUTH_CLOCK) private readonly clock: AuthClock,
     @Inject(JwtTokenService) private readonly tokens: JwtTokenService,
@@ -51,9 +48,6 @@ export class RegistrationService {
   ): Promise<RegistrationChannels> {
     const now = this.clock.now();
     const emailCode = this.createCode();
-    const phoneCode = this.config.phoneVerificationRequired
-      ? this.createCode()
-      : undefined;
     const expiresAt = new Date(now.getTime() + this.config.otpTtlMilliseconds);
     const values: RegistrationValues = {
       email: request.email,
@@ -62,16 +56,6 @@ export class RegistrationService {
       ...(request.pan ? { pan: request.pan } : {}),
       profileState: ProfileState.DRAFT,
       emailChallenge: this.challenge("email", request.email, emailCode, expiresAt),
-      ...(phoneCode
-        ? {
-            phoneChallenge: this.challenge(
-              "phone",
-              request.phone,
-              phoneCode,
-              expiresAt,
-            ),
-          }
-        : {}),
       deviceFingerprint: {
         hash: fingerprintHash,
         firstSeenAt: now,
@@ -121,14 +105,6 @@ export class RegistrationService {
       code: emailCode,
       expiresAt,
     });
-    if (phoneCode) {
-      await this.sms.sendOtp({
-        to: request.phone,
-        code: phoneCode,
-        expiresAt,
-      });
-      return ["email", "phone"];
-    }
     return ["email"];
   }
 
@@ -136,35 +112,21 @@ export class RegistrationService {
     email: string,
     phone: string,
     emailCode: string,
-    phoneCode?: string,
   ): Promise<TokenPair> {
-    if (this.config.phoneVerificationRequired !== (phoneCode !== undefined)) {
-      throw new BadRequestException(
-        "Verification codes do not match the required channels",
-      );
-    }
-
     const now = this.clock.now();
     const pending = await this.store.findPendingRegistration(email, phone);
     if (!pending) throw this.invalidCredentials();
 
     const emailDigest = this.digestOtp("email", email, emailCode);
-    const phoneDigest = phoneCode
-      ? this.digestOtp("phone", phone, phoneCode)
-      : undefined;
     const emailValid = this.challengeMatches(
       pending.emailChallenge,
       emailDigest,
       now,
     );
-    const phoneValid = phoneDigest
-      ? this.challengeMatches(pending.phoneChallenge, phoneDigest, now)
-      : true;
-    if (!emailValid || !phoneValid) {
+    if (!emailValid) {
       await this.store.recordFailedVerification(
         pending.id,
         !emailValid,
-        !phoneValid,
         now,
         OTP_MAX_WRONG_ATTEMPTS,
       );
@@ -175,7 +137,6 @@ export class RegistrationService {
     const completed = await this.store.completeRegistration(
       pending.id,
       emailDigest,
-      phoneDigest,
       issued.refreshSession,
       now,
     );
@@ -187,7 +148,7 @@ export class RegistrationService {
   }
 
   private challenge(
-    kind: "email" | "phone",
+    kind: "email",
     identifier: string,
     code: string,
     expiresAt: Date,
@@ -211,7 +172,7 @@ export class RegistrationService {
   }
 
   private digestOtp(
-    kind: "email" | "phone",
+    kind: "email",
     identifier: string,
     code: string,
   ): string {

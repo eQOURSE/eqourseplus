@@ -10,11 +10,8 @@ import {
 import { Test } from "@nestjs/testing";
 import {
   SandboxMailerAdapter,
-  SandboxSmsAdapter,
   type MailerAdapter,
   type OtpDelivery,
-  type SmsAdapter,
-  type SmsOtpDelivery,
 } from "@eqourse/adapters";
 import { BusinessUnit, ProfileState, Role } from "@eqourse/shared";
 import { MongoMemoryServer } from "mongodb-memory-server";
@@ -24,13 +21,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { AppModule } from "../src/app.module";
 import {
-  AUTH_CONFIG,
   AUTH_CLOCK,
   AUTH_STORE,
   MAILER_ADAPTER,
-  SMS_ADAPTER,
 } from "../src/auth/auth.constants";
-import type { AuthConfig } from "../src/auth/auth.config";
 import type { AuthStore } from "../src/auth/auth.store";
 import { UserModel } from "../src/auth/user.schema";
 
@@ -93,20 +87,6 @@ class ControllableMailerAdapter implements MailerAdapter {
   }
 }
 
-class ControllableSmsAdapter implements SmsAdapter {
-  readonly sandbox = new SandboxSmsAdapter(async () => undefined);
-  failure: Error | undefined;
-
-  get deliveries(): SmsOtpDelivery[] {
-    return this.sandbox.deliveries;
-  }
-
-  async sendOtp(delivery: SmsOtpDelivery): Promise<void> {
-    if (this.failure) throw this.failure;
-    await this.sandbox.sendOtp(delivery);
-  }
-}
-
 const require = createRequire(import.meta.url);
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const apiDirectory = path.resolve(testDirectory, "..");
@@ -117,9 +97,7 @@ describe("FR-REG-01 freelancer registration API", () => {
   let migrationClient: mongo.MongoClient;
   let db: mongo.Db;
   let mailer: ControllableMailerAdapter;
-  let sms: ControllableSmsAdapter;
   let clock: MutableClock;
-  let authConfig: AuthConfig;
   let requestNumber = 0;
 
   const baseRegistration = {
@@ -143,18 +121,14 @@ describe("FR-REG-01 freelancer registration API", () => {
     await migrateMongo.up(db, migrationClient);
 
     mailer = new ControllableMailerAdapter();
-    sms = new ControllableSmsAdapter();
     clock = new MutableClock();
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(MAILER_ADAPTER)
       .useValue(mailer)
-      .overrideProvider(SMS_ADAPTER)
-      .useValue(sms)
       .overrideProvider(AUTH_CLOCK)
       .useValue({ now: () => clock.now })
       .compile();
 
-    authConfig = moduleRef.get<AuthConfig>(AUTH_CONFIG);
     app = moduleRef.createNestApplication();
     const express = app.getHttpAdapter().getInstance() as {
       set(setting: string, value: boolean): void;
@@ -167,10 +141,7 @@ describe("FR-REG-01 freelancer registration API", () => {
     await db.collection("users").deleteMany({});
     mailer.deliveries.length = 0;
     mailer.failure = undefined;
-    sms.deliveries.length = 0;
-    sms.failure = undefined;
     clock.reset();
-    authConfig.phoneVerificationRequired = true;
   });
 
   afterAll(async () => {
@@ -201,37 +172,29 @@ describe("FR-REG-01 freelancer registration API", () => {
   ): Promise<void> {
     await post("/api/v1/auth/register/request", body, ip).expect(202, {
       status: "accepted",
-      channels: ["email", "phone"],
+      channels: ["email"],
     });
   }
 
-  function codesFor(email: string, phone: string): {
-    emailOtp: string;
-    phoneOtp: string;
-  } {
+  function codeFor(email: string): string {
     const emailDelivery = mailer.deliveries.findLast((item) => item.to === email);
-    const phoneDelivery = sms.deliveries.findLast(
-      (item: SmsOtpDelivery) => item.to === phone,
-    );
-    if (!emailDelivery || !phoneDelivery) throw new Error("Missing OTP delivery");
-    return { emailOtp: emailDelivery.code, phoneOtp: phoneDelivery.code };
+    if (!emailDelivery) throw new Error("Missing OTP delivery");
+    return emailDelivery.code;
   }
 
   async function verifyRegistration(
     body: RegistrationInput = baseRegistration,
   ): Promise<TokenPair> {
-    const codes = codesFor(body.email, body.phone);
     const response = await post("/api/v1/auth/register/verify", {
       email: body.email,
       phone: body.phone,
-      ...codes,
+      emailOtp: codeFor(body.email),
     }).expect(200);
     expect(response.headers["cache-control"]).toContain("no-store");
     return response.body as TokenPair;
   }
 
-  it("defaults to email-only issuance without creating a phone challenge", async () => {
-    authConfig.phoneVerificationRequired = false;
+  it("issues email OTP only while preserving the required phone", async () => {
     const registration = {
       ...baseRegistration,
       email: "email-only-request@example.com",
@@ -245,18 +208,15 @@ describe("FR-REG-01 freelancer registration API", () => {
     });
 
     expect(mailer.deliveries).toHaveLength(1);
-    expect(sms.deliveries).toHaveLength(0);
     const stored = await db.collection("users").findOne({
       email: registration.email,
     });
     expect(stored?.phone).toBe(registration.phone);
-    expect(stored?.phoneVerifiedAt).toBeNull();
+    expect(stored).not.toHaveProperty("phoneVerifiedAt");
     expect(stored).toHaveProperty("otpChallenge");
-    expect(stored).not.toHaveProperty("phoneOtpChallenge");
   });
 
-  it("completes an email-only registration while leaving phone unverified", async () => {
-    authConfig.phoneVerificationRequired = false;
+  it("completes an email-only registration without populating phone verification", async () => {
     const registration = {
       ...baseRegistration,
       email: "email-only-complete@example.com",
@@ -277,14 +237,12 @@ describe("FR-REG-01 freelancer registration API", () => {
       email: registration.email,
     });
     expect(stored?.phone).toBe(registration.phone);
-    expect(stored?.phoneVerifiedAt).toBeNull();
+    expect(stored).not.toHaveProperty("phoneVerifiedAt");
     expect(stored?.refreshSessions).toHaveLength(1);
     expect(stored).not.toHaveProperty("otpChallenge");
-    expect(stored).not.toHaveProperty("phoneOtpChallenge");
   });
 
-  it("rejects phoneOtp when phone verification is disabled", async () => {
-    authConfig.phoneVerificationRequired = false;
+  it("always rejects a supplied phoneOtp", async () => {
     const registration = {
       ...baseRegistration,
       email: "email-only-reject@example.com",
@@ -303,76 +261,12 @@ describe("FR-REG-01 freelancer registration API", () => {
     const stored = await db.collection("users").findOne({
       email: registration.email,
     });
-    expect(stored?.phoneVerifiedAt).toBeNull();
+    expect(stored).not.toHaveProperty("phoneVerifiedAt");
     expect(stored?.refreshSessions).toEqual([]);
     expect(stored).toHaveProperty("otpChallenge");
   });
 
-  it("cleanly rejects an in-flight dual-OTP verification after the flag is disabled", async () => {
-    const registration = {
-      ...baseRegistration,
-      email: "in-flight-toggle@example.com",
-      phone: "+919876543224",
-      pan: "TOGGLE0001A",
-    };
-    await requestRegistration(registration);
-    const codes = codesFor(registration.email, registration.phone);
-    authConfig.phoneVerificationRequired = false;
-
-    await post("/api/v1/auth/register/verify", {
-      email: registration.email,
-      phone: registration.phone,
-      ...codes,
-    }).expect(400);
-
-    const stored = await db.collection("users").findOne({
-      email: registration.email,
-    });
-    expect(stored?.phoneVerifiedAt).toBeNull();
-    expect(stored?.refreshSessions).toEqual([]);
-    expect(stored).toHaveProperty("otpChallenge");
-    expect(stored).toHaveProperty("phoneOtpChallenge");
-
-    clock.advance(10 * 60 * 1000 + 1);
-    await post("/api/v1/auth/register/request", registration).expect(202, {
-      status: "accepted",
-      channels: ["email"],
-    });
-    const reclaimed = await db.collection("users").findOne({
-      email: registration.email,
-    });
-    expect(reclaimed).toHaveProperty("otpChallenge");
-    expect(reclaimed).not.toHaveProperty("phoneOtpChallenge");
-  });
-
-  it("continues to require phoneOtp when phone verification is enabled", async () => {
-    const registration = {
-      ...baseRegistration,
-      email: "dual-otp-required@example.com",
-      phone: "+919876543226",
-      pan: "DUALOTP001A",
-    };
-    await requestRegistration(registration);
-
-    await post("/api/v1/auth/register/verify", {
-      email: registration.email,
-      phone: registration.phone,
-      emailOtp: mailer.deliveries.findLast(
-        (delivery) => delivery.to === registration.email,
-      )?.code,
-    }).expect(400);
-
-    const stored = await db.collection("users").findOne({
-      email: registration.email,
-    });
-    expect(stored?.phoneVerifiedAt).toBeNull();
-    expect(stored?.refreshSessions).toEqual([]);
-    expect(stored).toHaveProperty("otpChallenge");
-    expect(stored).toHaveProperty("phoneOtpChallenge");
-  });
-
-  it("keeps phone uniqueness field-agnostic when phone verification is disabled", async () => {
-    authConfig.phoneVerificationRequired = false;
+  it("keeps phone uniqueness field-agnostic", async () => {
     const registration = {
       ...baseRegistration,
       email: "email-only-unique@example.com",
@@ -392,56 +286,67 @@ describe("FR-REG-01 freelancer registration API", () => {
     expect(JSON.stringify(response.body)).not.toContain(registration.phone);
   });
 
-  it("creates a DRAFT user with countryCode and issues tokens only after both OTPs verify", async () => {
+  it("creates a DRAFT user and issues tokens only after email OTP verifies", async () => {
     await requestRegistration();
     let stored = await db.collection("users").findOne({ email: baseRegistration.email });
     expect(stored).toMatchObject({
       countryCode: "IN",
       profileState: ProfileState.DRAFT,
-      phoneVerifiedAt: null,
     });
+    expect(stored).not.toHaveProperty("phoneVerifiedAt");
     expect(stored?.refreshSessions).toEqual([]);
 
     const tokens = await verifyRegistration();
     expect(tokens.accessToken).toEqual(expect.any(String));
     expect(tokens.refreshToken).toEqual(expect.any(String));
     stored = await db.collection("users").findOne({ email: baseRegistration.email });
-    expect(stored?.phoneVerifiedAt).toEqual(clock.now);
+    expect(stored).not.toHaveProperty("phoneVerifiedAt");
     expect(stored?.refreshSessions).toHaveLength(1);
     expect(stored).not.toHaveProperty("otpChallenge");
-    expect(stored).not.toHaveProperty("phoneOtpChallenge");
   });
 
-  it("does not issue tokens when only the email OTP is valid", async () => {
-    await requestRegistration();
-    const codes = codesFor(baseRegistration.email, baseRegistration.phone);
-    await post("/api/v1/auth/register/verify", {
-      email: baseRegistration.email,
-      phone: baseRegistration.phone,
-      emailOtp: codes.emailOtp,
-      phoneOtp: "000000",
-    }).expect(401);
-    expect((await db.collection("users").findOne({}))?.refreshSessions).toEqual([]);
-  });
+  it("ignores and preserves legacy phone-verification fields without migration", async () => {
+    const registration = {
+      ...baseRegistration,
+      email: "legacy-phone-fields@example.com",
+      phone: "+919876543224",
+      pan: "LEGACY0001A",
+    };
+    await requestRegistration(registration);
+    const legacyChallenge = {
+      digest: "legacy-phone-digest",
+      expiresAt: new Date("2026-08-04T10:05:00.000Z"),
+      wrongAttempts: 2,
+    };
+    await db.collection("users").updateOne(
+      { email: registration.email },
+      {
+        $set: {
+          phoneVerifiedAt: null,
+          phoneOtpChallenge: legacyChallenge,
+        },
+      },
+    );
 
-  it("does not issue tokens when only the phone OTP is valid", async () => {
-    await requestRegistration();
-    const codes = codesFor(baseRegistration.email, baseRegistration.phone);
-    await post("/api/v1/auth/register/verify", {
-      email: baseRegistration.email,
-      phone: baseRegistration.phone,
-      emailOtp: "000000",
-      phoneOtp: codes.phoneOtp,
-    }).expect(401);
-    expect((await db.collection("users").findOne({}))?.refreshSessions).toEqual([]);
+    await verifyRegistration(registration);
+    const stored = await db.collection("users").findOne({
+      email: registration.email,
+    });
+    expect(stored?.phoneVerifiedAt).toBeNull();
+    expect(stored?.phoneOtpChallenge).toEqual(legacyChallenge);
+
+    mailer.deliveries.length = 0;
+    await post("/api/v1/auth/otp/request", {
+      email: registration.email,
+    }).expect(202);
+    expect(mailer.deliveries).toHaveLength(1);
   });
 
   it("does not accept a pending registration email OTP through the login verifier", async () => {
     await requestRegistration();
-    const codes = codesFor(baseRegistration.email, baseRegistration.phone);
     await post("/api/v1/auth/otp/verify", {
       email: baseRegistration.email,
-      otp: codes.emailOtp,
+      otp: codeFor(baseRegistration.email),
     }).expect(401);
     expect((await db.collection("users").findOne({}))?.refreshSessions).toEqual([]);
   });
@@ -497,14 +402,12 @@ describe("FR-REG-01 freelancer registration API", () => {
     ]);
   });
 
-  it("persists OTP digests rather than raw email or SMS codes", async () => {
+  it("persists an OTP digest rather than the raw email code", async () => {
     await requestRegistration();
-    const codes = codesFor(baseRegistration.email, baseRegistration.phone);
+    const code = codeFor(baseRegistration.email);
     const stored = await db.collection("users").findOne({ email: baseRegistration.email });
-    expect(stored?.otpChallenge.digest).not.toBe(codes.emailOtp);
-    expect(stored?.phoneOtpChallenge.digest).not.toBe(codes.phoneOtp);
-    expect(JSON.stringify(stored)).not.toContain(codes.emailOtp);
-    expect(JSON.stringify(stored)).not.toContain(codes.phoneOtp);
+    expect(stored?.otpChallenge.digest).not.toBe(code);
+    expect(JSON.stringify(stored)).not.toContain(code);
   });
 
   it("never persists raw IP or user-agent signals", async () => {
@@ -522,7 +425,7 @@ describe("FR-REG-01 freelancer registration API", () => {
     const verified = await post("/api/v1/auth/register/verify", {
       email: baseRegistration.email,
       phone: baseRegistration.phone,
-      ...codesFor(baseRegistration.email, baseRegistration.phone),
+      emailOtp: codeFor(baseRegistration.email),
     }).expect(200);
     const conflict = await post("/api/v1/auth/register/request", {
       ...baseRegistration,
@@ -539,30 +442,6 @@ describe("FR-REG-01 freelancer registration API", () => {
     expect(await db.collection("users").countDocuments()).toBe(0);
   });
 
-  it("rate-limits registration verification by normalized phone across IP addresses", async () => {
-    const rateLimitedPhone = "+919876543299";
-    await requestRegistration({
-      ...baseRegistration,
-      email: "rate-limit@example.com",
-      phone: rateLimitedPhone,
-      pan: "QRSTU3456V",
-    });
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      await post("/api/v1/auth/register/verify", {
-        email: `attempt-${attempt}@example.com`,
-        phone: rateLimitedPhone,
-        emailOtp: "000000",
-        phoneOtp: "000000",
-      }).expect(401);
-    }
-    await post("/api/v1/auth/register/verify", {
-      email: "attempt-final@example.com",
-      phone: rateLimitedPhone,
-      emailOtp: "000000",
-      phoneOtp: "000000",
-    }).expect(429);
-  });
-
   it("allows distinct users to verify registrations from one web-server IP", async () => {
     const sharedIp = "203.0.113.182";
     const registrations = Array.from({ length: 6 }, (_, index) => ({
@@ -577,7 +456,7 @@ describe("FR-REG-01 freelancer registration API", () => {
       await post("/api/v1/auth/register/verify", {
         email: registration.email,
         phone: registration.phone,
-        ...codesFor(registration.email, registration.phone),
+        emailOtp: codeFor(registration.email),
       }, sharedIp).expect(200);
     }
   });
@@ -807,7 +686,6 @@ describe("FR-REG-01 freelancer registration API", () => {
       email: baseRegistration.email,
     });
     expect(failedRecord).not.toBeNull();
-    expect(sms.deliveries).toHaveLength(0);
 
     mailer.failure = undefined;
     const immediateRetry = await post(
@@ -829,39 +707,4 @@ describe("FR-REG-01 freelancer registration API", () => {
     expect(await db.collection("users").countDocuments()).toBe(1);
   });
 
-  it("pins partial delivery and the 10-minute lockout after SMS delivery fails", async () => {
-    sms.failure = new ServiceUnavailableException({
-      statusCode: 503,
-      error: "Service Unavailable",
-      code: "SMS_DELIVERY_UNAVAILABLE",
-      message: "SMS delivery is temporarily unavailable",
-    });
-
-    await post("/api/v1/auth/register/request", baseRegistration).expect(503);
-    const failedRecord = await db.collection("users").findOne({
-      email: baseRegistration.email,
-    });
-    expect(failedRecord).not.toBeNull();
-    expect(mailer.deliveries).toHaveLength(1);
-    expect(sms.deliveries).toHaveLength(0);
-
-    sms.failure = undefined;
-    const immediateRetry = await post(
-      "/api/v1/auth/register/request",
-      baseRegistration,
-    ).expect(409);
-    expect(immediateRetry.body.code).toBe("REGISTRATION_CONFLICT");
-    expect(JSON.stringify(immediateRetry.body)).not.toContain(
-      baseRegistration.email,
-    );
-    expect(await db.collection("users").countDocuments()).toBe(1);
-
-    clock.advance(10 * 60 * 1000 + 1);
-    await requestRegistration(baseRegistration);
-    const reclaimedRecord = await db.collection("users").findOne({
-      email: baseRegistration.email,
-    });
-    expect(reclaimedRecord?._id).toEqual(failedRecord?._id);
-    expect(await db.collection("users").countDocuments()).toBe(1);
-  });
 });
