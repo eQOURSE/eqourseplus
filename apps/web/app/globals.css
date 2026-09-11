@@ -1510,7 +1510,7 @@ margin: 0;
   }
 }
 
-@media (max-width: 47.75rem) {
+@media (max-width: 47.999rem) {
   .home-nav-links {
     display: flex;
     flex-direction: column;
@@ -1578,6 +1578,7 @@ margin: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .home-nav-links,
   .home-nav-link,
   .home-category-link,
   .home-freelancer-link,

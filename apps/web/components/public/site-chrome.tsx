@@ -46,7 +46,7 @@ export function SiteNavigation({ page }: SiteNavigationProps) {
           Primary navigation
         </span>
         <a
-          className="home-wordmark home-nav-link !items-baseline"
+          className="home-wordmark home-nav-link"
           href={isHome ? "#hero" : "/"}
         >
           eQOURSE<span aria-hidden="true">+</span>

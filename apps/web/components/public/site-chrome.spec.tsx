@@ -136,4 +136,10 @@ describe("FR-PUB-02 public navigation placement", () => {
       /\.home-nav-links\.is-open\s*\{[\s\S]*visibility:\s*visible/,
     );
   });
+
+  it("disables the mobile navigation transition under reduced motion", () => {
+    expect(globalStyles).toMatch(
+      /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{\s*\.home-nav-links,\s*\.home-nav-link,[^{]+\{\s*transition:\s*none\s*!important;/,
+    );
+  });
 });
