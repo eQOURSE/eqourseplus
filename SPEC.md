@@ -1,4 +1,4 @@
-# eQOURSE+ — SaaS Requirements Specification (SPEC.md) v2.14 — Global Edition
+# eQOURSE+ — SaaS Requirements Specification (SPEC.md) v2.15 — Global Edition
 > Workforce & Project Delivery Platform for eQOURSE (AI Data Services + Content Services) and Tutrain.
 > This file is the single source of truth for AI coding agents (Antigravity / Cursor / Claude Code / Kiro).
 > RULES FOR AGENTS: Implement only requirements listed here, by FR ID. Never invent endpoints, entities or
@@ -46,6 +46,7 @@ Priorities: [P1]=MVP Phase 1, [P2]=Phase 2, [P3]=Phase 3. Format: ID | Requireme
 | FR-REG-06 | [P1] Profile state machine: Draft→Submitted→Under Review→Test Pending→Test Passed→Approved (+Rejected / More-Info-Needed). | All transitions audit-logged with actor + reason. |
 | FR-REG-07 | [P1] Verifier console: 48h SLA queue, docs + API results side-by-side, approve/reject with reason templates, request-more-info. | Clean profile processed in <3 minutes. |
 | FR-REG-08 | [P1] Vendor KYB: GST/Udyam, company PAN, incorporation, cancelled cheque, signatory KYC, MSA e-sign, capability profile. | Vendor cannot bid until KYB approved. |
+| FR-REG-08A | [P1] Vendor account sign-up and company profile capture: company legal name, trading name, country, registered address, contact person, capability profile drawn from `skillTaxonomy`, bank details and bank proof, and the identifier and document set required for the vendor's country. Country selection drives requirements per Section 14 and FR-REG-13: India GST/company PAN/Udyam; US incorporation/EIN/W-9; UK Companies House/VAT; EU VIES VAT; Singapore ACRA/UEN; China unified social credit code; rest of world incorporation/tax ID/bank proof. The form never presents India-only identifiers to a non-Indian vendor, and a vendor from any supported country can complete registration without encountering an inapplicable field. Documents are collected, not verified, and upload to the encrypted-private R2 bucket through `StorageAdapter` using pre-signed URLs. Bank details and bank proof are captured, but this FR performs no bank verification or automated KYB screening. Submission transitions the vendor to `SUBMITTED` and tells them their registration is under review by the compliance team; the interface never implies automated or completed verification and states no turnaround time unless the business has committed to it. Signatory KYC, UBO declaration, sanctions screening, MSA e-signature, automated KYB provider checks and verifier approval remain in FR-REG-08 and are out of scope here. | A vendor from each of at least India, Singapore, China and one EU country can complete registration end to end and sees only identifiers valid for their country; documents land in the private bucket and are never publicly readable; the vendor record persists in `SUBMITTED` with `submittedAt`; and no copy claims verification that has not occurred. |
 | FR-REG-09 | [P2] Vendor invites members; each does KYC-lite + category tests. | Members tracked individually under vendor. |
 | FR-REG-10 | [P2] AI resume/portfolio parsing pre-fills wizard, maps to taxonomy. | 80%+ parsed fields accepted without edit. |
 
@@ -261,6 +262,7 @@ workOrders, taskBatches, tasks, qaReviews, earningLines[APPEND-ONLY], payoutBatc
 auditLogs[APPEND-ONLY], notifications, announcements, messages). MANDATORY: multi-document transactions for all
 ledger/payout writes; state machines as enums + service-layer guards. If finance outgrows Mongo, isolate ledger
 into small Postgres service later via adapter.
+The `vendors` collection is specified in Section 19.2.
 
 ### 19.2 Normative collection schemas (added v2.3 — extend this subsection as each collection is first implemented)
 
@@ -311,6 +313,42 @@ Normative seed rows (FR-FND-03):
 ```
 Indexes: unique on `email`; sparse unique on `phone`; sparse unique on `pan`; index on `deviceFingerprints.hash`; index on `profileState`.
 Rules: `phone` and `pan` uniqueness relies on sparse indexes **and** on the field being absent rather than null. A sparse index skips a missing field but still indexes an explicitly stored BSON `null`, so writing `null` would make the second such document collide and reject every account without a PAN — which is most of them, since the platform is global and only Indian users have one. Application-level null is therefore persisted as an omitted field and mapped back to logical null on read. Raw OTPs are never stored, only digests. `pan` is captured at sign-up but not verified until FR-REG-04. A repeated `deviceFingerprints.hash` across accounts raises a `reviewFlags` entry and never blocks sign-up. `profileState` lives here only until FR-REG-02 introduces a dedicated profile model; if that FR creates a separate profiles collection, the field moves there and must never exist in both places at once. `refreshSessions` is the only durable **server-side** session record. A refresh token lives client-side solely in a first-party `__Host-` httpOnly cookie on the web origin (FR-REG-02A) and is never placed in a JavaScript-readable store. Revoking a session means setting `revokedAt` on its `refreshSessions` entry — clearing the cookie alone is not revocation, because a copied cookie value would otherwise remain valid.
+
+**vendors** — one document per vendor company account.
+```
+{
+  _id: ObjectId,
+  ownerUserId: ObjectId,                       // required, owning users reference
+  state: VendorState,                          // required, default DRAFT
+  legalName: string,                           // required before submission
+  tradingName?: string,                        // absent when not supplied
+  countryCode: string,                         // required, ISO 3166-1 alpha-2; drives the Section 14 / FR-REG-13 registry
+  registeredAddress: {
+    line1: string, line2?: string, city: string, region?: string, postalCode: string, countryCode: string
+  },
+  contactPerson: { name: string, email: string, phone: string },
+  capabilities: Array<{ taxonomySlug: string }>,   // values must resolve to skillTaxonomy.slug
+  countryIdentifiers: Array<{
+    scheme: string,                             // data-driven registry code, e.g. GSTIN, UEN, EU_VAT, CN_USCC
+    value: string,                              // PII protected by CSFLE; never public
+    lookupDigest: string                        // keyed HMAC of scheme + scheme-canonical value; required when entry exists
+  }>,
+  bankDetails: {
+    accountHolderName: string,
+    bankCountryCode: string,
+    currencyCode: string,
+    accountIdentifier: { scheme: string, value: string },
+    bankIdentifier?: { scheme: string, value: string }
+  },
+  documents: Array<{
+    kind: string, objectKey: string, uploadedAt: Date   // metadata/reference only; object is in the encrypted-private R2 vault
+  }>,
+  submittedAt?: Date,                           // absent until first submission; never explicit null
+  createdAt: Date, updatedAt: Date
+}
+```
+Indexes: index on `ownerUserId`; index on `state`; index on `countryCode`; index on `capabilities.taxonomySlug`; sparse unique multikey index on `countryIdentifiers.lookupDigest`; index on `(state, submittedAt)` for the verifier queue.
+Rules: `VendorState` is a distinct enum, never `ProfileState`: `DRAFT | SUBMITTED | UNDER_REVIEW | MORE_INFO_NEEDED | ACTIVE | REJECTED`. Legal service-layer-guarded transitions are `DRAFT → SUBMITTED`, `SUBMITTED → UNDER_REVIEW`, `UNDER_REVIEW → MORE_INFO_NEEDED | ACTIVE | REJECTED`, and `MORE_INFO_NEEDED → SUBMITTED`; FR-REG-08A performs only `DRAFT → SUBMITTED`, while review and approval transitions remain in FR-REG-08. The submission guard requires the country registry's applicable identifiers and document kinds, bank details, bank proof and taxonomy-backed capabilities, and sets `submittedAt` on first submission without later overwriting it. The same country registry maps each ISO country code to its required identifier schemes and document kinds and defines each scheme's canonical form, including case, whitespace and separator handling; adding a country or scheme is a registry data change, not a MongoDB schema migration. Each `lookupDigest` is computed only after scheme-specific canonicalisation and is a keyed HMAC over the scheme plus canonical value using a dedicated server secret, following the OTP-digest pattern; rotating that key invalidates the uniqueness index and requires recomputing the digests and rebuilding the index. Every inapplicable or unknown country identifier is stored as an absent array entry, never as a placeholder or explicit BSON `null`; a sparse index skips a missing value but indexes explicit null. `countryIdentifiers[].value` and the whole of `bankDetails` are PII under Section 19's CSFLE requirement and must never appear in any list or search projection; they may appear only in a single-record view for an authorised verifier. PAN, GSTIN, UEN, CIN, LLPIN and street addresses must never appear in public page copy or structured data. `documents` stores only R2 object metadata/references, never file contents; objects are uploaded through `StorageAdapter` with pre-signed URLs and remain in the encrypted-private bucket. FR-REG-08A records collected data only: it adds no bank-verification, automated-KYB or completed-verification result.
 
 
 ## 20. Deployment (no physical servers)
