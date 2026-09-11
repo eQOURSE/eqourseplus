@@ -16,11 +16,6 @@ export interface UserRecord {
     expiresAt: Date;
     wrongAttempts: number;
   };
-  phoneOtpChallenge?: {
-    digest: string;
-    expiresAt: Date;
-    wrongAttempts: number;
-  };
   profileState?: ProfileState;
   deviceFingerprints: Array<{
     hash: string;
@@ -119,7 +114,7 @@ const userSchema = new Schema<UserRecord>(
       trim: true,
       set: omitNullForSparseIndex,
     },
-    phoneVerifiedAt: { type: Date, default: null },
+    phoneVerifiedAt: { type: Date },
     countryCode: {
       type: String,
       required: true,
@@ -141,7 +136,6 @@ const userSchema = new Schema<UserRecord>(
       default: [],
     },
     otpChallenge: { type: otpChallengeSchema },
-    phoneOtpChallenge: { type: otpChallengeSchema },
     profileState: {
       type: String,
       enum: Object.values(ProfileState),

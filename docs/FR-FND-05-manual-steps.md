@@ -11,8 +11,7 @@ Registry, both service accounts, Workload Identity Federation, `MONGODB_URI`,
 `JWT_SECRET`, the per-service `CORS_ORIGINS` values, the GitHub repository
 variables, and the protected `production` environment must already exist. Before
 enabling real email delivery, also complete Section 10 without changing any
-existing company-mail DNS record. Before enabling real SMS delivery, also
-complete Section 11 and its controlled first-send HTTPS verification.
+existing company-mail DNS record.
 
 Run the following commands in PowerShell from a terminal where `gcloud` is
 authenticated as a project IAM administrator. The GitHub CLI commands also
@@ -371,72 +370,3 @@ gh variable get OTP_EMAIL_FROM --repo $GitHubRepository
 The production deployment injects `RESEND_API_KEY` from Secret Manager and sets
 `MAILER_PROVIDER=resend` plus `OTP_EMAIL_FROM`. Staging, local development and CI
 remain on the sandbox adapter and require no provider credentials.
-
-## 11. Configure AmazeSMS OTP delivery
-
-SPEC.md Section 20 approves AmazeSMS for SMS delivery. The API defaults to the
-in-memory SMS sandbox unless `SMS_PROVIDER=amazesms` is selected. Local
-development, CI and staging stay on `sandbox`; production fails at startup if
-any required AmazeSMS configuration is absent.
-
-### Store the secret and plain configuration
-
-The six provider values are:
-
-| Variable | Storage | Purpose |
-| --- | --- | --- |
-| `AMAZESMS_USER` | GitHub repository variable | AmazeSMS profile ID |
-| `AMAZESMS_AUTHKEY` | GCP Secret Manager | Provider authentication key |
-| `AMAZESMS_SENDER` | GitHub repository variable | Approved DLT sender/header ID |
-| `AMAZESMS_ENTITY_ID` | GitHub repository variable | Principal Entity ID |
-| `AMAZESMS_TEMPLATE_ID` | GitHub repository variable | Approved DLT template ID |
-| `SMS_OTP_TEMPLATE` | GitHub repository variable | Exact approved message text with one `{code}` placeholder |
-
-Create `AMAZESMS_AUTHKEY` by pasting only the raw key at the secure prompt, then
-grant the Cloud Run runtime identity access:
-
-```powershell
-gcloud secrets create AMAZESMS_AUTHKEY --replication-policy=automatic --data-file=- `
-  --project=$ProjectId
-
-gcloud secrets add-iam-policy-binding AMAZESMS_AUTHKEY `
-  --project=$ProjectId `
-  --member="serviceAccount:$RuntimeServiceAccount" `
-  --role="roles/secretmanager.secretAccessor"
-```
-
-Set the remaining values as ordinary GitHub repository variables. Use the
-currently approved Tutrain sender and template only for controlled testing; once
-the eQOURSE DLT template is approved, replace these configuration values with
-the approved `EQOURS` sender/template values without changing code.
-
-```powershell
-gh variable set AMAZESMS_USER --repo $GitHubRepository --body "provider-profile-id"
-gh variable set AMAZESMS_SENDER --repo $GitHubRepository --body "approved-sender-id"
-gh variable set AMAZESMS_ENTITY_ID --repo $GitHubRepository --body "approved-principal-entity-id"
-gh variable set AMAZESMS_TEMPLATE_ID --repo $GitHubRepository --body "approved-template-id"
-gh variable set SMS_OTP_TEMPLATE --repo $GitHubRepository --body "exact-approved-text-with-{code}"
-
-gcloud secrets describe AMAZESMS_AUTHKEY --project=$ProjectId
-```
-
-DLT matching is character-for-character. `SMS_OTP_TEMPLATE` must reproduce the
-approved provider template exactly, including capitalization, punctuation and
-spacing, and must contain exactly one `{code}` placeholder. Never add branding,
-expiry wording or other text in application code.
-
-### Verify HTTPS on the first real send
-
-The adapter always calls
-`https://amazesms.in/api/pushsms` and never falls back to plaintext HTTP. The
-only observation available before integration was that AmazeSMS terminated TLS
-and answered a parameterless request to a different endpoint; it did not prove
-that `/api/pushsms` works correctly over HTTPS.
-
-For the first real send, use a controlled company test number and confirm both
-that the HTTPS request returns provider success code `100` or `150` and that the
-expected SMS arrives. Inspect only sanitized application logs; never print the
-request URL, because its query string contains the authentication key, recipient
-and live OTP code. If the first real send does not work over HTTPS, **STOP and
-report the failure**. Never fall back to plaintext HTTP or work around TLS under
-any deadline.

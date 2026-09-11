@@ -19,7 +19,6 @@ import {
 
 import { DeviceFingerprintService } from "./device-fingerprint.service";
 import { OtpIdentifierRateLimitGuard } from "./otp-identifier-rate-limit.guard";
-import { PhoneOtpIdentifierRateLimitGuard } from "./phone-otp-identifier-rate-limit.guard";
 import { Public } from "./public.decorator";
 import { RegistrationService } from "./registration.service";
 import type { TokenPair } from "./auth.types";
@@ -61,10 +60,7 @@ export class RegistrationController {
   }
 
   @Post("verify")
-  @UseGuards(
-    OtpIdentifierRateLimitGuard,
-    PhoneOtpIdentifierRateLimitGuard,
-  )
+  @UseGuards(OtpIdentifierRateLimitGuard)
   @Header("Cache-Control", "no-store")
   @HttpCode(200)
   verifyRegistration(
@@ -75,7 +71,6 @@ export class RegistrationController {
       body.email,
       body.phone,
       body.emailOtp,
-      body.phoneOtp,
     );
   }
 

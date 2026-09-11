@@ -42,7 +42,6 @@ export class MongooseRegistrationStore implements RegistrationStore {
       const user = await UserModel.create({
         email: values.email,
         phone: values.phone,
-        phoneVerifiedAt: null,
         countryCode: values.countryCode,
         ...(values.pan ? { pan: values.pan } : {}),
         roleAssignments: [],
@@ -52,9 +51,6 @@ export class MongooseRegistrationStore implements RegistrationStore {
           ? [this.duplicateDeviceFlag(values.deviceFingerprint.firstSeenAt)]
           : [],
         otpChallenge: values.emailChallenge,
-        ...(values.phoneChallenge
-          ? { phoneOtpChallenge: values.phoneChallenge }
-          : {}),
         refreshSessions: [],
       });
       return { status: "WRITTEN", userId: user.id };
@@ -74,16 +70,7 @@ export class MongooseRegistrationStore implements RegistrationStore {
     ];
     if (values.pan) conflicts.push({ pan: values.pan });
     const user = await UserModel.findOne({
-      phoneVerifiedAt: null,
       "otpChallenge.expiresAt": { $lte: now },
-      $and: [
-        {
-          $or: [
-            { phoneOtpChallenge: { $exists: false } },
-            { "phoneOtpChallenge.expiresAt": { $lte: now } },
-          ],
-        },
-      ],
       $or: conflicts,
     })
       .select({ _id: 1 })
@@ -102,17 +89,11 @@ export class MongooseRegistrationStore implements RegistrationStore {
     const fieldsToSet: Record<string, unknown> = {
       email: values.email,
       phone: values.phone,
-      phoneVerifiedAt: null,
       countryCode: values.countryCode,
       profileState: values.profileState,
       otpChallenge: values.emailChallenge,
-      ...(values.phoneChallenge
-        ? { phoneOtpChallenge: values.phoneChallenge }
-        : {}),
     };
-    const fieldsToUnset: Record<string, 1> = values.phoneChallenge
-      ? {}
-      : { phoneOtpChallenge: 1 };
+    const fieldsToUnset: Record<string, 1> = {};
     const update: Record<string, unknown> = {
       $set: fieldsToSet,
       $push: {
@@ -133,16 +114,7 @@ export class MongooseRegistrationStore implements RegistrationStore {
       const result = await UserModel.updateOne(
         {
           _id: userId,
-          phoneVerifiedAt: null,
           "otpChallenge.expiresAt": { $lte: now },
-          $and: [
-            {
-              $or: [
-                { phoneOtpChallenge: { $exists: false } },
-                { "phoneOtpChallenge.expiresAt": { $lte: now } },
-              ],
-            },
-          ],
         },
         update,
       ).exec();
@@ -162,39 +134,29 @@ export class MongooseRegistrationStore implements RegistrationStore {
     const user = await UserModel.findOne({
       email,
       phone,
-      phoneVerifiedAt: null,
+      otpChallenge: { $exists: true },
     }).exec();
     if (!user) return null;
     return {
       id: user.id,
       emailChallenge: this.challenge(user.otpChallenge),
-      phoneChallenge: this.challenge(user.phoneOtpChallenge),
     };
   }
 
   async completeRegistration(
     userId: string,
     emailDigest: string,
-    phoneDigest: string | undefined,
     session: RefreshSession,
     now: Date,
   ): Promise<boolean> {
     await this.ensureConnected();
     const filter: Record<string, unknown> = {
       _id: userId,
-      phoneVerifiedAt: null,
       "otpChallenge.digest": emailDigest,
       "otpChallenge.expiresAt": { $gt: now },
-      ...(phoneDigest
-        ? {
-            "phoneOtpChallenge.digest": phoneDigest,
-            "phoneOtpChallenge.expiresAt": { $gt: now },
-          }
-        : {}),
     };
     const update: Record<string, unknown> = {
-      ...(phoneDigest ? { $set: { phoneVerifiedAt: now } } : {}),
-      $unset: { otpChallenge: 1, phoneOtpChallenge: 1 },
+      $unset: { otpChallenge: 1 },
       $push: { refreshSessions: session },
     };
     const result = await UserModel.updateOne(filter, update).exec();
@@ -204,32 +166,20 @@ export class MongooseRegistrationStore implements RegistrationStore {
   async recordFailedVerification(
     userId: string,
     emailFailed: boolean,
-    phoneFailed: boolean,
     now: Date,
     maxWrongAttempts: number,
   ): Promise<void> {
     await this.ensureConnected();
-    await Promise.all([
-      this.recordChallengeFailure(
-        userId,
-        "otpChallenge",
-        emailFailed,
-        now,
-        maxWrongAttempts,
-      ),
-      this.recordChallengeFailure(
-        userId,
-        "phoneOtpChallenge",
-        phoneFailed,
-        now,
-        maxWrongAttempts,
-      ),
-    ]);
+    await this.recordChallengeFailure(
+      userId,
+      emailFailed,
+      now,
+      maxWrongAttempts,
+    );
   }
 
   private async recordChallengeFailure(
     userId: string,
-    field: "otpChallenge" | "phoneOtpChallenge",
     failed: boolean,
     now: Date,
     maxWrongAttempts: number,
@@ -238,17 +188,20 @@ export class MongooseRegistrationStore implements RegistrationStore {
     const updated = await UserModel.findOneAndUpdate(
       {
         _id: userId,
-        [`${field}.expiresAt`]: { $gt: now },
-        [`${field}.wrongAttempts`]: { $lt: maxWrongAttempts },
+        "otpChallenge.expiresAt": { $gt: now },
+        "otpChallenge.wrongAttempts": { $lt: maxWrongAttempts },
       },
-      { $inc: { [`${field}.wrongAttempts`]: 1 } },
+      { $inc: { "otpChallenge.wrongAttempts": 1 } },
       { returnDocument: "after" },
     ).exec();
-    const challenge = updated?.[field] as OtpChallenge | undefined;
+    const challenge = updated?.otpChallenge as OtpChallenge | undefined;
     if (challenge && challenge.wrongAttempts >= maxWrongAttempts) {
       await UserModel.updateOne(
-        { _id: userId, [`${field}.wrongAttempts`]: { $gte: maxWrongAttempts } },
-        { $unset: { [field]: 1 } },
+        {
+          _id: userId,
+          "otpChallenge.wrongAttempts": { $gte: maxWrongAttempts },
+        },
+        { $unset: { otpChallenge: 1 } },
       ).exec();
     }
   }

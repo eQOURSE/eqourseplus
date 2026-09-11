@@ -47,21 +47,16 @@ describe("FR-REG-01 registration contracts", () => {
     ).toThrow();
   });
 
-  it("requires email OTP and allows the service to decide whether phone OTP applies", () => {
+  it("requires email OTP and rejects a supplied phone OTP", () => {
     const valid = {
       email: "user@example.com",
       phone: "+919876543210",
       emailOtp: "123456",
-      phoneOtp: "654321",
     };
     expect(registrationVerifySchema.parse(valid)).toEqual(valid);
-    expect(
-      registrationVerifySchema.parse({ ...valid, phoneOtp: undefined }),
-    ).toEqual({
-      email: valid.email,
-      phone: valid.phone,
-      emailOtp: valid.emailOtp,
-    });
+    expect(() =>
+      registrationVerifySchema.parse({ ...valid, phoneOtp: "654321" }),
+    ).toThrow();
     expect(() =>
       registrationVerifySchema.parse({ ...valid, emailOtp: undefined }),
     ).toThrow();
@@ -70,19 +65,19 @@ describe("FR-REG-01 registration contracts", () => {
     ).toThrow();
   });
 
-  it("accepts only the channel combinations the registration API can issue", () => {
+  it("accepts only the email channel the registration API issues", () => {
     expect(
       registrationRequestAcceptedSchema.parse({
         status: "accepted",
         channels: ["email"],
       }),
     ).toEqual({ status: "accepted", channels: ["email"] });
-    expect(
+    expect(() =>
       registrationRequestAcceptedSchema.parse({
         status: "accepted",
         channels: ["email", "phone"],
       }),
-    ).toEqual({ status: "accepted", channels: ["email", "phone"] });
+    ).toThrow();
     expect(() =>
       registrationRequestAcceptedSchema.parse({
         status: "accepted",
