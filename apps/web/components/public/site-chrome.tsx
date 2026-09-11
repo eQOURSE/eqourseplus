@@ -49,7 +49,7 @@ export function SiteNavigation({ page }: SiteNavigationProps) {
           className="home-wordmark home-nav-link !items-baseline"
           href={isHome ? "#hero" : "/"}
         >
-          eQOURSE<span aria-hidden="true" className=" font-bold !text-3xl">+</span>
+          eQOURSE<span aria-hidden="true">+</span>
         </a>
         <MobileNavigation actions={<PublicThemeToggle />}>
           {isHome ? (
