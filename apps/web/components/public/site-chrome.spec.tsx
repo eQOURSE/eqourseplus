@@ -1,7 +1,15 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { SiteFooter, SiteNavigation } from "./site-chrome";
+
+const globalStyles = readFileSync(
+  resolve(process.cwd(), "app/globals.css"),
+  "utf8",
+);
 
 afterEach(cleanup);
 
