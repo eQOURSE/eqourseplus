@@ -55,7 +55,7 @@ const execFileAsync = promisify(execFile);
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const apiDirectory = path.resolve(testDirectory, "..");
 
-describe("FR-FND-03 database migration and taxonomy seed", () => {
+describe("FR-FND-03A database migration and taxonomy seed", () => {
   let memoryServer: MongoMemoryServer;
   let client: mongo.MongoClient;
   let db: mongo.Db;
@@ -153,7 +153,7 @@ describe("FR-FND-03 database migration and taxonomy seed", () => {
     }
   });
 
-  it("upserts the three normative rows by slug without duplicates or mutations", async () => {
+  it("upserts the production taxonomy by slug without duplicates or mutations", async () => {
     const { seedSkillTaxonomy } = require(
       path.join(apiDirectory, "database", "seeds", "skill-taxonomy.cjs"),
     ) as SkillTaxonomySeed;
@@ -166,7 +166,41 @@ describe("FR-FND-03 database migration and taxonomy seed", () => {
     const afterSecondRun = await collection.find().sort({ slug: 1 }).toArray();
 
     expect(afterSecondRun).toEqual(afterFirstRun);
-    expect(afterSecondRun).toHaveLength(3);
+    expect(afterSecondRun.length).toBeGreaterThanOrEqual(40);
+    expect(afterSecondRun.length).toBeLessThanOrEqual(60);
+    expect(new Set(afterSecondRun.map((row) => row.slug)).size).toBe(
+      afterSecondRun.length,
+    );
+    expect(
+      new Set(
+        afterSecondRun.map((row) =>
+          [
+            row.businessUnit,
+            row.serviceLine,
+            row.skill,
+            row.specialization ?? "",
+          ].join("\u001f"),
+        ),
+      ).size,
+    ).toBe(afterSecondRun.length);
+    expect(
+      afterSecondRun.every((row) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(row.slug)),
+    ).toBe(true);
+    expect(
+      afterSecondRun.every(
+        (row) => row.status === "ACTIVE" && Number.isInteger(row.version),
+      ),
+    ).toBe(true);
+    expect(new Set(afterSecondRun.map((row) => row.serviceLine))).toEqual(
+      new Set(["AI Data Services", "Content Services", "Tutoring"]),
+    );
+    for (const expected of [
+      "eqourse-ai-data-services-annotation-bounding-box",
+      "eqourse-content-services-curriculum",
+      "tutrain-tutoring-neet-biology",
+    ]) {
+      expect(afterSecondRun.some((row) => row.slug === expected)).toBe(true);
+    }
     expect(
       afterSecondRun.map((row) => ({
         businessUnit: row.businessUnit,
@@ -177,35 +211,37 @@ describe("FR-FND-03 database migration and taxonomy seed", () => {
         status: row.status,
         version: row.version,
       })),
-    ).toEqual([
-      {
-        businessUnit: "EQOURSE",
-        serviceLine: "AI Data Services",
-        skill: "Annotation",
-        specialization: "Bounding Box",
-        slug: "eqourse-ai-data-services-annotation-bounding-box",
-        status: "ACTIVE",
-        version: 1,
-      },
-      {
-        businessUnit: "EQOURSE",
-        serviceLine: "Content Services",
-        skill: "Curriculum",
-        specialization: null,
-        slug: "eqourse-content-services-curriculum",
-        status: "ACTIVE",
-        version: 1,
-      },
-      {
-        businessUnit: "TUTRAIN",
-        serviceLine: "Tutoring",
-        skill: "NEET Biology",
-        specialization: null,
-        slug: "tutrain-tutoring-neet-biology",
-        status: "ACTIVE",
-        version: 1,
-      },
-    ]);
+    ).toEqual(
+      expect.arrayContaining([
+        {
+          businessUnit: "EQOURSE",
+          serviceLine: "AI Data Services",
+          skill: "Annotation",
+          specialization: "Bounding Box",
+          slug: "eqourse-ai-data-services-annotation-bounding-box",
+          status: "ACTIVE",
+          version: 1,
+        },
+        {
+          businessUnit: "EQOURSE",
+          serviceLine: "Content Services",
+          skill: "Curriculum",
+          specialization: null,
+          slug: "eqourse-content-services-curriculum",
+          status: "ACTIVE",
+          version: 1,
+        },
+        {
+          businessUnit: "TUTRAIN",
+          serviceLine: "Tutoring",
+          skill: "NEET Biology",
+          specialization: null,
+          slug: "tutrain-tutoring-neet-biology",
+          status: "ACTIVE",
+          version: 1,
+        },
+      ]),
+    );
   });
 
   it("runs the seed CLI cleanly using only MONGODB_URI", async () => {
@@ -218,7 +254,15 @@ describe("FR-FND-03 database migration and taxonomy seed", () => {
       },
     );
 
-    expect(stdout).toContain("skillTaxonomy seed complete (3 rows)");
-    expect(await db.collection("skillTaxonomy").countDocuments()).toBe(3);
+    const { SEED_ROWS } = require(
+      path.join(apiDirectory, "database", "seeds", "skill-taxonomy.cjs"),
+    ) as { SEED_ROWS: unknown[] };
+
+    expect(stdout).toContain(
+      `skillTaxonomy seed complete (${SEED_ROWS.length} rows)`,
+    );
+    expect(await db.collection("skillTaxonomy").countDocuments()).toBe(
+      SEED_ROWS.length,
+    );
   });
 });

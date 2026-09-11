@@ -5,6 +5,8 @@ Last completed FR: FR-PUB-02 jobs pages — 2026-09-10 — The `/jobs` listing a
 ## Phase 0 — Foundation (wk 1–2) — SPEC.md Section 22.1, strictly in order
 - [x] FR-FND-01 scaffold (2026-07-17)  - [x] FR-FND-02 auth core (2026-07-20; real Resend email delivery completed 2026-09-05)  - [x] FR-FND-03 db wiring (2026-07-21)
 - [x] FR-FND-04 CI (2026-07-21)  - [x] FR-FND-05 deployments (2026-07-23; deployment-config defect fixed 2026-09-04 — explicit per-service `CORS_ORIGINS` plus fail-fast workflow preflight; 309 tests green, lint and production build clean)  - [x] FR-FND-06 observability (2026-07-23)
+FR-FND-03A (2026-09-10) — Expanded the idempotent skillTaxonomy seed from 3 to 59 production-representative rows across EQOURSE AI Data Services, EQOURSE Content Services, and TUTRAIN Tutoring. Coverage is based on the published eQOURSE service pages and Tutrain subject pages; required legacy rows remain present. Tests prove 40–60 row breadth, unique slugs, unique compound paths, all three service lines, idempotent reruns, dynamic CLI row count, and ACTIVE status plus integer version on every row. Focused API database tests (4/4) and API lint pass. Full test/build gates still have environment blockers: the root API test task cannot resolve the existing Vitest config inside the sandbox, and the web build cannot fetch Google Fonts.
+
 ## Phase 1 — Public site + SEO (wk 3–4) — SPEC.md Section 22.2
 - FR-PUB-02 `/jobs` remains seeded, noindex, and outside `RESOLVING_ROUTES` and the sitemap until FR-PRJ supplies real postings; it is linked from the footer so `robots.ts` must not disallow it.
 - [x] FR-PUB-00 public design-system foundation (2026-07-24)
