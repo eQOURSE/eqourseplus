@@ -2,6 +2,7 @@ import { EarningLineStatus } from "./earning-line-status";
 import { PayoutBatchState } from "./payout-batch-state";
 import { ProfileState } from "./profile-state";
 import { TaskState } from "./task-state";
+import { VendorState } from "./vendor-state";
 
 const profileTransitions: Readonly<Record<ProfileState, readonly ProfileState[]>> = {
   [ProfileState.DRAFT]: [ProfileState.SUBMITTED],
@@ -32,6 +33,21 @@ const taskTransitions: Readonly<Record<TaskState, readonly TaskState[]>> = {
   [TaskState.REWORK]: [TaskState.SUBMITTED],
   [TaskState.REJECTED]: [],
   [TaskState.EXPIRED]: [TaskState.QUEUED],
+};
+
+const vendorTransitions: Readonly<
+  Record<VendorState, readonly VendorState[]>
+> = {
+  [VendorState.DRAFT]: [VendorState.SUBMITTED],
+  [VendorState.SUBMITTED]: [VendorState.UNDER_REVIEW],
+  [VendorState.UNDER_REVIEW]: [
+    VendorState.MORE_INFO_NEEDED,
+    VendorState.ACTIVE,
+    VendorState.REJECTED,
+  ],
+  [VendorState.MORE_INFO_NEEDED]: [VendorState.SUBMITTED],
+  [VendorState.ACTIVE]: [],
+  [VendorState.REJECTED]: [],
 };
 
 const payoutBatchTransitions: Readonly<
@@ -83,6 +99,13 @@ export function canTransitionProfile(
 
 export function canTransitionTask(from: TaskState, to: TaskState): boolean {
   return taskTransitions[from].includes(to);
+}
+
+export function canTransitionVendor(
+  from: VendorState,
+  to: VendorState,
+): boolean {
+  return vendorTransitions[from].includes(to);
 }
 
 export function canTransitionPayoutBatch(

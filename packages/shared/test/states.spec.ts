@@ -5,6 +5,7 @@ import {
   canTransitionPayoutBatch,
   canTransitionProfile,
   canTransitionTask,
+  canTransitionVendor,
   EarningLineStatus,
   earningLineStatusSchema,
   PayoutBatchState,
@@ -13,6 +14,7 @@ import {
   profileStateSchema,
   TaskState,
   taskStateSchema,
+  VendorState,
 } from "../src";
 
 describe("FR-FND-01 normative state enums", () => {
@@ -65,6 +67,17 @@ describe("FR-FND-01 normative state enums", () => {
     ]);
   });
 
+  it("exports the FR-REG-08A vendor states exactly", () => {
+    expect(Object.values(VendorState)).toEqual([
+      "DRAFT",
+      "SUBMITTED",
+      "UNDER_REVIEW",
+      "MORE_INFO_NEEDED",
+      "ACTIVE",
+      "REJECTED",
+    ]);
+  });
+
   it("validates known states and rejects unknown strings", () => {
     expect(profileStateSchema.parse("DRAFT")).toBe(ProfileState.DRAFT);
     expect(taskStateSchema.parse("IN_QA")).toBe(TaskState.IN_QA);
@@ -86,6 +99,31 @@ describe("FR-FND-01 normative state enums", () => {
     );
     expect(canTransitionTask(TaskState.REWORK, TaskState.SUBMITTED)).toBe(true);
     expect(canTransitionTask(TaskState.QUEUED, TaskState.ACCEPTED)).toBe(false);
+  });
+
+  it("guards the FR-REG-08A vendor transition graph", () => {
+    const legalTransitions: Readonly<
+      Record<VendorState, readonly VendorState[]>
+    > = {
+      [VendorState.DRAFT]: [VendorState.SUBMITTED],
+      [VendorState.SUBMITTED]: [VendorState.UNDER_REVIEW],
+      [VendorState.UNDER_REVIEW]: [
+        VendorState.MORE_INFO_NEEDED,
+        VendorState.ACTIVE,
+        VendorState.REJECTED,
+      ],
+      [VendorState.MORE_INFO_NEEDED]: [VendorState.SUBMITTED],
+      [VendorState.ACTIVE]: [],
+      [VendorState.REJECTED]: [],
+    };
+
+    for (const from of Object.values(VendorState)) {
+      for (const to of Object.values(VendorState)) {
+        expect(canTransitionVendor(from, to)).toBe(
+          legalTransitions[from].includes(to),
+        );
+      }
+    }
   });
 
   it("guards F5 cancellation as admin-only and audit-logged", () => {
