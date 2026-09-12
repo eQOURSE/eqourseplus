@@ -1,19 +1,13 @@
 import { VendorState } from "@eqourse/shared";
-import {
-  model,
-  models,
-  Schema,
-  type HydratedDocument,
-  type Model,
-} from "mongoose";
+import { Schema, Types, type HydratedDocument } from "mongoose";
 
 export interface VendorRecord {
-  ownerUserId: Schema.Types.ObjectId;
+  ownerUserId: Types.ObjectId;
   state: VendorState;
-  legalName: string;
+  legalName?: string;
   tradingName?: string;
-  countryCode: string;
-  registeredAddress: {
+  countryCode?: string;
+  registeredAddress?: {
     line1: string;
     line2?: string;
     city: string;
@@ -21,7 +15,7 @@ export interface VendorRecord {
     postalCode: string;
     countryCode: string;
   };
-  contactPerson: {
+  contactPerson?: {
     name: string;
     email: string;
     phone: string;
@@ -32,7 +26,7 @@ export interface VendorRecord {
     value: string;
     lookupDigest: string;
   }>;
-  bankDetails: {
+  bankDetails?: {
     accountHolderName: string;
     bankCountryCode: string;
     currencyCode: string;
@@ -51,12 +45,15 @@ export interface VendorRecord {
 
 export type VendorDocument = HydratedDocument<VendorRecord>;
 
+const omitNull = <T>(value: T | null | undefined): T | undefined =>
+  value === null || value === undefined ? undefined : value;
+
 const registeredAddressSchema = new Schema(
   {
     line1: { type: String, required: true, trim: true },
-    line2: { type: String, trim: true },
+    line2: { type: String, trim: true, set: omitNull },
     city: { type: String, required: true, trim: true },
-    region: { type: String, trim: true },
+    region: { type: String, trim: true, set: omitNull },
     postalCode: { type: String, required: true, trim: true },
     countryCode: {
       type: String,
@@ -87,9 +84,9 @@ const capabilitySchema = new Schema(
 
 const countryIdentifierSchema = new Schema(
   {
-    scheme: { type: String, required: true, trim: true },
-    value: { type: String, required: true, trim: true },
-    lookupDigest: { type: String, required: true },
+    scheme: { type: String, required: true, trim: true, set: omitNull },
+    value: { type: String, required: true, trim: true, set: omitNull },
+    lookupDigest: { type: String, required: true, set: omitNull },
   },
   { _id: false, strict: "throw" },
 );
@@ -122,7 +119,7 @@ const bankDetailsSchema = new Schema(
     },
     currencyCode: { type: String, required: true, uppercase: true, trim: true },
     accountIdentifier: { type: accountIdentifierSchema, required: true },
-    bankIdentifier: { type: bankIdentifierSchema },
+    bankIdentifier: { type: bankIdentifierSchema, set: omitNull },
   },
   { _id: false, strict: "throw" },
 );
@@ -146,35 +143,32 @@ export const vendorSchema = new Schema<VendorRecord>(
       default: VendorState.DRAFT,
       index: true,
     },
-    legalName: { type: String, required: true, trim: true },
-    tradingName: { type: String, trim: true },
+    legalName: { type: String, trim: true, set: omitNull },
+    tradingName: { type: String, trim: true, set: omitNull },
     countryCode: {
       type: String,
-      required: true,
       uppercase: true,
       trim: true,
       match: /^[A-Z]{2}$/,
       index: true,
+      set: omitNull,
     },
-    registeredAddress: { type: registeredAddressSchema, required: true },
-    contactPerson: { type: contactPersonSchema, required: true },
+    registeredAddress: { type: registeredAddressSchema, set: omitNull },
+    contactPerson: { type: contactPersonSchema, set: omitNull },
     capabilities: {
       type: [capabilitySchema],
-      required: true,
       default: [],
     },
     countryIdentifiers: {
       type: [countryIdentifierSchema],
-      required: true,
       default: [],
     },
-    bankDetails: { type: bankDetailsSchema, required: true },
+    bankDetails: { type: bankDetailsSchema, set: omitNull },
     documents: {
       type: [documentSchema],
-      required: true,
       default: [],
     },
-    submittedAt: { type: Date },
+    submittedAt: { type: Date, set: omitNull },
   },
   {
     collection: "vendors",
@@ -191,7 +185,3 @@ vendorSchema.index(
   { unique: true, sparse: true },
 );
 vendorSchema.index({ state: 1, submittedAt: 1 });
-
-export const VendorModel =
-  (models.Vendor as Model<VendorRecord> | undefined) ??
-  model<VendorRecord>("Vendor", vendorSchema);
