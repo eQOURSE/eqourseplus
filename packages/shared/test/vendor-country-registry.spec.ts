@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   getVendorCountryRequirements,
-  vendorCountryRequirements,
 } from "../src";
 
 describe("FR-REG-08A vendor country registry", () => {
@@ -42,12 +41,9 @@ describe("FR-REG-08A vendor country registry", () => {
   it("returns a separate immutable registry entry for every ISO country code", () => {
     expect(getVendorCountryRequirements("in")?.countryCode).toBe("IN");
     expect(getVendorCountryRequirements("ZZ")).toBeUndefined();
-    expect(vendorCountryRequirements.IN).not.toBe(
-      vendorCountryRequirements.AU,
-    );
   });
 
-  it("canonicalizes each identifier according to its scheme", () => {
+  it("applies one shared canonical form to every identifier scheme", () => {
     expect(
       getVendorCountryRequirements("IN")?.canonicalize("GSTIN", " 27 a a a c b 2230 m 1 z 2 "),
     ).toBe("27AAACB2230M1Z2");

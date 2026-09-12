@@ -128,6 +128,7 @@ describe("FR-REG-08A vendors schema", () => {
     });
 
     const stored = await VendorModel.collection.findOne({ _id: vendor._id });
+    expect(stored?.countryIdentifiers).toHaveLength(1);
     expect(stored?.countryIdentifiers).toEqual([
       {
         scheme: "UEN",
@@ -135,13 +136,12 @@ describe("FR-REG-08A vendors schema", () => {
         lookupDigest: "uen-digest-1",
       },
     ]);
-    expect(stored?.countryIdentifiers).not.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ scheme: "GSTIN" }),
-        expect.objectContaining({ value: null }),
-        expect.objectContaining({ lookupDigest: null }),
-      ]),
-    );
+    expect(
+      stored?.countryIdentifiers.every(
+        (identifier) =>
+          identifier.value !== null && identifier.lookupDigest !== null,
+      ),
+    ).toBe(true);
   });
 
   it("allows two vendors without a GSTIN to insert under the sparse digest index", async () => {
@@ -174,9 +174,6 @@ describe("FR-REG-08A vendors schema", () => {
       ...baseVendor,
       ownerUserId: new Types.ObjectId(),
       contactPerson: { ...baseVendor.contactPerson, email: "one@example.com" },
-      countryIdentifiers: [
-        { scheme: "UEN", value: "2019123456A", lookupDigest: "uen-digest-1" },
-      ],
     });
 
     await expect(
@@ -184,9 +181,6 @@ describe("FR-REG-08A vendors schema", () => {
         ...baseVendor,
         ownerUserId: new Types.ObjectId(),
         contactPerson: { ...baseVendor.contactPerson, email: "two@example.com" },
-        countryIdentifiers: [
-          { scheme: "UEN", value: "2020123456B", lookupDigest: "uen-digest-2" },
-        ],
       }),
     ).resolves.toBeDefined();
   });
