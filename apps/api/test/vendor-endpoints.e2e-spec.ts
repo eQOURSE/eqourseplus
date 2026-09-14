@@ -4,7 +4,7 @@ import { BusinessUnit, Role, VendorState } from "@eqourse/shared";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import { getModelToken } from "@nestjs/mongoose";
 import { Model, Types, connection } from "mongoose";
-import request from "supertest";
+import request, { type Response } from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { AppModule } from "../src/app.module";
@@ -204,5 +204,31 @@ describe("FR-REG-08A vendor draft and submission API", () => {
       .expect(201);
     expect(resubmitted.body.state).toBe(VendorState.SUBMITTED);
     expect(resubmitted.body.submittedAt).toBe(submittedAt);
+  });
+
+  it("allows only one of two concurrent submissions and preserves submittedAt", async () => {
+    const owner = await authenticatedUser("vendor-concurrent@example.com");
+    await postVendor({}, owner.accessToken).expect(201);
+    await patchVendor(completeIndiaVendor, owner.accessToken).expect(200);
+
+    const submissions = await Promise.allSettled([
+      request(app.getHttpServer())
+        .post("/api/v1/vendors/me/submit")
+        .set("authorization", `Bearer ${owner.accessToken}`),
+      request(app.getHttpServer())
+        .post("/api/v1/vendors/me/submit")
+        .set("authorization", `Bearer ${owner.accessToken}`),
+    ]);
+    const responses = submissions
+      .filter((result): result is PromiseFulfilledResult<Response> => result.status === "fulfilled")
+      .map((result) => result.value);
+    expect(responses.map((response) => response.status).sort()).toEqual([201, 400]);
+
+    const stored = await vendorModel.findOne({ ownerUserId: owner.userId }).lean().exec();
+    expect(stored?.state).toBe(VendorState.SUBMITTED);
+    const successfulSubmission = responses.find((response) => response.status === 201);
+    expect(stored?.submittedAt?.toISOString()).toBe(
+      new Date(successfulSubmission?.body.submittedAt).toISOString(),
+    );
   });
 });

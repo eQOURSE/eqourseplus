@@ -3,6 +3,7 @@ import { MongooseModule } from "@nestjs/mongoose";
 
 import { VENDOR_IDENTIFIER_HMAC_SECRET, VENDOR_MODEL_NAME } from "./vendor.constants";
 import { VendorController } from "./vendor.controller";
+import { loadVendorIdentifierHmacSecret } from "./vendor-identifier-digest";
 import { VendorService } from "./vendor.service";
 import { vendorSchema } from "./vendor.schema";
 import { MongooseVendorStore, VENDOR_STORE } from "./vendor.store";
@@ -21,7 +22,7 @@ import { MongooseVendorStore, VENDOR_STORE } from "./vendor.store";
     },
     {
       provide: VENDOR_IDENTIFIER_HMAC_SECRET,
-      useFactory: () => process.env,
+      useFactory: () => loadVendorIdentifierHmacSecret(process.env),
     },
   ],
 })

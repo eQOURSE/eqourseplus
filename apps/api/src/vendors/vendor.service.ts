@@ -12,19 +12,17 @@ import {
 } from "@eqourse/shared";
 import { SkillTaxonomyModel } from "../database/skill-taxonomy.schema";
 
-import { digestVendorIdentifier, loadVendorIdentifierHmacSecret } from "./vendor-identifier-digest";
+import { digestVendorIdentifier } from "./vendor-identifier-digest";
 import { VENDOR_IDENTIFIER_HMAC_SECRET } from "./vendor.constants";
 import { type VendorDocument } from "./vendor.schema";
 import { VENDOR_STORE, type VendorStore } from "./vendor.store";
-
-type VendorIdentifierEnvironment = Record<string, string | undefined>;
 
 @Injectable()
 export class VendorService {
   constructor(
     @Inject(VENDOR_STORE) private readonly store: VendorStore,
     @Inject(VENDOR_IDENTIFIER_HMAC_SECRET)
-    private readonly environment: VendorIdentifierEnvironment = process.env,
+    private readonly hmacSecret: string,
   ) {}
 
   async createDraft(ownerUserId: string, input: VendorDraftInput): Promise<VendorDocument> {
@@ -57,7 +55,7 @@ export class VendorService {
           countryCode,
           identifier.scheme,
           identifier.value,
-          loadVendorIdentifierHmacSecret(this.environment),
+          this.hmacSecret,
         ),
       }));
     }
@@ -70,7 +68,14 @@ export class VendorService {
       throw new BadRequestException("Vendor cannot be submitted in its current state");
     }
     await this.assertComplete(vendor);
-    return this.store.markSubmitted(ownerUserId, vendor.submittedAt ?? new Date());
+    const submitted = await this.store.markSubmitted(
+      vendor._id,
+      vendor.submittedAt ?? new Date(),
+    );
+    if (!submitted) {
+      throw new BadRequestException("Vendor cannot be submitted in its current state");
+    }
+    return submitted;
   }
 
   private canonicalize(countryCode: string, scheme: string, value: string): string {

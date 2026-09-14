@@ -43,10 +43,13 @@ describe("FR-FND-06 API observability", () => {
     }
     await Sentry.close(0);
     delete process.env.JWT_SECRET;
+    delete process.env.VENDOR_IDENTIFIER_HMAC_SECRET;
   });
 
   async function createApp(logger?: JsonLogger): Promise<INestApplication> {
     process.env.JWT_SECRET = "test-only-jwt-secret-at-least-32-characters";
+    process.env.VENDOR_IDENTIFIER_HMAC_SECRET =
+      "test-only-vendor-hmac-secret-at-least-32-characters";
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
       controllers: [DeliberateErrorController],

@@ -15,7 +15,7 @@ export interface VendorStore {
   findByOwner(ownerUserId: string): Promise<VendorDocument | null>;
   createDraft(ownerUserId: string): Promise<VendorDocument>;
   updateDraft(ownerUserId: string, patch: VendorDraftInput): Promise<VendorDocument>;
-  markSubmitted(ownerUserId: string, submittedAt: Date): Promise<VendorDocument>;
+  markSubmitted(vendorId: Types.ObjectId, submittedAt: Date): Promise<VendorDocument | null>;
 }
 
 @Injectable()
@@ -48,18 +48,26 @@ export class MongooseVendorStore implements VendorStore {
     return updated as unknown as VendorDocument;
   }
 
-  async markSubmitted(ownerUserId: string, submittedAt: Date): Promise<VendorDocument> {
-    const vendor = await this.findByOwner(ownerUserId);
-    if (!vendor) throw new NotFoundException("Vendor not found");
-    const update = vendor.submittedAt
-      ? { $set: { state: VendorState.SUBMITTED } }
-      : { $set: { state: VendorState.SUBMITTED, submittedAt } };
+  async markSubmitted(
+    vendorId: Types.ObjectId,
+    submittedAt: Date,
+  ): Promise<VendorDocument | null> {
     const updated = await this.model.findOneAndUpdate(
-      { _id: vendor._id },
-      update,
-      { new: true, runValidators: true },
+      {
+        _id: vendorId,
+        state: { $in: [VendorState.DRAFT, VendorState.MORE_INFO_NEEDED] },
+      },
+      [
+        {
+          $set: {
+            state: VendorState.SUBMITTED,
+            submittedAt: { $ifNull: ["$submittedAt", submittedAt] },
+            updatedAt: new Date(),
+          },
+        },
+      ],
+      { returnDocument: "after", updatePipeline: true },
     ).exec();
-    if (!updated) throw new NotFoundException("Vendor not found");
-    return updated as unknown as VendorDocument;
+    return updated as unknown as VendorDocument | null;
   }
 }

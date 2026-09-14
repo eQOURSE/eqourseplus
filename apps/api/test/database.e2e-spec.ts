@@ -138,6 +138,8 @@ describe("FR-FND-03A database migration and taxonomy seed", () => {
   it("wires the Nest application through MONGODB_URI", async () => {
     let app: INestApplication | undefined;
     process.env.JWT_SECRET = "test-only-jwt-secret-at-least-32-characters";
+    process.env.VENDOR_IDENTIFIER_HMAC_SECRET =
+      "test-only-vendor-hmac-secret-at-least-32-characters";
 
     try {
       const moduleRef = await Test.createTestingModule({
@@ -149,6 +151,7 @@ describe("FR-FND-03A database migration and taxonomy seed", () => {
       expect(connection.readyState).toBe(1);
     } finally {
       delete process.env.JWT_SECRET;
+      delete process.env.VENDOR_IDENTIFIER_HMAC_SECRET;
       if (app) await app.close();
     }
   });
