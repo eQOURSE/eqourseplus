@@ -17,6 +17,8 @@ describe("GET /health (FR-FND-01)", () => {
 
   it("returns HTTP 200", async () => {
     process.env.JWT_SECRET = "test-only-jwt-secret-at-least-32-characters";
+    process.env.VENDOR_IDENTIFIER_HMAC_SECRET =
+      "test-only-vendor-hmac-secret-at-least-32-characters";
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     })
@@ -28,5 +30,6 @@ describe("GET /health (FR-FND-01)", () => {
 
     await request(app.getHttpServer()).get("/health").expect(200);
     delete process.env.JWT_SECRET;
+    delete process.env.VENDOR_IDENTIFIER_HMAC_SECRET;
   });
 });

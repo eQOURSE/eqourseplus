@@ -4,6 +4,7 @@ export * from "./data/vendor-country-registry";
 export * from "./schemas/auth.schemas";
 export * from "./schemas/registration.schemas";
 export * from "./schemas/state.schemas";
+export * from "./schemas/vendor.schemas";
 export * from "./states/earning-line-status";
 export * from "./states/payout-batch-state";
 export * from "./states/profile-state";

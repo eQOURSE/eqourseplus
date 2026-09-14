@@ -111,6 +111,8 @@ describe("FR-REG-01 freelancer registration API", () => {
     memoryServer = await MongoMemoryServer.create();
     process.env.MONGODB_URI = memoryServer.getUri("eqourse_reg_01_test");
     process.env.JWT_SECRET = "test-only-jwt-secret-at-least-32-characters";
+    process.env.VENDOR_IDENTIFIER_HMAC_SECRET =
+      "test-only-vendor-hmac-secret-at-least-32-characters";
 
     const config = require(
       path.join(apiDirectory, "migrate-mongo-config.cjs"),
@@ -147,6 +149,7 @@ describe("FR-REG-01 freelancer registration API", () => {
   afterAll(async () => {
     delete process.env.MONGODB_URI;
     delete process.env.JWT_SECRET;
+    delete process.env.VENDOR_IDENTIFIER_HMAC_SECRET;
     if (app) await app.close();
     if (migrationClient) await migrationClient.close();
     if (memoryServer) await memoryServer.stop();

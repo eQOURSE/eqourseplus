@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
-import { connect, disconnect, Types } from "mongoose";
+import { connect, disconnect, model, Types } from "mongoose";
 
-import { VendorModel, vendorSchema } from "../src/database/vendor.schema";
+import { vendorSchema, type VendorRecord } from "../src/vendors/vendor.schema";
+
+const VendorModel = model<VendorRecord>("Vendor", vendorSchema, "vendors");
 
 describe("FR-REG-08A vendors schema", () => {
   let memoryServer: MongoMemoryServer;
@@ -48,9 +50,10 @@ describe("FR-REG-08A vendors schema", () => {
       "ACTIVE",
       "REJECTED",
     ]);
-    expect(vendorSchema.path("legalName").isRequired).toBe(true);
+    expect(vendorSchema.path("legalName").isRequired).not.toBe(true);
     expect(vendorSchema.path("tradingName").isRequired).not.toBe(true);
-    expect(vendorSchema.path("countryCode").isRequired).toBe(true);
+    expect(vendorSchema.path("countryCode").isRequired).not.toBe(true);
+    expect(vendorSchema.path("registeredAddress").isRequired).not.toBe(true);
     expect(vendorSchema.path("registeredAddress.line1").isRequired).toBe(true);
     expect(vendorSchema.path("registeredAddress.line2").isRequired).not.toBe(true);
     expect(vendorSchema.path("registeredAddress.city").isRequired).toBe(true);
@@ -60,6 +63,7 @@ describe("FR-REG-08A vendors schema", () => {
     expect(vendorSchema.path("contactPerson.name").isRequired).toBe(true);
     expect(vendorSchema.path("contactPerson.email").isRequired).toBe(true);
     expect(vendorSchema.path("contactPerson.phone").isRequired).toBe(true);
+    expect(vendorSchema.path("contactPerson").isRequired).not.toBe(true);
     expect(vendorSchema.path("capabilities.taxonomySlug").isRequired).toBe(true);
     expect(vendorSchema.path("countryIdentifiers.scheme").isRequired).toBe(true);
     expect(vendorSchema.path("countryIdentifiers.value").isRequired).toBe(true);
@@ -70,6 +74,7 @@ describe("FR-REG-08A vendors schema", () => {
     expect(vendorSchema.path("bankDetails.accountIdentifier.scheme").isRequired).toBe(true);
     expect(vendorSchema.path("bankDetails.accountIdentifier.value").isRequired).toBe(true);
     expect(vendorSchema.path("bankDetails.bankIdentifier").isRequired).not.toBe(true);
+    expect(vendorSchema.path("bankDetails").isRequired).not.toBe(true);
     expect(vendorSchema.path("documents.kind").isRequired).toBe(true);
     expect(vendorSchema.path("documents.objectKey").isRequired).toBe(true);
     expect(vendorSchema.path("documents.uploadedAt").isRequired).toBe(true);
@@ -142,6 +147,12 @@ describe("FR-REG-08A vendors schema", () => {
           identifier.value !== null && identifier.lookupDigest !== null,
       ),
     ).toBe(true);
+  });
+
+  it("persists a draft with only its owner", async () => {
+    await expect(
+      VendorModel.create({ ownerUserId: new Types.ObjectId() }),
+    ).resolves.toMatchObject({ state: "DRAFT" });
   });
 
   it("allows two vendors without a GSTIN to insert under the sparse digest index", async () => {

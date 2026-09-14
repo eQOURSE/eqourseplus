@@ -1,0 +1,2 @@
+export const VENDOR_IDENTIFIER_HMAC_SECRET = Symbol("VENDOR_IDENTIFIER_HMAC_SECRET");
+export const VENDOR_MODEL_NAME = "Vendor";
