@@ -8,10 +8,10 @@ the FR-FND-05 API pipeline. They do not deploy to Vercel or Utho.
 **Run every step in Sections 1–6 while the PR is still open, before merging it
 to `main`.** The staging workflow fires on the merge itself, so Artifact
 Registry, both service accounts, Workload Identity Federation, `MONGODB_URI`,
-`JWT_SECRET`, the per-service `CORS_ORIGINS` values, the GitHub repository
-variables, and the protected `production` environment must already exist. Before
-enabling real email delivery, also complete Section 10 without changing any
-existing company-mail DNS record.
+`JWT_SECRET`, `VENDOR_IDENTIFIER_HMAC_SECRET`, the per-service `CORS_ORIGINS`
+values, the GitHub repository variables, and the protected `production`
+environment must already exist. Before enabling real email delivery, also
+complete Section 10 without changing any existing company-mail DNS record.
 
 Run the following commands in PowerShell from a terminal where `gcloud` is
 authenticated as a project IAM administrator. The GitHub CLI commands also
@@ -138,7 +138,23 @@ gcloud secrets create JWT_SECRET --replication-policy=automatic --data-file=- `
   --project=$ProjectId
 ```
 
-Grant only the Cloud Run runtime identity access to these two secrets:
+Create `VENDOR_IDENTIFIER_HMAC_SECRET` in GCP Secret Manager using a
+password-manager-generated random value of at least 32 characters. The API uses
+it to create deterministic HMAC lookup digests for encrypted vendor country
+identifiers. Paste only the raw value, without a
+`VENDOR_IDENTIFIER_HMAC_SECRET=` prefix or surrounding quotes:
+
+```powershell
+gcloud secrets create VENDOR_IDENTIFIER_HMAC_SECRET --replication-policy=automatic --data-file=- `
+  --project=$ProjectId
+```
+
+Rotating `VENDOR_IDENTIFIER_HMAC_SECRET` invalidates the
+`countryIdentifiers.lookupDigest` uniqueness index. Per SPEC.md Section 19.2,
+rotation requires recomputing every digest and rebuilding that index as one
+coordinated migration; changing only the Secret Manager value is unsafe.
+
+Grant only the Cloud Run runtime identity access to these three secrets:
 
 ```powershell
 gcloud secrets add-iam-policy-binding MONGODB_URI `
@@ -147,6 +163,11 @@ gcloud secrets add-iam-policy-binding MONGODB_URI `
   --role="roles/secretmanager.secretAccessor"
 
 gcloud secrets add-iam-policy-binding JWT_SECRET `
+  --project=$ProjectId `
+  --member="serviceAccount:$RuntimeServiceAccount" `
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding VENDOR_IDENTIFIER_HMAC_SECRET `
   --project=$ProjectId `
   --member="serviceAccount:$RuntimeServiceAccount" `
   --role="roles/secretmanager.secretAccessor"
@@ -229,6 +250,7 @@ gcloud iam workload-identity-pools providers describe $ProviderId `
 
 gcloud secrets describe MONGODB_URI --project=$ProjectId
 gcloud secrets describe JWT_SECRET --project=$ProjectId
+gcloud secrets describe VENDOR_IDENTIFIER_HMAC_SECRET --project=$ProjectId
 
 gh variable list --repo $GitHubRepository
 ```
@@ -241,9 +263,10 @@ reviewer. Only then merge the PR.
 The staging job builds and pushes the commit-SHA image, deploys
 `eqplus-api-staging` in `asia-south1` with `min-instances=0`, public invocation,
 `CORS_ORIGINS=http://localhost:3000` as non-secret runtime configuration,
-Secret Manager injection for `MONGODB_URI` and `JWT_SECRET`, and HTTP
-startup/liveness probes. It then calls `/health` and fails if the endpoint does
-not return a successful response. Production receives
+Secret Manager injection for `MONGODB_URI`, `JWT_SECRET`, and
+`VENDOR_IDENTIFIER_HMAC_SECRET`, plus HTTP startup/liveness probes. It then
+calls `/health` and fails if the endpoint does not return a successful response.
+Production receives
 `CORS_ORIGINS=https://plus.eqourse.com` only after manual approval.
 
 After that succeeds, the `Deploy production API` job must be visibly waiting

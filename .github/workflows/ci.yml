@@ -119,7 +119,7 @@ jobs:
           --min-instances=0
           --allow-unauthenticated
           --set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",SMS_PROVIDER="${SMS_PROVIDER}"
-          --set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest
+          --set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest
           --startup-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=0,timeoutSeconds=2,periodSeconds=5,failureThreshold=12
           --liveness-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=10,timeoutSeconds=2,periodSeconds=30,failureThreshold=3
           --quiet
@@ -189,7 +189,7 @@ jobs:
           --min-instances=0
           --allow-unauthenticated
           --set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}",SMS_PROVIDER="${SMS_PROVIDER}"
-          --set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest
+          --set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest
           --startup-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=0,timeoutSeconds=2,periodSeconds=5,failureThreshold=12
           --liveness-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=10,timeoutSeconds=2,periodSeconds=30,failureThreshold=3
           --quiet
