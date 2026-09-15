@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { AppModule } from "../src/app.module";
 import { SkillTaxonomyStatus } from "../src/database/skill-taxonomy.schema";
+import { configureTrustProxy } from "../src/trust-proxy.config";
 
 describe("FR-REG-08A and FR-REG-02B skill taxonomy read API", () => {
   let app: INestApplication;
@@ -23,10 +24,7 @@ describe("FR-REG-08A and FR-REG-02B skill taxonomy read API", () => {
       imports: [AppModule],
     }).compile();
     app = moduleRef.createNestApplication();
-    const express = app.getHttpAdapter().getInstance() as {
-      set(setting: string, value: boolean): void;
-    };
-    express.set("trust proxy", true);
+    configureTrustProxy(app);
     await app.init();
 
     await connection.collection("skillTaxonomy").insertMany([
