@@ -78,7 +78,7 @@ const routeCases: readonly {
     title: VENDOR_REGISTER_TITLE,
     titleLength: 30,
     description: VENDOR_REGISTER_DESCRIPTION,
-    descriptionLength: 114,
+    descriptionLength: 112,
     source: readFileSync(
       resolve(process.cwd(), "app/register/vendor/page.tsx"),
       "utf8",
@@ -89,6 +89,31 @@ const routeCases: readonly {
 afterEach(cleanup);
 
 describe("FR-PUB-06 registration routes", () => {
+  it("keeps a responsive gap between the navigation and vendor registration form", () => {
+    const styles = readFileSync(
+      resolve(process.cwd(), "app/globals.css"),
+      "utf8",
+    );
+
+    expect(styles).toMatch(
+      /\.company-onboarding-page\s*\{[^}]*margin-top:\s*clamp\(1\.5rem, 4vw, 3rem\)/s,
+    );
+  });
+
+  it("adapts the company onboarding controls below nine hundred pixels", () => {
+    const styles = readFileSync(
+      resolve(process.cwd(), "app/globals.css"),
+      "utf8",
+    );
+
+    expect(styles).toMatch(
+      /@media \(max-width: 56\.25rem\)[\s\S]*?\.company-onboarding-stepper ol\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/,
+    );
+    expect(styles).toMatch(
+      /@media \(max-width: 47\.999rem\)[\s\S]*?\.company-onboarding-actions,[\s\S]*?\.company-onboarding-review-actions\s*\{[^}]*grid-template-columns:\s*1fr/,
+    );
+  });
+
   it.each(routeCases)(
     "exports exact noindex metadata within SEO length limits for $name",
     ({ route, metadata, title, titleLength, description, descriptionLength }) => {
@@ -120,7 +145,7 @@ describe("FR-PUB-06 registration routes", () => {
     );
     expect(VENDOR_REGISTER_TITLE).toBe("Vendor Registration | eQOURSE+");
     expect(VENDOR_REGISTER_DESCRIPTION).toBe(
-      "Vendor registration for eQOURSE+ is not open yet. The country step and the rest of sign-up open with registration.",
+      "Register your company with eQOURSE+ using country-specific details, identifiers, documents and bank information.",
     );
   });
 
@@ -241,26 +266,15 @@ describe("FR-PUB-06 registration routes", () => {
   });
 
   it(
-    "renders an accessible disabled country selector for the vendor path",
+    "keeps the vendor route server-rendered with a session-aware company onboarding entry",
     () => {
-      const Page = VendorRegistrationPage;
-      const { container } = render(<Page />);
-      const select = screen.getByLabelText("Country");
-      const note = screen.getByText("Country selection opens with registration.");
-
-      expect(select).toBeDisabled();
-      expect(select).toHaveAttribute("id", "registration-country");
-      expect(select).toHaveAttribute(
-        "aria-describedby",
-        "registration-country-note",
-      );
+      expect(VendorRegistrationPage).toBeTypeOf("function");
       expect(
-        container.querySelector('label[for="registration-country"]'),
-      ).not.toBeNull();
-      expect(select.querySelectorAll("option")).toHaveLength(1);
-      expect(select).toHaveTextContent("Country selection is not available yet");
-      expect(note).toHaveAttribute("id", "registration-country-note");
-      expect(select.nextElementSibling).toBe(note);
+        readFileSync(
+          resolve(process.cwd(), "app/register/vendor/page.tsx"),
+          "utf8",
+        ),
+      ).toContain("<CompanyOnboardingEntry actor=\"vendor\" />");
     },
   );
 

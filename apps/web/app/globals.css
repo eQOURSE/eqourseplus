@@ -661,7 +661,8 @@ margin: 0;
   color: hsl(var(--primary));
 }
 
-.home-freelancer-link {
+.home-freelancer-link,
+.home-registration-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -685,16 +686,19 @@ margin: 0;
   margin-top: 2rem;
 }
 
-.home-audience-links .home-freelancer-link {
+.home-audience-links .home-freelancer-link,
+.home-audience-links .home-registration-link {
   margin-top: 0;
 }
 
-.home-freelancer-link:hover {
+.home-freelancer-link:hover,
+.home-registration-link:hover {
   background: hsl(var(--card) / 0.58);
   transform: translateX(0.35rem);
 }
 
-.home-freelancer-link:focus-visible {
+.home-freelancer-link:focus-visible,
+.home-registration-link:focus-visible {
   outline: 2px solid hsl(var(--ring) / 0.6);
   outline-offset: 3px;
 }
@@ -823,7 +827,8 @@ margin: 0;
   transform: translateY(-2px);
 }
 
-.freelancer-hero {
+.freelancer-hero,
+.company-onboarding-hero {
   position: relative;
   z-index: 1;
   display: grid;
@@ -832,7 +837,8 @@ margin: 0;
   padding: clamp(4rem, 9vw, 8rem) max(1.25rem, calc((100vw - 76rem) / 2));
 }
 
-.freelancer-hero-content {
+.freelancer-hero-content,
+.company-onboarding-hero-content {
   position: relative;
   z-index: 1;
   width: min(100%, 58rem);
@@ -840,7 +846,8 @@ margin: 0;
   animation: foundation-enter 0.8s var(--ease-emphasized) both;
 }
 
-.freelancer-hero h1 {
+.freelancer-hero h1,
+.company-onboarding-hero h1 {
   max-width: 13ch;
   margin: 0;
   color: hsl(var(--foreground));
@@ -852,7 +859,8 @@ margin: 0;
   text-wrap: balance;
 }
 
-.freelancer-hero-copy {
+.freelancer-hero-copy,
+.company-onboarding-copy {
   max-width: 43rem;
   margin: 2rem 0 0;
   color: hsl(var(--muted-foreground));
@@ -879,7 +887,8 @@ margin: 0;
   background: hsl(var(--primary) / 0.55);
 }
 
-.freelancer-hero-field {
+.freelancer-hero-field,
+.company-onboarding-hero-field {
   position: absolute;
   top: 50%;
   right: max(-12rem, calc((100vw - 84rem) / 2));
@@ -889,19 +898,22 @@ margin: 0;
   pointer-events: none;
 }
 
-.freelancer-hero-field span {
+.freelancer-hero-field span,
+.company-onboarding-hero-field span {
   position: absolute;
   inset: 0;
   border: 1px solid hsl(var(--primary) / 0.2);
   border-radius: 50%;
 }
 
-.freelancer-hero-field span:nth-child(2) {
+.freelancer-hero-field span:nth-child(2),
+.company-onboarding-hero-field span:nth-child(2) {
   inset: 18%;
   border-color: hsl(var(--accent) / 0.28);
 }
 
-.freelancer-hero-field span:nth-child(3) {
+.freelancer-hero-field span:nth-child(3),
+.company-onboarding-hero-field span:nth-child(3) {
   inset: 39%;
   border-width: 2px;
   border-color: hsl(var(--primary) / 0.42);
@@ -955,6 +967,356 @@ margin: 0;
 
 .registration-form-shell {
   width: min(100%, 42rem);
+}
+
+.company-onboarding-shell {
+  width: min(100%, 52rem);
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.company-onboarding-shell > h1 {
+  margin: 0.5rem 0 0;
+  color: hsl(var(--foreground));
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1.1;
+}
+
+.company-onboarding-form {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.company-onboarding-form > section {
+  display: grid;
+  gap: 1rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.company-onboarding-form .home-section-title {
+  margin: 0;
+}
+
+.company-onboarding-field {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.company-onboarding-field label {
+  color: hsl(var(--foreground));
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
+.company-onboarding-field input,
+.company-onboarding-field select {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0 1rem;
+  border: 1px solid hsl(var(--primary));
+  border-radius: var(--radius);
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  font: inherit;
+  color-scheme: light dark;
+  transition:
+    border-color var(--motion-micro) var(--ease-standard),
+    box-shadow var(--motion-micro) var(--ease-standard);
+}
+
+.company-onboarding-field input:focus-visible,
+.company-onboarding-field select:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  box-shadow: var(--shadow-soft);
+}
+
+.company-onboarding-field input:disabled,
+.company-onboarding-field select:disabled {
+  cursor: not-allowed;
+  background: hsl(var(--surface-sunken));
+  color: hsl(var(--muted-foreground));
+  opacity: 1;
+}
+
+.company-onboarding-help {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.6;
+}
+
+.company-onboarding-error {
+  margin: 0;
+  color: hsl(var(--destructive));
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.company-onboarding-field input[aria-invalid="true"] {
+  border-color: hsl(var(--destructive));
+}
+
+.company-onboarding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.authenticated-shell {
+  min-height: 100vh;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.authenticated-shell-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  width: min(100% - 2rem, 80rem);
+  min-height: 4.5rem;
+  margin: 1rem auto 0;
+  padding: 0.5rem;
+}
+
+.authenticated-shell-nav .home-wordmark {
+  display: inline-flex;
+  align-items: center;
+  min-height: 3rem;
+  padding-inline: 1rem;
+  color: hsl(var(--foreground));
+  text-decoration: none;
+}
+
+.authenticated-shell-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.authenticated-shell-email {
+  max-width: min(32rem, 42vw);
+  overflow: hidden;
+  color: hsl(var(--muted-foreground));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.authenticated-shell-content {
+  width: min(100% - 2rem, 80rem);
+  margin: 0 auto;
+  padding: clamp(2rem, 5vw, 4rem) 0;
+}
+
+.authenticated-shell-status,
+.company-onboarding-status {
+  width: min(100% - 2rem, 52rem);
+  margin: 4rem auto;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+}
+
+.company-onboarding-page {
+  display: grid;
+  justify-items: center;
+  gap: 1.5rem;
+  margin-top: clamp(1.5rem, 4vw, 3rem);
+}
+
+.company-onboarding-status-page {
+  width: min(100%, 52rem);
+  padding: clamp(1.25rem, 3vw, 2rem);
+  text-align: center;
+}
+
+.company-onboarding-status-page h1 {
+  margin: 0.5rem 0 0;
+  color: hsl(var(--foreground));
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1.1;
+}
+
+.company-onboarding-status-page .company-onboarding-copy {
+  max-width: 36rem;
+  margin: 1rem auto 0;
+}
+
+.company-onboarding-stepper {
+  overflow-x: auto;
+  margin-top: 2rem;
+  padding-bottom: 0.25rem;
+}
+
+.company-onboarding-stepper ol {
+  display: flex;
+  gap: 0.5rem;
+  min-width: max-content;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.company-onboarding-stepper button {
+  min-height: 2.75rem;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--card) / 0.48);
+  color: hsl(var(--muted-foreground));
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    color var(--motion-hover) var(--ease-standard),
+    background-color var(--motion-hover) var(--ease-standard),
+    border-color var(--motion-hover) var(--ease-standard);
+}
+
+.company-onboarding-stepper button:hover,
+.company-onboarding-stepper button[data-current="true"] {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--foreground));
+}
+
+.company-onboarding-stepper button[data-state="previous"] {
+  color: hsl(var(--foreground));
+}
+
+.company-onboarding-stepper button:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.company-onboarding-subsection {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--card) / 0.5);
+}
+
+.company-onboarding-subsection legend {
+  padding-inline: 0.5rem;
+  color: hsl(var(--foreground));
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
+.company-onboarding-summary {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.company-onboarding-summary-row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.4fr) 1fr;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.company-onboarding-summary-row dt {
+  color: hsl(var(--muted-foreground));
+  font-weight: 700;
+}
+
+.company-onboarding-summary-row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.company-onboarding-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+@media (max-width: 56.25rem) {
+  .company-onboarding-page {
+    width: calc(100% - 2rem);
+    margin-inline: auto;
+    margin-top: clamp(1rem, 3vw, 2rem);
+  }
+
+  .company-onboarding-shell,
+  .company-onboarding-status-page {
+    box-sizing: border-box;
+    padding: clamp(1rem, 3vw, 1.5rem);
+  }
+
+  .company-onboarding-stepper {
+    overflow-x: visible;
+    margin-top: 1.5rem;
+  }
+
+  .company-onboarding-stepper ol {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-width: 0;
+  }
+
+  .company-onboarding-stepper button {
+    width: 100%;
+    min-height: 3rem;
+    padding-inline: 0.5rem;
+  }
+
+  .company-onboarding-field input,
+  .company-onboarding-field select {
+    min-height: 3.25rem;
+  }
+
+  .company-onboarding-actions,
+  .company-onboarding-review-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .company-onboarding-actions .eq-glass-button,
+  .company-onboarding-review-actions .eq-glass-button {
+    width: 100%;
+  }
+
+  .company-onboarding-summary-row {
+    grid-template-columns: minmax(7rem, 0.35fr) 1fr;
+  }
+}
+
+@media (max-width: 47.999rem) {
+  .company-onboarding-page {
+    width: calc(100% - 1rem);
+  }
+
+  .company-onboarding-shell,
+  .company-onboarding-status-page {
+    padding: 1rem;
+  }
+
+  .company-onboarding-stepper ol {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .company-onboarding-subsection {
+    padding: 0.875rem;
+  }
+
+  .company-onboarding-actions,
+  .company-onboarding-review-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .company-onboarding-summary-row {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
 }
 
 .registration-form {
@@ -1482,24 +1844,28 @@ margin: 0;
     width: 30rem;
   }
 
-  .freelancer-hero {
+  .freelancer-hero,
+  .company-onboarding-hero {
     min-height: calc(100svh - 9.5rem);
     padding-top: 4rem;
   }
 
-  .freelancer-hero .home-hero-actions {
+  .freelancer-hero .home-hero-actions,
+  .company-onboarding-hero .home-hero-actions {
     flex-direction: column;
     align-items: stretch;
     width: 100%;
   }
 
-  .freelancer-hero .home-cta {
+  .freelancer-hero .home-cta,
+  .company-onboarding-hero .home-cta {
     box-sizing: border-box;
     width: 100%;
     min-width: 0;
   }
 
-  .freelancer-hero-field {
+  .freelancer-hero-field,
+  .company-onboarding-hero-field {
     top: 28%;
     right: -17rem;
     width: 34rem;
@@ -1555,6 +1921,33 @@ margin: 0;
 }
 
 @media (max-width: 25rem) {
+  .authenticated-shell-nav {
+    width: calc(100% - 1rem);
+  }
+
+  .authenticated-shell-actions {
+    justify-content: space-between;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .authenticated-shell-email {
+    max-width: 38%;
+  }
+
+  .authenticated-shell-content {
+    width: calc(100% - 1rem);
+  }
+
+  .company-onboarding-summary-row {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+
+  .company-onboarding-review-actions .eq-glass-button {
+    width: 100%;
+  }
+
   .home-nav-wrap {
     width: calc(100% - 0.75rem);
     padding-top: 0.375rem;
@@ -1587,17 +1980,25 @@ margin: 0;
     transition: none !important;
   }
 
+  .company-onboarding-stepper button,
+  .company-onboarding-field input,
+  .company-onboarding-field select {
+    transition: none !important;
+  }
+
   .vendor-faq summary {
     transition: none !important;
   }
 
   .home-category-link:hover,
   .home-freelancer-link:hover,
+  .home-registration-link:hover,
   .home-footer-link:hover {
     transform: none !important;
   }
 
-  .freelancer-hero-content {
+  .freelancer-hero-content,
+  .company-onboarding-hero-content {
     animation: none !important;
   }
 
