@@ -11,10 +11,17 @@ import { AuthModule } from "./auth/auth.module";
 import { DatabaseModule } from "./database/database.module";
 import { HealthController } from "./health.controller";
 import { RequestIdMiddleware } from "./observability/request-id.middleware";
+import { SkillTaxonomyModule } from "./skill-taxonomy/skill-taxonomy.module";
 import { VendorsModule } from "./vendors/vendors.module";
 
 @Module({
-  imports: [SentryModule.forRoot(), DatabaseModule, AuthModule, VendorsModule],
+  imports: [
+    SentryModule.forRoot(),
+    DatabaseModule,
+    AuthModule,
+    VendorsModule,
+    SkillTaxonomyModule,
+  ],
   controllers: [HealthController],
   providers: [
     {
