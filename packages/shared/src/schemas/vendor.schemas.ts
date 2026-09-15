@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+export const VENDOR_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
+export const VENDOR_UPLOAD_CONTENT_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+] as const;
+
 const countryCode = z.string().regex(/^[A-Za-z]{2}$/, "Must be an ISO alpha-2 country code");
 const identifier = z.strictObject({
   scheme: z.string().min(1),
@@ -42,3 +50,18 @@ export const vendorDraftSchema = z.strictObject({
 });
 
 export type VendorDraftInput = z.infer<typeof vendorDraftSchema>;
+
+export const vendorUploadRequestSchema = z.strictObject({
+  kind: z.string().min(1),
+  contentType: z.enum(VENDOR_UPLOAD_CONTENT_TYPES),
+  size: z.number().int().positive().max(VENDOR_UPLOAD_MAX_BYTES),
+});
+
+export const vendorUploadResponseSchema = z.strictObject({
+  uploadUrl: z.url(),
+  objectKey: z.string().min(1),
+  expiresAt: z.string().datetime(),
+});
+
+export type VendorUploadRequest = z.infer<typeof vendorUploadRequestSchema>;
+export type VendorUploadResponse = z.infer<typeof vendorUploadResponseSchema>;

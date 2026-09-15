@@ -158,4 +158,32 @@ describe("FR-FND-06 API observability", () => {
     expect(lines[0]).not.toContain(bearerToken);
     expect(lines[0]).not.toContain(connectionUrl);
   });
+
+  it("redacts pre-signed upload credentials under descriptive URL keys", () => {
+    const lines: string[] = [];
+    const logger = new JsonLogger((line) => lines.push(line));
+    const credential =
+      "https://example.r2.cloudflarestorage.com/private?X-Amz-Signature=secret";
+
+    logger.error({ uploadUrl: credential, presignedUrl: credential, signedUrl: credential });
+
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).not.toContain(credential);
+    expect(lines[0]).not.toContain("X-Amz-Signature");
+  });
+
+  it("redacts a pre-signed credential embedded inside an error message", () => {
+    const lines: string[] = [];
+    const logger = new JsonLogger((line) => lines.push(line));
+    const signature = "provider-secret-signature";
+
+    logger.error(
+      new Error(
+        `R2 rejected https://example.r2.cloudflarestorage.com/private?X-Amz-Signature=${signature}&X-Amz-Expires=300`,
+      ),
+    );
+
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).not.toContain(signature);
+  });
 });
