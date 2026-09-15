@@ -13,7 +13,7 @@ export const FREELANCER_REGISTER_DESCRIPTION =
 export const VENDOR_REGISTER_TITLE = "Vendor Registration | eQOURSE+";
 
 export const VENDOR_REGISTER_DESCRIPTION =
-  "Vendor registration for eQOURSE+ is not open yet. The country step and the rest of sign-up open with registration.";
+  "Register your company with eQOURSE+ using country-specific details, identifiers, documents and bank information.";
 
 export const registrationRoles = [
   {

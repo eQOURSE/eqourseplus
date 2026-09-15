@@ -22,10 +22,15 @@ const ALL_PUBLIC_ROUTES = [
   "/vendors",
 ] as const;
 
-function pagePath(route: string) {
-  return route === "/"
+function pagePaths(route: string): string[] {
+  const directPath = route === "/"
     ? resolve(process.cwd(), "app/page.tsx")
     : resolve(process.cwd(), `app${route}/page.tsx`);
+  return [directPath];
+}
+
+function routePageExists(route: string): boolean {
+  return pagePaths(route).some((path) => existsSync(path));
 }
 
 describe("public route registry", () => {
@@ -53,21 +58,26 @@ describe("public route registry", () => {
     }
   });
 
+  it("keeps registration out of the sitemap source", () => {
+    expect(EXCLUDED_ROUTES).toContain("/register/vendor");
+    expect(RESOLVING_ROUTES).not.toContain("/register/vendor");
+  });
+
   it("lists a route as resolving only when its page exists", () => {
     for (const route of RESOLVING_ROUTES) {
-      expect(existsSync(pagePath(route)), `${route} page.tsx`).toBe(true);
+      expect(routePageExists(route), `${route} page.tsx`).toBe(true);
     }
   });
 
   it("lists a route as unbuilt only when its page does not exist", () => {
     for (const route of UNBUILT_ROUTES) {
-      expect(existsSync(pagePath(route)), `${route} page.tsx`).toBe(false);
+      expect(routePageExists(route), `${route} page.tsx`).toBe(false);
     }
   });
 
   it("lists an excluded route only when its page exists", () => {
     for (const route of EXCLUDED_ROUTES) {
-      expect(existsSync(pagePath(route)), `${route} page.tsx`).toBe(true);
+      expect(routePageExists(route), `${route} page.tsx`).toBe(true);
     }
   });
 });
