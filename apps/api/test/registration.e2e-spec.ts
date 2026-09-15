@@ -20,6 +20,7 @@ import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { AppModule } from "../src/app.module";
+import { configureTrustProxy } from "../src/trust-proxy.config";
 import {
   AUTH_CLOCK,
   AUTH_STORE,
@@ -132,10 +133,7 @@ describe("FR-REG-01 freelancer registration API", () => {
       .compile();
 
     app = moduleRef.createNestApplication();
-    const express = app.getHttpAdapter().getInstance() as {
-      set(setting: string, value: boolean): void;
-    };
-    express.set("trust proxy", true);
+    configureTrustProxy(app);
     await app.init();
   }, 60_000);
 
