@@ -3,10 +3,16 @@
 import {
   authSessionSchema,
   getVendorCountryRequirements,
+  otpRequestSchema,
+  otpVerifySchema,
   registrationRequestAcceptedSchema,
   registrationRequestSchema,
   registrationVerifySchema,
+  VENDOR_UPLOAD_CONTENT_TYPES,
+  VENDOR_UPLOAD_MAX_BYTES,
   vendorDraftSchema,
+  vendorUploadRequestSchema,
+  vendorUploadResponseSchema,
   type AuthSession,
   type RegistrationRequest,
   type VendorDraftInput,
@@ -67,7 +73,11 @@ interface CompanyOnboardingFormProps {
   onAuthenticated?: (session: AuthSession) => void;
 }
 
-type AccessStep = "details" | "verification";
+type AccessStep =
+  | "details"
+  | "verification"
+  | "existing-account"
+  | "signin-verification";
 
 interface CompanyFormState {
   addressCity: string;
@@ -94,6 +104,12 @@ interface CompanyFormState {
   identifiers: Record<string, string>;
   documents: Record<string, { objectKey: string; uploadedAt: string }>;
 }
+
+type DocumentUploadState = {
+  status: "idle" | "uploading" | "uploaded" | "failed";
+  name?: string;
+  message: string;
+};
 
 const EMPTY_FORM: CompanyFormState = {
   addressCity: "",
@@ -362,6 +378,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   const [messageError, setMessageError] = useState(false);
   const pendingFocus = useRef<string | null>(null);
   const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
+  const [documentUploads, setDocumentUploads] = useState<Record<string, DocumentUploadState>>({});
   const [accessStep, setAccessStep] = useState<AccessStep | null>(null);
   const [accessEmail, setAccessEmail] = useState("");
   const [accessPhone, setAccessPhone] = useState("");
@@ -403,6 +420,10 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
         setSubmitted(draft.state === "SUBMITTED" || draft.state === "UNDER_REVIEW");
         setStep(firstIncompleteStep(nextForm, actor));
         setDocumentNames(Object.fromEntries(Object.entries(nextForm.documents).map(([kind, document]) => [kind, document.objectKey])));
+        setDocumentUploads(Object.fromEntries(Object.keys(nextForm.documents).map((kind) => [kind, {
+          status: "uploaded" as const,
+          message: "Uploaded. Choose another file to replace it.",
+        }])));
       })
       .catch(() => {
         if (active) setLoadError(true);
@@ -433,6 +454,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   function updateCountry(value: string): void {
     setForm((current) => ({ ...current, countryCode: value, addressCountryCode: value, bankCountryCode: value, identifiers: {}, documents: {} }));
     setDocumentNames({});
+    setDocumentUploads({});
     setMessage("");
   }
 
@@ -440,8 +462,86 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     setForm((current) => ({ ...current, identifiers: { ...current.identifiers, [scheme]: value } }));
   }
 
-  function updateDocument(kind: string, event: ChangeEvent<HTMLInputElement>): void {
-    setDocumentNames((current) => ({ ...current, [kind]: event.target.files?.[0]?.name ?? "" }));
+  async function updateDocument(kind: string, event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (guest) {
+      setDocumentUploads((current) => ({ ...current, [kind]: {
+        status: "failed",
+        name: file.name,
+        message: "Create your account, then choose this file again to upload it.",
+      } }));
+      return;
+    }
+
+    const request = vendorUploadRequestSchema.safeParse({
+      kind,
+      contentType: file.type,
+      size: file.size,
+    });
+    if (!request.success) {
+      setDocumentUploads((current) => ({ ...current, [kind]: {
+        status: "failed",
+        name: file.name,
+        message: file.size > VENDOR_UPLOAD_MAX_BYTES
+          ? "This file is larger than 10 MiB. Choose a smaller PDF or image and try again."
+          : "This file type is not supported. Choose a PDF, JPEG, PNG or WebP file and try again.",
+      } }));
+      return;
+    }
+
+    setDocumentUploads((current) => ({ ...current, [kind]: {
+      status: "uploading",
+      name: file.name,
+      message: `Uploading ${file.name}…`,
+    } }));
+    try {
+      const credentialResponse = await fetch("/api/v1/vendors/me/documents/upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request.data),
+      });
+      if (!credentialResponse.ok) throw new Error("Upload authorization failed");
+      const credential = vendorUploadResponseSchema.safeParse(await credentialResponse.json());
+      if (!credential.success) throw new Error("Invalid upload authorization");
+
+      const uploadResponse = await fetch(credential.data.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!uploadResponse.ok) throw new Error("Object upload failed");
+
+      const nextDocuments = {
+        ...form.documents,
+        [kind]: {
+          objectKey: credential.data.objectKey,
+          uploadedAt: new Date().toISOString(),
+        },
+      };
+      const nextForm = { ...form, documents: nextDocuments };
+      const draft = vendorDraftSchema.parse(toCompanyPayload(nextForm, actor));
+      const saved = await fetch("/api/v1/vendors/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draft),
+      });
+      if (!saved.ok) throw new Error("Upload record failed");
+
+      setForm(nextForm);
+      setDocumentNames((current) => ({ ...current, [kind]: file.name }));
+      setDocumentUploads((current) => ({ ...current, [kind]: {
+        status: "uploaded",
+        name: file.name,
+        message: `${file.name} uploaded. Choose another file to replace it.`,
+      } }));
+    } catch {
+      setDocumentUploads((current) => ({ ...current, [kind]: {
+        status: "failed",
+        name: file.name,
+        message: `Upload failed for ${file.name}. Choose the file and try again.`,
+      } }));
+    }
   }
 
   async function persistDraft(): Promise<boolean> {
@@ -565,6 +665,14 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(result.data),
       });
+      if (response.status === 409) {
+        setAccessIdentity({ email: result.data.email, phone: result.data.phone });
+        setAccessOtp("");
+        setMessage("");
+        setMessageError(false);
+        setAccessStep("existing-account");
+        return;
+      }
       if (!response.ok) throw new Error("Registration request failed");
       const accepted = registrationRequestAcceptedSchema.safeParse(await response.json());
       if (!accepted.success) throw new Error("Invalid registration response");
@@ -573,6 +681,87 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     } catch {
       setMessageError(true);
       setMessage("We could not send your verification code. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function requestSignIn(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    const result = otpRequestSchema.safeParse({ email: accessIdentity?.email ?? "" });
+    if (!result.success) {
+      setMessageError(true);
+      setMessage("Enter the email address for your existing account and try again.");
+      return;
+    }
+    setSaving(true);
+    setMessage("");
+    setMessageError(false);
+    try {
+      const response = await fetch(apiUrl("/api/v1/auth/otp/request"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(result.data),
+      });
+      if (!response.ok) throw new Error("Sign-in request failed");
+      setAccessOtp("");
+      setAccessStep("signin-verification");
+    } catch {
+      setMessageError(true);
+      setMessage("We could not send the sign-in code. Check your connection and try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveDraftAfterAuthentication(): Promise<void> {
+    const draftResult = vendorDraftSchema.safeParse(toCompanyPayload(form, actor));
+    if (!draftResult.success) throw new Error("Invalid company draft");
+    const created = await fetch("/api/v1/vendors", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(draftResult.data),
+    });
+    if (!created.ok) throw new Error("Draft creation failed");
+    if (pendingSubmission.current) {
+      const submittedResponse = await fetch("/api/v1/vendors/me/submit", { method: "POST" });
+      if (!submittedResponse.ok) throw new Error("Submission failed");
+    }
+    const sessionResponse = await fetch("/api/auth/session", { cache: "no-store" });
+    if (!sessionResponse.ok) throw new Error("Session load failed");
+    const session = authSessionSchema.safeParse(await sessionResponse.json());
+    if (!session.success) throw new Error("Invalid session");
+    onAuthenticated?.(session.data);
+  }
+
+  async function verifySignIn(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    const result = otpVerifySchema.safeParse({
+      email: accessIdentity?.email ?? "",
+      otp: accessOtp,
+    });
+    if (!result.success) {
+      setAccessErrors({ emailOtp: "Enter the six-digit code sent to your email." });
+      setMessageError(true);
+      setMessage("Check the sign-in code and try again.");
+      queueMicrotask(() => document.getElementById("company-access-signinOtp")?.focus());
+      return;
+    }
+    setSaving(true);
+    setAccessErrors({});
+    setMessage("");
+    setMessageError(false);
+    try {
+      const verified = await fetch("/api/auth/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(result.data),
+      });
+      if (!verified.ok) throw new Error("Sign-in verification failed");
+      await saveDraftAfterAuthentication();
+    } catch {
+      setMessageError(true);
+      setMessage("We could not sign you in and save this draft. Check the code and try again.");
     } finally {
       setSaving(false);
     }
@@ -604,21 +793,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
         body: JSON.stringify(result.data),
       });
       if (!verified.ok) throw new Error("Verification failed");
-      const created = await fetch("/api/v1/vendors", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draftResult.data),
-      });
-      if (!created.ok) throw new Error("Draft creation failed");
-      if (pendingSubmission.current) {
-        const submittedResponse = await fetch("/api/v1/vendors/me/submit", { method: "POST" });
-        if (!submittedResponse.ok) throw new Error("Submission failed");
-      }
-      const sessionResponse = await fetch("/api/auth/session", { cache: "no-store" });
-      if (!sessionResponse.ok) throw new Error("Session load failed");
-      const session = authSessionSchema.safeParse(await sessionResponse.json());
-      if (!session.success) throw new Error("Invalid session");
-      onAuthenticated?.(session.data);
+      await saveDraftAfterAuthentication();
     } catch {
       setMessageError(true);
       setMessage("Your account was verified, but we could not save the company draft. Try again.");
@@ -695,7 +870,39 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
       <section aria-labelledby="identifiers-section-title">
         <h2 id="identifiers-section-title" className="home-section-title">Identifiers</h2>
         {requirements ? requirements.identifierSchemes.map((scheme) => <div className="company-onboarding-field" key={scheme}><label htmlFor={`company-identifier-${scheme}`}>{labelForScheme(scheme)}</label><input id={`company-identifier-${scheme}`} type="text" value={form.identifiers[scheme] ?? ""} disabled={saving} onChange={(event) => updateIdentifier(scheme, event.target.value)} /></div>) : <p className="company-onboarding-help">Choose a country to see the applicable identifiers.</p>}
-        {requirements ? <fieldset className="company-onboarding-subsection"><legend>Required documents</legend><p className="company-onboarding-help">Documents are collected for review and are not verified by this registration flow.</p>{requirements.documentKinds.map((kind) => <div className="company-onboarding-field" key={kind}><label htmlFor={`company-document-${kind}`}>{labelForDocument(kind)}</label><input id={`company-document-${kind}`} type="file" disabled={saving} onChange={(event) => updateDocument(kind, event)} />{documentNames[kind] ? <p className="company-onboarding-help">Selected: {documentNames[kind]}</p> : null}</div>)}</fieldset> : null}
+        {requirements ? (
+          <fieldset className="company-onboarding-subsection">
+            <legend>Required documents</legend>
+            <p className="company-onboarding-help">
+              Documents are collected for review and are not verified by this registration flow. Upload a PDF, JPEG, PNG or WebP file up to 10 MiB.
+            </p>
+            {requirements.documentKinds.map((kind) => {
+              const upload = documentUploads[kind];
+              const statusId = `company-document-${kind}-status`;
+              return (
+                <div className="company-onboarding-field" key={kind}>
+                  <label htmlFor={`company-document-${kind}`}>{labelForDocument(kind)}</label>
+                  <input
+                    id={`company-document-${kind}`}
+                    type="file"
+                    accept={VENDOR_UPLOAD_CONTENT_TYPES.join(",")}
+                    disabled={saving || upload?.status === "uploading"}
+                    aria-describedby={statusId}
+                    onChange={(event) => void updateDocument(kind, event)}
+                  />
+                  <p
+                    id={statusId}
+                    className={upload?.status === "failed" ? "company-onboarding-error" : "company-onboarding-help"}
+                    role={upload?.status === "failed" ? "alert" : "status"}
+                    aria-live="polite"
+                  >
+                    {upload?.message ?? (guest ? "Create your account before uploading this document." : "No file uploaded.")}
+                  </p>
+                </div>
+              );
+            })}
+          </fieldset>
+        ) : null}
         {stepActions(config.capabilities ? "capabilities" : "review")}
       </section>
     );
@@ -724,6 +931,14 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
 
   if (accessStep === "details") {
     return <FrostedSurface aria-labelledby="company-access-title" className="company-onboarding-shell" variant="panel"><p className="home-eyebrow">Company registration</p><h1 id="company-access-title">Create account to save</h1><p className="company-onboarding-copy">Verify your email to securely save this company registration and return to it later.</p><form className="company-onboarding-form" noValidate onSubmit={requestAccount}><div className="company-onboarding-field"><label htmlFor="company-access-email">Email address</label><input id="company-access-email" type="email" autoComplete="email" value={accessEmail} disabled={saving} aria-invalid={Boolean(accessErrors.email)} onChange={(event) => setAccessEmail(event.target.value)} />{accessErrors.email ? <p className="company-onboarding-error" role="alert">Enter a valid email address.</p> : null}</div><div className="company-onboarding-field"><label htmlFor="company-access-phone">Phone number</label><input id="company-access-phone" type="tel" autoComplete="tel" value={accessPhone} disabled={saving} aria-invalid={Boolean(accessErrors.phone)} onChange={(event) => setAccessPhone(event.target.value)} />{accessErrors.phone ? <p className="company-onboarding-error" role="alert">Enter a valid international phone number beginning with +.</p> : null}</div><p className="registration-form-message" role={messageError ? "alert" : undefined} aria-live="polite">{message}</p><div className="company-onboarding-actions"><GlassButton type="button" variant="secondary" disabled={saving} onClick={() => { setAccessStep(null); setMessage(""); }}>Back to company details</GlassButton><GlassButton type="submit" variant="primary" disabled={saving}>{saving ? "Sending…" : "Send verification code"}</GlassButton></div></form></FrostedSurface>;
+  }
+
+  if (accessStep === "existing-account") {
+    return <FrostedSurface aria-labelledby="company-access-title" className="company-onboarding-shell" variant="panel"><p className="home-eyebrow">Company registration</p><h1 id="company-access-title">You already have an account. Sign in to continue.</h1><p className="company-onboarding-copy">Your entered details for {form.legalName || "this company"} are still here. Sign in with {accessIdentity?.email} and we will save them to your account.</p><form className="company-onboarding-form" noValidate onSubmit={requestSignIn}><p className="registration-form-message" role={messageError ? "alert" : undefined} aria-live="polite">{message}</p><div className="company-onboarding-actions"><GlassButton type="button" variant="secondary" disabled={saving} onClick={() => { setAccessStep("details"); setMessage(""); }}>Use different account details</GlassButton><GlassButton type="submit" variant="primary" disabled={saving}>{saving ? "Sending…" : "Send sign-in code"}</GlassButton></div></form></FrostedSurface>;
+  }
+
+  if (accessStep === "signin-verification") {
+    return <FrostedSurface aria-labelledby="company-access-title" className="company-onboarding-shell" variant="panel"><p className="home-eyebrow">Company registration</p><h1 id="company-access-title">Enter your sign-in code</h1><p className="company-onboarding-copy">If an account uses {accessIdentity?.email}, a six-digit code was sent there. Your company details remain ready to save.</p><form className="company-onboarding-form" noValidate onSubmit={verifySignIn}><div className="company-onboarding-field"><label htmlFor="company-access-signinOtp">Email sign-in code</label><input id="company-access-signinOtp" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={accessOtp} disabled={saving} aria-invalid={Boolean(accessErrors.emailOtp)} onChange={(event) => setAccessOtp(event.target.value)} />{accessErrors.emailOtp ? <p className="company-onboarding-error" role="alert">{accessErrors.emailOtp}</p> : null}</div><p className="registration-form-message" role={messageError ? "alert" : undefined} aria-live="polite">{message}</p><div className="company-onboarding-actions"><GlassButton type="button" variant="secondary" disabled={saving} onClick={() => { setAccessStep("existing-account"); setMessage(""); }}>Back</GlassButton><GlassButton type="submit" variant="primary" disabled={saving}>{saving ? "Signing in…" : "Sign in and save draft"}</GlassButton></div></form></FrostedSurface>;
   }
 
   if (accessStep === "verification") {

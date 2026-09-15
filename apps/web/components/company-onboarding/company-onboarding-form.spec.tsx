@@ -124,6 +124,97 @@ describe("generic company onboarding", () => {
     });
   });
 
+  it("offers existing users sign-in after the field-agnostic 409 and preserves their draft", async () => {
+    const onAuthenticated = vi.fn();
+    const session = {
+      userId: "user-1",
+      email: "owner@example.com",
+      roleAssignments: [],
+      profileState: "DRAFT",
+    };
+    fetchMock.mockImplementation((path) => {
+      if (String(path).endsWith("/api/v1/auth/register/request")) {
+        return Promise.resolve(response({
+          statusCode: 409,
+          code: "REGISTRATION_CONFLICT",
+          message: "Registration conflicts with an existing account",
+        }, 409));
+      }
+      if (String(path).endsWith("/api/v1/auth/otp/request")) {
+        return Promise.resolve(response({ status: "accepted" }, 202));
+      }
+      if (path === "/api/auth/otp/verify") return Promise.resolve(response({ ok: true }));
+      if (path === "/api/auth/session") return Promise.resolve(response(session));
+      if (path === "/api/v1/vendors") return Promise.resolve(response(draft, 201));
+      return Promise.resolve(response(draft));
+    });
+
+    render(
+      <CompanyOnboardingForm
+        actor="vendor"
+        guest
+        onAuthenticated={onAuthenticated}
+      />,
+    );
+    await waitFor(() => expect(screen.getByLabelText("Country")).toBeEnabled());
+    fireEvent.change(screen.getByLabelText("Legal name"), {
+      target: { value: "Returning Company" },
+    });
+    fireEvent.change(screen.getByLabelText("Country"), { target: { value: "SG" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    fireEvent.change(await screen.findByLabelText("Email address"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Phone number"), {
+      target: { value: "+6591234567" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
+
+    expect(await screen.findByRole("heading", {
+      name: "You already have an account. Sign in to continue.",
+    })).toBeVisible();
+    expect(screen.getByText(/Returning Company/)).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Send sign-in code" }));
+    expect(await screen.findByRole("heading", { name: "Enter your sign-in code" })).toBeVisible();
+    fireEvent.change(screen.getByLabelText("Email sign-in code"), {
+      target: { value: "123456" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in and save draft" }));
+
+    await waitFor(() => expect(onAuthenticated).toHaveBeenCalledWith(session));
+    const createCall = fetchMock.mock.calls.find(
+      ([path, init]) => path === "/api/v1/vendors" && init?.method === "POST",
+    );
+    expect(JSON.parse(String(createCall?.[1]?.body))).toMatchObject({
+      legalName: "Returning Company",
+      countryCode: "SG",
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/api\/v1\/auth\/otp\/request$/),
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("presents required document uploads as actionable before account creation", async () => {
+    render(<CompanyOnboardingForm actor="vendor" guest />);
+    await waitFor(() => expect(screen.getByLabelText("Country")).toBeEnabled());
+    fireEvent.change(screen.getByLabelText("Country"), { target: { value: "SG" } });
+    fireEvent.click(screen.getByRole("button", { name: "Identifiers" }));
+
+    const upload = screen.getByLabelText("Acra Record");
+    expect(upload).toBeEnabled();
+    expect(screen.getByText(
+      "Create your account before uploading this document.",
+      { selector: "#company-document-ACRA_RECORD-status" },
+    )).toHaveAttribute("role", "status");
+    fireEvent.change(upload, {
+      target: { files: [new File(["pdf"], "acra.pdf", { type: "application/pdf" })] },
+    });
+    expect(await screen.findByText(
+      "Create your account, then choose this file again to upload it.",
+    )).toHaveAttribute("role", "alert");
+  });
+
   it("keeps the actor differences in configuration rather than component branches", () => {
     expect(companyActorConfig.vendor).toEqual({
       bankDetails: true,
@@ -200,6 +291,90 @@ describe("generic company onboarding", () => {
     await goTo("Identifiers");
     expect(screen.getByLabelText("EU VAT")).toBeVisible();
     expect(screen.queryByLabelText("Unified social credit code")).toBeNull();
+  });
+
+  it("uploads directly to R2, records only the object reference, and supports replacement", async () => {
+    const firstCredential = {
+      uploadUrl: "https://r2.example.test/first?X-Amz-Signature=secret-one",
+      objectKey: "vendors/vendor-1/BANK_PROOF/first.pdf",
+      expiresAt: "2026-09-15T12:05:00.000Z",
+    };
+    const secondCredential = {
+      uploadUrl: "https://r2.example.test/second?X-Amz-Signature=secret-two",
+      objectKey: "vendors/vendor-1/BANK_PROOF/second.png",
+      expiresAt: "2026-09-15T12:05:00.000Z",
+    };
+    const credentials = [firstCredential, secondCredential];
+    fetchMock.mockImplementation((path) => {
+      if (path === "/api/v1/vendors/me/documents/upload-url") {
+        return Promise.resolve(response(credentials.shift()));
+      }
+      if (String(path).startsWith("https://r2.example.test/")) {
+        return Promise.resolve(new Response(null, { status: 200 }));
+      }
+      return Promise.resolve(response(draft));
+    });
+    await renderReady("vendor");
+    fireEvent.change(screen.getByLabelText("Country"), { target: { value: "IN" } });
+    await goTo("Identifiers");
+
+    const input = screen.getByLabelText("Bank Proof");
+    const first = new File(["pdf"], "proof.pdf", { type: "application/pdf" });
+    fireEvent.change(input, { target: { files: [first] } });
+    expect(await screen.findByText("proof.pdf uploaded. Choose another file to replace it.")).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith(firstCredential.uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "application/pdf" },
+      body: first,
+    });
+    expect(document.body.textContent).not.toContain(firstCredential.uploadUrl);
+    const patchCalls = fetchMock.mock.calls.filter(
+      ([path, options]) => path === "/api/v1/vendors/me" && options?.method === "PATCH",
+    );
+    const firstPatch = patchCalls.at(-1);
+    expect(JSON.parse(String(firstPatch?.[1]?.body)).documents).toEqual([
+      {
+        kind: "BANK_PROOF",
+        objectKey: firstCredential.objectKey,
+        uploadedAt: expect.any(String),
+      },
+    ]);
+
+    const replacement = new File(["png"], "replacement.png", { type: "image/png" });
+    fireEvent.change(input, { target: { files: [replacement] } });
+    expect(await screen.findByText("replacement.png uploaded. Choose another file to replace it.")).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith(secondCredential.uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "image/png" },
+      body: replacement,
+    });
+  });
+
+  it("announces pending and actionable failed upload states", async () => {
+    let finishUpload: ((response: Response) => void) | undefined;
+    fetchMock.mockImplementation((path) => {
+      if (path === "/api/v1/vendors/me/documents/upload-url") {
+        return Promise.resolve(response({
+          uploadUrl: "https://r2.example.test/fail?X-Amz-Signature=secret",
+          objectKey: "vendors/vendor-1/BANK_PROOF/fail.pdf",
+          expiresAt: "2026-09-15T12:05:00.000Z",
+        }));
+      }
+      if (String(path).startsWith("https://r2.example.test/")) {
+        return new Promise((resolve) => { finishUpload = resolve; });
+      }
+      return Promise.resolve(response(draft));
+    });
+    await renderReady("vendor");
+    fireEvent.change(screen.getByLabelText("Country"), { target: { value: "IN" } });
+    await goTo("Identifiers");
+    fireEvent.change(screen.getByLabelText("Bank Proof"), {
+      target: { files: [new File(["pdf"], "proof.pdf", { type: "application/pdf" })] },
+    });
+
+    expect(await screen.findByText("Uploading proof.pdf…")).toHaveAttribute("role", "status");
+    finishUpload?.(new Response(null, { status: 500 }));
+    expect(await screen.findByText("Upload failed for proof.pdf. Choose the file and try again.")).toHaveAttribute("role", "alert");
   });
 
   it("persists a step through the authenticated vendor draft endpoint", async () => {

@@ -1,8 +1,13 @@
-import { Body, Controller, Get, HttpCode, Inject, Patch, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, Header, HttpCode, Inject, Patch, Post, Req } from "@nestjs/common";
 
 import type { AuthenticatedRequest } from "../auth/auth.types";
 import { ZodBodyPipe } from "../auth/zod-body.pipe";
-import { vendorDraftSchema, type VendorDraftInput } from "@eqourse/shared";
+import {
+  vendorDraftSchema,
+  vendorUploadRequestSchema,
+  type VendorDraftInput,
+  type VendorUploadRequest,
+} from "@eqourse/shared";
 import { VendorService } from "./vendor.service";
 
 @Controller("api/v1/vendors")
@@ -34,6 +39,15 @@ export class VendorController {
   @Post("me/submit")
   submit(@Req() request: AuthenticatedRequest) {
     return this.vendors.submit(this.ownerId(request));
+  }
+
+  @Post("me/documents/upload-url")
+  @Header("Cache-Control", "no-store")
+  createDocumentUpload(
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodBodyPipe(vendorUploadRequestSchema)) body: VendorUploadRequest,
+  ) {
+    return this.vendors.createDocumentUpload(this.ownerId(request), body);
   }
 
   private ownerId(request: AuthenticatedRequest): string {

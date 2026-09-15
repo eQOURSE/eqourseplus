@@ -3,17 +3,26 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from "@nestjs/common";
 import {
   VendorState,
   canTransitionVendor,
   getVendorCountryRequirements,
+  type VendorUploadRequest,
+  type VendorUploadResponse,
   type VendorDraftInput,
 } from "@eqourse/shared";
+import type { StorageAdapter } from "@eqourse/adapters";
+import { randomUUID } from "node:crypto";
 import { SkillTaxonomyModel } from "../database/skill-taxonomy.schema";
 
 import { digestVendorIdentifier } from "./vendor-identifier-digest";
-import { VENDOR_IDENTIFIER_HMAC_SECRET } from "./vendor.constants";
+import {
+  STORAGE_ADAPTER,
+  VENDOR_IDENTIFIER_HMAC_SECRET,
+  VENDOR_UPLOAD_EXPIRY_SECONDS,
+} from "./vendor.constants";
 import { type VendorDocument } from "./vendor.schema";
 import { VENDOR_STORE, type VendorStore } from "./vendor.store";
 
@@ -23,6 +32,7 @@ export class VendorService {
     @Inject(VENDOR_STORE) private readonly store: VendorStore,
     @Inject(VENDOR_IDENTIFIER_HMAC_SECRET)
     private readonly hmacSecret: string,
+    @Inject(STORAGE_ADAPTER) private readonly storage: StorageAdapter,
   ) {}
 
   async createDraft(ownerUserId: string, input: VendorDraftInput): Promise<VendorDocument> {
@@ -45,6 +55,16 @@ export class VendorService {
     }
 
     const patch = { ...input } as VendorDraftInput;
+    if (input.documents) {
+      for (const document of input.documents) {
+        const expectedPrefix = `vendors/${current._id.toString()}/${document.kind}/`;
+        if (!document.objectKey.startsWith(expectedPrefix)) {
+          throw new BadRequestException(
+            "Document key does not belong to this vendor and document kind",
+          );
+        }
+      }
+    }
     if (input.countryIdentifiers) {
       const countryCode = (input.countryCode ?? current.countryCode)?.toUpperCase();
       if (!countryCode) throw new BadRequestException("Country is required for identifiers");
@@ -76,6 +96,48 @@ export class VendorService {
       throw new BadRequestException("Vendor cannot be submitted in its current state");
     }
     return submitted;
+  }
+
+  async createDocumentUpload(
+    ownerUserId: string,
+    input: VendorUploadRequest,
+  ): Promise<VendorUploadResponse> {
+    const vendor = await this.readOwn(ownerUserId);
+    if (![VendorState.DRAFT, VendorState.MORE_INFO_NEEDED].includes(vendor.state)) {
+      throw new BadRequestException("Vendor documents cannot be changed in its current state");
+    }
+    const requirements = vendor.countryCode
+      ? getVendorCountryRequirements(vendor.countryCode)
+      : undefined;
+    if (!requirements?.documentKinds.includes(input.kind)) {
+      throw new BadRequestException("Document kind is not applicable to this country");
+    }
+
+    const extension = {
+      "application/pdf": "pdf",
+      "image/jpeg": "jpg",
+      "image/png": "png",
+      "image/webp": "webp",
+    }[input.contentType];
+    const objectKey = `vendors/${vendor._id.toString()}/${input.kind}/${randomUUID()}.${extension}`;
+    let signed: Awaited<ReturnType<StorageAdapter["createSignedUrl"]>>;
+    try {
+      signed = await this.storage.createSignedUrl({
+        objectKey,
+        contentType: input.contentType,
+        contentLength: input.size,
+        expiresInSeconds: VENDOR_UPLOAD_EXPIRY_SECONDS,
+      });
+    } catch {
+      throw new ServiceUnavailableException(
+        "Document upload is temporarily unavailable",
+      );
+    }
+    return {
+      uploadUrl: signed.url,
+      objectKey,
+      expiresAt: new Date(Date.now() + VENDOR_UPLOAD_EXPIRY_SECONDS * 1_000).toISOString(),
+    };
   }
 
   private canonicalize(countryCode: string, scheme: string, value: string): string {

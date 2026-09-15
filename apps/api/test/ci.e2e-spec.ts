@@ -159,7 +159,7 @@ describe("FR-FND-05 API deployment", () => {
     expect(workflow).toContain("--min-instances=0");
     expect(workflow).toContain("--allow-unauthenticated");
     expect(workflow).toContain(
-      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest",
+      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
     );
     expect(workflow).toContain("--startup-probe=httpGet.path=/health");
     expect(workflow).toContain("--liveness-probe=httpGet.path=/health");
@@ -232,11 +232,29 @@ describe("FR-FND-05 API deployment", () => {
       '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}"',
     );
     expect(stagingJob).toContain(
-      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest",
+      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
     );
     expect(productionJob).toContain(
-      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest",
+      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
     );
+  });
+
+  it("uses the real environment-specific private R2 bucket in both deploy jobs", () => {
+    const workflow = readFileSync(workflowPath, "utf8");
+    const stagingJob = workflow.slice(
+      workflow.indexOf("  staging-deploy:"),
+      workflow.indexOf("  production-deploy:"),
+    );
+    const productionJob = workflow.slice(workflow.indexOf("  production-deploy:"));
+
+    for (const job of [stagingJob, productionJob]) {
+      expect(job).toContain('STORAGE_PROVIDER: "r2"');
+      expect(job).toContain(
+        'R2_ENDPOINT: "https://50c49dfc680d966ef959aba266b04ea9.r2.cloudflarestorage.com"',
+      );
+    }
+    expect(stagingJob).toContain('R2_BUCKET: "eqplus-staging-kyc-docs"');
+    expect(productionJob).toContain('R2_BUCKET: "eqplus-prod-kyc-docs"');
   });
 
   it("keeps staging email sandboxed and configures production Resend explicitly", () => {
@@ -284,7 +302,7 @@ describe("FR-FND-05 API deployment", () => {
       '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}",SMS_PROVIDER="${SMS_PROVIDER}"',
     );
     expect(productionJob).toContain(
-      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest",
+      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
     );
   });
 
