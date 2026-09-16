@@ -83,6 +83,8 @@ async function goTo(step: string): Promise<void> {
 describe("generic company onboarding", () => {
   it("routes an unmapped schema issue to an actionable field", () => {
     expect(schemaIssueField("website")).toBe("website");
+    expect(schemaIssueField("bankDetails.accountIdentifier.scheme")).toBe("bankAccountScheme");
+    expect(schemaIssueField("documents.0.objectKey")).toBe("countryCode");
     expect(schemaIssueField("authorisedPerson.unexpectedDetail")).toBe("authorisedPersonName");
     expect(schemaIssueField("unexpectedField")).toBe("legalName");
   });

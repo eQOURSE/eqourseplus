@@ -98,29 +98,68 @@ const SUBMISSION_REQUIREMENT_COPY: Readonly<Record<string, {
   },
 };
 
-const SCHEMA_FIELD_IDS: Readonly<Record<string, string>> = {
+// Derive every possible draft issue path from the shared contracts. Arrays use []
+// as the path segment, matching the normalized numeric index at runtime.
+type ChildPaths<T> = T extends Date ? never
+  : T extends readonly (infer Item)[] ? "[]" | `[]${ChildPaths<Item>}`
+    : T extends object ? {
+      [Key in keyof T & string]: `.${Key}` | `.${Key}${ChildPaths<NonNullable<T[Key]>>}`
+    }[keyof T & string]
+      : never;
+type DraftPaths<T> = T extends unknown ? {
+  [Key in keyof T & string]: Key | `${Key}${ChildPaths<NonNullable<T[Key]>>}`
+}[keyof T & string] : never;
+type SchemaIssuePath = DraftPaths<ClientDraftInput> | DraftPaths<VendorDraftInput>;
+
+const SCHEMA_FIELD_IDS: Readonly<Record<string, string>> & Readonly<Record<SchemaIssuePath, string>> = {
   legalName: "legalName",
   tradingName: "tradingName",
   countryCode: "countryCode",
+  registeredAddress: "addressLine1",
   "registeredAddress.line1": "addressLine1",
   "registeredAddress.line2": "addressLine2",
   "registeredAddress.city": "addressCity",
   "registeredAddress.region": "addressRegion",
   "registeredAddress.postalCode": "addressPostalCode",
   "registeredAddress.countryCode": "countryCode",
+  contactPerson: "contactName",
   "contactPerson.name": "contactName",
   "contactPerson.email": "contactEmail",
   "contactPerson.phone": "contactPhone",
   website: "website",
+  authorisedPerson: "authorisedPersonName",
   "authorisedPerson.name": "authorisedPersonName",
+  "authorisedPerson.governmentIdentityDocument": "authorisedPersonName",
+  "authorisedPerson.governmentIdentityDocument.kind": "authorisedPersonName",
+  "authorisedPerson.governmentIdentityDocument.objectKey": "authorisedPersonName",
+  "authorisedPerson.governmentIdentityDocument.uploadedAt": "authorisedPersonName",
+  countryIdentifiers: "countryCode",
+  "countryIdentifiers[]": "countryCode",
+  "countryIdentifiers[].scheme": "countryCode",
+  "countryIdentifiers[].value": "countryCode",
+  documents: "countryCode",
+  "documents[]": "countryCode",
+  "documents[].kind": "countryCode",
+  "documents[].objectKey": "countryCode",
+  "documents[].uploadedAt": "countryCode",
+  capabilities: "countryCode",
+  "capabilities[]": "countryCode",
+  "capabilities[].taxonomySlug": "countryCode",
+  bankDetails: "bankAccountHolderName",
   "bankDetails.accountHolderName": "bankAccountHolderName",
   "bankDetails.bankCountryCode": "bankCountryCode",
   "bankDetails.currencyCode": "bankCurrencyCode",
+  "bankDetails.accountIdentifier": "bankAccountValue",
+  "bankDetails.accountIdentifier.scheme": "bankAccountScheme",
   "bankDetails.accountIdentifier.value": "bankAccountValue",
-};
+  "bankDetails.bankIdentifier": "bankAccountValue",
+  "bankDetails.bankIdentifier.scheme": "bankAccountScheme",
+  "bankDetails.bankIdentifier.value": "bankAccountValue",
+} satisfies Readonly<Record<SchemaIssuePath, string>>;
 
 export function schemaIssueField(path: string): string {
-  if (SCHEMA_FIELD_IDS[path]) return SCHEMA_FIELD_IDS[path];
+  const directPath = path.replace(/\.\d+(?=\.|$)/g, "[]");
+  if (SCHEMA_FIELD_IDS[directPath]) return SCHEMA_FIELD_IDS[directPath];
   if (path.startsWith("registeredAddress.")) return "addressLine1";
   if (path.startsWith("contactPerson.")) return "contactName";
   if (path.startsWith("authorisedPerson.")) return "authorisedPersonName";
