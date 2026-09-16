@@ -1,14 +1,17 @@
 const SENSITIVE_KEY =
-  /^(?:authorization|cookie|set-cookie|email|otp|password|accessToken|refreshToken|token|secret|dsn|uri|url|connectionString)$/i;
+  /^(?:authorization|cookie|set-cookie|email|otp|password|accessToken|refreshToken|token|secret|dsn|uri|url|uploadUrl|signedUrl|presignedUrl|connectionString)$/i;
 const EMAIL = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
 const BEARER_TOKEN = /\bBearer\s+[A-Z0-9._~+/=-]+/gi;
 const CREDENTIALED_URL =
   /\b([a-z][a-z0-9+.-]*):\/\/[^@\s/]+@([^\s]+)/gi;
+const SENSITIVE_QUERY_VALUE =
+  /([?&](?:x-amz-[^=&#\s]+|otp|token|access_token|refresh_token|signature)=)[^&#\s]*/gi;
 
 function redactString(value: string): string {
   return value
     .replace(BEARER_TOKEN, "Bearer [REDACTED]")
     .replace(CREDENTIALED_URL, "$1://[REDACTED]@$2")
+    .replace(SENSITIVE_QUERY_VALUE, "$1[REDACTED]")
     .replace(EMAIL, "[REDACTED_EMAIL]");
 }
 
