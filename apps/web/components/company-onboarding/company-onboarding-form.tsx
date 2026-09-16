@@ -481,7 +481,7 @@ function taxonomyLeaf(option: SkillTaxonomyOption): string {
 }
 
 async function requestSkillTaxonomy(): Promise<SkillTaxonomyOption[]> {
-  const response = await fetch(apiUrl("/api/v1/skill-taxonomy"), { cache: "force-cache" });
+  const response = await fetch(apiUrl("/api/v1/skill-taxonomy"));
   if (!response.ok) throw new Error("Skill taxonomy request failed");
   const body = await response.json() as unknown;
   if (!Array.isArray(body)) throw new Error("Skill taxonomy response was not a list");

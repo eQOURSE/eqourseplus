@@ -92,7 +92,6 @@ describe("generic company onboarding", () => {
     expect(screen.queryByLabelText("GSTIN")).toBeNull();
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:4000/api/v1/skill-taxonomy",
-      { cache: "force-cache" },
     ));
     expect(fetchMock.mock.calls.every(([path]) => String(path).endsWith("/api/v1/skill-taxonomy"))).toBe(true);
   });
