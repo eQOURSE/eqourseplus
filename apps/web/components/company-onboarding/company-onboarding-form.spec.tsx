@@ -25,9 +25,35 @@ const draft = {
   documents: [],
 };
 
+const taxonomy = [
+  {
+    businessUnit: "EQOURSE",
+    serviceLine: "AI Data Services",
+    skill: "Annotation",
+    specialization: "Polygon",
+    slug: "eqourse-ai-data-services-annotation-polygon",
+  },
+  {
+    businessUnit: "EQOURSE",
+    serviceLine: "Content Services",
+    skill: "Editing",
+    specialization: null,
+    slug: "eqourse-content-services-editing",
+  },
+  {
+    businessUnit: "TUTRAIN",
+    serviceLine: "Tutoring",
+    skill: "Mathematics",
+    specialization: null,
+    slug: "tutrain-tutoring-mathematics",
+  },
+];
+
 beforeEach(() => {
   fetchMock.mockReset();
-  fetchMock.mockResolvedValue(response(draft));
+  fetchMock.mockImplementation((path) => String(path).endsWith("/api/v1/skill-taxonomy")
+    ? Promise.resolve(response(taxonomy))
+    : Promise.resolve(response(draft)));
   vi.stubGlobal("fetch", fetchMock);
 });
 
@@ -64,7 +90,10 @@ describe("generic company onboarding", () => {
     expect(screen.getByLabelText("UEN")).toBeEnabled();
     expect(screen.getByLabelText("Acra Record")).toBeEnabled();
     expect(screen.queryByLabelText("GSTIN")).toBeNull();
-    expect(fetchMock).not.toHaveBeenCalled();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:4000/api/v1/skill-taxonomy",
+    ));
+    expect(fetchMock.mock.calls.every(([path]) => String(path).endsWith("/api/v1/skill-taxonomy"))).toBe(true);
   });
 
   it("creates an account and persists the filled guest draft before entering the authenticated flow", async () => {
@@ -249,6 +278,83 @@ describe("generic company onboarding", () => {
     expect(screen.getByRole("heading", { name: "Capabilities" })).toBeVisible();
     expect(screen.queryByLabelText("Website")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Authorised person" })).toBeNull();
+  });
+
+  it("loads, groups, searches, selects, and removes endpoint taxonomy options", async () => {
+    render(<CompanyOnboardingForm actor="vendor" guest />);
+    await waitFor(() => expect(screen.getByLabelText("Country")).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Capabilities" }));
+
+    expect(await screen.findByRole("heading", { name: "EQOURSE" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "AI Data Services" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Content Services" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "TUTRAIN" })).toBeVisible();
+    expect(screen.getByRole("button", {
+      name: "Select EQOURSE AI Data Services Polygon",
+    })).toHaveTextContent("Polygon");
+    expect(screen.getByRole("button", {
+      name: "Select EQOURSE Content Services Editing",
+    })).toHaveTextContent("Editing");
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search services" }), {
+      target: { value: "polygon" },
+    });
+    expect(screen.queryByText("Mathematics")).toBeNull();
+    fireEvent.click(screen.getByRole("button", {
+      name: "Select EQOURSE AI Data Services Polygon",
+    }));
+
+    expect(screen.getByRole("list", { name: "Selected services" })).toHaveTextContent("Polygon");
+    const remove = screen.getByRole("button", { name: "Remove Polygon" });
+    remove.focus();
+    expect(remove).toHaveFocus();
+    fireEvent.click(remove);
+    expect(screen.queryByRole("list", { name: "Selected services" })).toBeNull();
+  });
+
+  it("saves only selected taxonomy slugs", async () => {
+    await renderReady("vendor");
+    await goTo("Capabilities");
+    fireEvent.click(await screen.findByRole("button", {
+      name: "Select EQOURSE AI Data Services Polygon",
+    }));
+    await goTo("Review");
+
+    const saves = fetchMock.mock.calls.filter(
+      ([path, init]) => path === "/api/v1/vendors/me" && init?.method === "PATCH",
+    );
+    const payload = JSON.parse(String(saves.at(-1)?.[1]?.body));
+    expect(payload.capabilities).toEqual([
+      { taxonomySlug: "eqourse-ai-data-services-annotation-polygon" },
+    ]);
+    expect(JSON.stringify(payload.capabilities)).not.toContain("businessUnit");
+    expect(JSON.stringify(payload.capabilities)).not.toContain("serviceLine");
+    expect(JSON.stringify(payload.capabilities)).not.toContain("specialization");
+  });
+
+  it("shows a retryable taxonomy error without inventing fallback options", async () => {
+    let taxonomyRequests = 0;
+    fetchMock.mockImplementation((path) => {
+      if (String(path).endsWith("/api/v1/skill-taxonomy")) {
+        taxonomyRequests += 1;
+        return Promise.resolve(taxonomyRequests === 1
+          ? response({ message: "Unavailable" }, 503)
+          : response(taxonomy));
+      }
+      return Promise.resolve(response(draft));
+    });
+    render(<CompanyOnboardingForm actor="vendor" guest />);
+    await waitFor(() => expect(screen.getByLabelText("Country")).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Capabilities" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The service list could not be loaded. Try again.",
+    );
+    expect(screen.queryByRole("searchbox", { name: "Search services" })).toBeNull();
+    expect(screen.queryByText("No services available")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry loading services" }));
+    expect(await screen.findByRole("searchbox", { name: "Search services" })).toBeEnabled();
+    expect(taxonomyRequests).toBe(2);
   });
 
   it("can render the same flow for a client without vendor-only sections", async () => {
@@ -438,7 +544,9 @@ describe("generic company onboarding", () => {
   });
 
   it("restores a partially saved company step on return", async () => {
-    fetchMock.mockResolvedValueOnce(response({ ...draft, legalName: "Saved company" }));
+    fetchMock.mockImplementation((path) => String(path).endsWith("/api/v1/skill-taxonomy")
+      ? Promise.resolve(response(taxonomy))
+      : Promise.resolve(response({ ...draft, legalName: "Saved company" })));
     render(<CompanyOnboardingForm actor="vendor" />);
     expect(await screen.findByLabelText("Legal name")).toHaveValue("Saved company");
     expect(screen.getByRole("heading", { name: "Company" })).toBeVisible();
@@ -461,8 +569,9 @@ describe("generic company onboarding", () => {
 
   it("resumes on the first incomplete step using the saved draft", async () => {
     fetchMock.mockReset();
-    fetchMock.mockResolvedValue(
-      response({
+    fetchMock.mockImplementation((path) => String(path).endsWith("/api/v1/skill-taxonomy")
+      ? Promise.resolve(response(taxonomy))
+      : Promise.resolve(response({
         ...draft,
         legalName: "Example Company",
         countryCode: "IN",
@@ -478,8 +587,7 @@ describe("generic company onboarding", () => {
           currencyCode: "INR",
           accountIdentifier: { scheme: "ACCOUNT", value: "1234567890" },
         },
-      }),
-    );
+      })));
     render(<CompanyOnboardingForm actor="vendor" />);
     await waitFor(() => expect(screen.getByRole("heading", { name: "Contact" })).toBeVisible());
 
@@ -526,12 +634,20 @@ describe("generic company onboarding", () => {
     expect(screen.queryByRole("button", { name: "Submit registration" })).toBeNull();
   });
 
-  it("returns focus to the first missing section after a rejected submission", async () => {
+  it("surfaces every rejected submission requirement as a section link and keeps unknown codes", async () => {
     await renderReady("vendor");
     fetchMock.mockImplementation((path) => path === "/api/v1/vendors/me/submit"
       ? Promise.resolve(response({
         message: "Vendor is missing required submission information",
-        missing: ["business_details", "documents"],
+        missing: [
+          "business_details",
+          "bank_details",
+          "country_requirements",
+          "country_identifiers",
+          "documents",
+          "capabilities",
+          "future_requirement",
+        ],
       }, 400))
       : Promise.resolve(response(draft)));
     await goTo("Review");
@@ -539,6 +655,33 @@ describe("generic company onboarding", () => {
 
     expect(await screen.findByRole("heading", { name: "Company" })).toBeVisible();
     expect(screen.getByLabelText("Legal name")).toHaveFocus();
-    expect(screen.getByRole("alert")).toHaveTextContent(/required/i);
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Complete these requirements before submitting:");
+    expect(screen.getByRole("link", {
+      name: "Business details: enter your company, registered address, and contact information",
+    })).toHaveAttribute("href", "#company-section-title");
+    expect(screen.getByRole("link", {
+      name: "Bank details: enter the account holder, bank country, currency, and account identifier",
+    })).toHaveAttribute("href", "#company-section-title");
+    expect(screen.getByRole("link", {
+      name: "Country requirements: choose a supported country for this registration",
+    })).toHaveAttribute("href", "#company-section-title");
+    expect(screen.getByRole("link", {
+      name: "Identifiers: enter every identifier required for your country",
+    })).toHaveAttribute("href", "#identifiers-section-title");
+    expect(screen.getByRole("link", {
+      name: "Required documents: upload every document required for your country",
+    })).toHaveAttribute("href", "#identifiers-section-title");
+    const capabilities = screen.getByRole("link", {
+      name: "Capabilities: select at least one service you can deliver",
+    });
+    expect(capabilities).toHaveAttribute("href", "#capabilities-section-title");
+    expect(screen.getByRole("link", {
+      name: "future_requirement: review this requirement and try again",
+    })).toHaveAttribute("href", "#review-section-title");
+
+    fireEvent.click(capabilities);
+    expect(await screen.findByRole("heading", { name: "Capabilities" })).toBeVisible();
+    expect(screen.getByRole("searchbox", { name: "Search services" })).toHaveFocus();
   });
 });
