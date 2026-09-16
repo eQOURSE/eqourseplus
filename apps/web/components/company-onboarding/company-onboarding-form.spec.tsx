@@ -25,6 +25,14 @@ const draft = {
   documents: [],
 };
 
+const clientDraft = {
+  _id: "client-1",
+  ownerUserId: "user-1",
+  state: "DRAFT",
+  countryIdentifiers: [],
+  documents: [],
+};
+
 const taxonomy = [
   {
     businessUnit: "EQOURSE",
@@ -358,12 +366,137 @@ describe("generic company onboarding", () => {
   });
 
   it("can render the same flow for a client without vendor-only sections", async () => {
+    fetchMock.mockImplementation((path) => {
+      if (path === "/api/v1/clients/me") return Promise.resolve(response(clientDraft));
+      return Promise.resolve(response({}, 404));
+    });
     await renderReady("client");
 
     expect(screen.getByLabelText("Website")).toBeVisible();
     expect(screen.getByRole("group", { name: "Authorised person" })).toBeVisible();
     expect(screen.queryByRole("group", { name: "Bank details" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Capabilities" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Capabilities" })).toBeNull();
+    fireEvent.change(screen.getByLabelText("Country"), { target: { value: "SG" } });
+    await goTo("Identifiers");
+    expect(screen.getByLabelText("Acra Record")).toBeVisible();
+    expect(screen.queryByLabelText("Bank Proof")).toBeNull();
+    await goTo("Review");
+    expect(screen.queryByRole("button", { name: "Edit Capabilities" })).toBeNull();
+    expect(document.body.textContent).not.toMatch(/bank details|capabilities/i);
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/clients/me", { cache: "no-store" });
+    expect(fetchMock.mock.calls.some(([path]) => String(path).includes("/vendors"))).toBe(false);
+    expect(fetchMock.mock.calls.some(([path]) => String(path).endsWith("/skill-taxonomy"))).toBe(false);
+  });
+
+  it("saves a client draft through the client endpoint without vendor-only fields", async () => {
+    fetchMock.mockImplementation((path) => path === "/api/v1/clients/me"
+      ? Promise.resolve(response(clientDraft))
+      : Promise.resolve(response({}, 404)));
+    await renderReady("client");
+    fireEvent.change(screen.getByLabelText("Legal name"), {
+      target: { value: "Client Company" },
+    });
+    fireEvent.change(screen.getByLabelText("Country"), { target: { value: "SG" } });
+    fireEvent.change(screen.getByLabelText("Website"), {
+      target: { value: "https://client.example" },
+    });
+    fireEvent.change(screen.getByLabelText("Authorised person name"), {
+      target: { value: "A. Person" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/clients/me",
+      expect.objectContaining({ method: "PATCH" }),
+    ));
+    const save = fetchMock.mock.calls.findLast(
+      ([path, init]) => path === "/api/v1/clients/me" && init?.method === "PATCH",
+    );
+    const payload = JSON.parse(String(save?.[1]?.body));
+    expect(payload).toMatchObject({
+      legalName: "Client Company",
+      countryCode: "SG",
+      website: "https://client.example",
+      authorisedPerson: { name: "A. Person" },
+    });
+    expect(payload).not.toHaveProperty("bankDetails");
+    expect(payload).not.toHaveProperty("capabilities");
+  });
+
+  it("guides Indian clients to alternatives and UIDAI masked Aadhaar without fake attestation", async () => {
+    fetchMock.mockImplementation((path) => path === "/api/v1/clients/me"
+      ? Promise.resolve(response(clientDraft))
+      : Promise.resolve(response({}, 404)));
+    await renderReady("client");
+    fireEvent.change(screen.getByLabelText("Country"), { target: { value: "IN" } });
+
+    const identityType = screen.getByLabelText("Government identity document type");
+    expect(Array.from(identityType.querySelectorAll("option"), (option) => option.textContent)).toEqual([
+      "Passport",
+      "Driving licence",
+      "Voter ID",
+      "Masked Aadhaar",
+    ]);
+    expect(screen.getByText(/Aadhaar must be masked/i)).toBeVisible();
+    expect(screen.getByRole("link", { name: "Download masked Aadhaar from UIDAI" })).toHaveAttribute(
+      "href",
+      "https://myaadhaar.uidai.gov.in/genricDownloadAadhaar/en",
+    );
+    expect(screen.queryByRole("checkbox")).toBeNull();
+  });
+
+  it("uploads the authorised person's government ID through its dedicated client path", async () => {
+    const credential = {
+      uploadUrl: "https://r2.example.test/identity?X-Amz-Signature=secret",
+      objectKey: "clients/client-1/authorised-person/government-identity-document/PASSPORT/id.pdf",
+      expiresAt: "2026-09-16T12:05:00.000Z",
+    };
+    fetchMock.mockImplementation((path) => {
+      if (path === "/api/v1/clients/me/authorised-person/government-identity-document/upload-url") {
+        return Promise.resolve(response(credential));
+      }
+      if (String(path).startsWith("https://r2.example.test/")) {
+        return Promise.resolve(new Response(null, { status: 200 }));
+      }
+      if (path === "/api/v1/clients/me") return Promise.resolve(response(clientDraft));
+      return Promise.resolve(response({}, 404));
+    });
+    await renderReady("client");
+    fireEvent.change(screen.getByLabelText("Authorised person name"), {
+      target: { value: "A. Person" },
+    });
+    const file = new File(["identity"], "id.pdf", { type: "application/pdf" });
+    fireEvent.change(screen.getByLabelText("Government identity document"), {
+      target: { files: [file] },
+    });
+
+    expect(await screen.findByText("id.pdf uploaded. Choose another file to replace it.")).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/clients/me/authorised-person/government-identity-document/upload-url",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          kind: "PASSPORT",
+          contentType: "application/pdf",
+          size: file.size,
+        }),
+      }),
+    );
+    const save = fetchMock.mock.calls.findLast(
+      ([path, init]) => path === "/api/v1/clients/me" && init?.method === "PATCH",
+    );
+    expect(JSON.parse(String(save?.[1]?.body))).toMatchObject({
+      authorisedPerson: {
+        name: "A. Person",
+        governmentIdentityDocument: {
+          kind: "PASSPORT",
+          objectKey: credential.objectKey,
+          uploadedAt: expect.any(String),
+        },
+      },
+    });
+    expect(JSON.parse(String(save?.[1]?.body))).not.toHaveProperty("documents.0");
   });
 
   it("renders only registry-required identifiers for the selected country", async () => {
@@ -607,6 +740,19 @@ describe("generic company onboarding", () => {
   });
 
   it("shows all entered client-only values in review", async () => {
+    fetchMock.mockImplementation((path) => {
+      if (path === "/api/v1/clients/me/authorised-person/government-identity-document/upload-url") {
+        return Promise.resolve(response({
+          uploadUrl: "https://r2.example.test/review-identity",
+          objectKey: "clients/client-1/authorised-person/government-identity-document/PASSPORT/identity.pdf",
+          expiresAt: "2026-09-16T12:05:00.000Z",
+        }));
+      }
+      if (path === "https://r2.example.test/review-identity") {
+        return Promise.resolve(new Response(null, { status: 200 }));
+      }
+      return Promise.resolve(response(clientDraft));
+    });
     await renderReady("client");
     fireEvent.change(screen.getByLabelText("Website"), {
       target: { value: "https://example.com" },
@@ -617,6 +763,7 @@ describe("generic company onboarding", () => {
     fireEvent.change(screen.getByLabelText("Government identity document"), {
       target: { files: [new File(["id"], "identity.pdf", { type: "application/pdf" })] },
     });
+    await screen.findByText("identity.pdf uploaded. Choose another file to replace it.");
     await goTo("Review");
 
     expect(screen.getByText("https://example.com")).toBeVisible();
@@ -632,6 +779,24 @@ describe("generic company onboarding", () => {
     expect(await screen.findByRole("heading", { name: "Registration under review" })).toBeVisible();
     expect(screen.getByText(/under review by the compliance team/i)).toBeVisible();
     expect(screen.queryByRole("button", { name: "Submit registration" })).toBeNull();
+  });
+
+  it("submits a client through the client endpoint and shows the same honest review state", async () => {
+    fetchMock.mockImplementation((path) => {
+      if (path === "/api/v1/clients/me/submit") {
+        return Promise.resolve(response({ ...clientDraft, state: "SUBMITTED" }));
+      }
+      if (path === "/api/v1/clients/me") return Promise.resolve(response(clientDraft));
+      return Promise.resolve(response({}, 404));
+    });
+    await renderReady("client");
+    await goTo("Review");
+    fireEvent.click(screen.getByRole("button", { name: "Submit registration" }));
+
+    expect(await screen.findByRole("heading", { name: "Registration under review" })).toBeVisible();
+    expect(screen.getByText(/under review by the compliance team/i)).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/clients/me/submit", { method: "POST" });
+    expect(fetchMock.mock.calls.some(([path]) => path === "/api/v1/vendors/me/submit")).toBe(false);
   });
 
   it("surfaces every rejected submission requirement as a section link and keeps unknown codes", async () => {

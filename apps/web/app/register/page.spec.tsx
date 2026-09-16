@@ -8,10 +8,15 @@ import { afterEach, describe, expect, it } from "vitest";
 import FreelancerRegistrationPage, {
   metadata as freelancerMetadata,
 } from "./freelancer/page";
+import ClientRegistrationPage, {
+  metadata as clientMetadata,
+} from "./client/page";
 import RegisterPage, { metadata as registerMetadata } from "./page";
 import {
   FREELANCER_REGISTER_DESCRIPTION,
   FREELANCER_REGISTER_TITLE,
+  CLIENT_REGISTER_DESCRIPTION,
+  CLIENT_REGISTER_TITLE,
   REGISTER_DESCRIPTION,
   REGISTER_TITLE,
   VENDOR_REGISTER_DESCRIPTION,
@@ -31,6 +36,7 @@ const APPROVED_LINKS = [
   "/register",
   "/register/freelancer",
   "/register/vendor",
+  "/register/client",
   "https://www.eqourse.com/",
 ] as const;
 
@@ -46,14 +52,28 @@ const routeCases: readonly {
   source: string;
 }[] = [
   {
+    name: "client registration",
+    route: "/register/client",
+    Page: ClientRegistrationPage,
+    metadata: clientMetadata,
+    title: CLIENT_REGISTER_TITLE,
+    titleLength: 30,
+    description: CLIENT_REGISTER_DESCRIPTION,
+    descriptionLength: 107,
+    source: readFileSync(
+      resolve(process.cwd(), "app/register/client/page.tsx"),
+      "utf8",
+    ),
+  },
+  {
     name: "register",
     route: "/register",
     Page: RegisterPage,
     metadata: registerMetadata,
     title: REGISTER_TITLE,
-    titleLength: 45,
+    titleLength: 22,
     description: REGISTER_DESCRIPTION,
-    descriptionLength: 99,
+    descriptionLength: 100,
     source: readFileSync(resolve(process.cwd(), "app/register/page.tsx"), "utf8"),
   },
   {
@@ -132,10 +152,10 @@ describe("FR-PUB-06 registration routes", () => {
 
   it("keeps every registration metadata string exact", () => {
     expect(REGISTER_TITLE).toBe(
-      "Register as a freelancer or vendor | eQOURSE+",
+      "Register with eQOURSE+",
     );
     expect(REGISTER_DESCRIPTION).toBe(
-      "eQOURSE+ registration is not open yet. The freelancer and vendor paths will open here when it does.",
+      "Choose the freelancer, vendor or client registration path that fits how you will work with eQOURSE+.",
     );
     expect(FREELANCER_REGISTER_TITLE).toBe(
       "Freelancer Registration | eQOURSE+",
@@ -146,6 +166,10 @@ describe("FR-PUB-06 registration routes", () => {
     expect(VENDOR_REGISTER_TITLE).toBe("Vendor Registration | eQOURSE+");
     expect(VENDOR_REGISTER_DESCRIPTION).toBe(
       "Register your company with eQOURSE+ using country-specific details, identifiers, documents and bank information.",
+    );
+    expect(CLIENT_REGISTER_TITLE).toBe("Client Registration | eQOURSE+");
+    expect(CLIENT_REGISTER_DESCRIPTION).toBe(
+      "Register your company with eQOURSE+ using country-specific identifiers, documents and an authorised person.",
     );
   });
 
@@ -263,6 +287,9 @@ describe("FR-PUB-06 registration routes", () => {
     expect(
       screen.getByRole("link", { name: "Continue as a vendor" }),
     ).toHaveAttribute("href", "/register/vendor");
+    expect(
+      screen.getByRole("link", { name: "Continue as a client" }),
+    ).toHaveAttribute("href", "/register/client");
   });
 
   it(
@@ -277,6 +304,16 @@ describe("FR-PUB-06 registration routes", () => {
       ).toContain("<CompanyOnboardingEntry actor=\"vendor\" />");
     },
   );
+
+  it("keeps the client route server-rendered with the client onboarding actor", () => {
+    expect(ClientRegistrationPage).toBeTypeOf("function");
+    expect(
+      readFileSync(
+        resolve(process.cwd(), "app/register/client/page.tsx"),
+        "utf8",
+      ),
+    ).toContain("<CompanyOnboardingEntry actor=\"client\" />");
+  });
 
   it("keeps the freelancer route server-only while rendering a client form island", () => {
     const source = readFileSync(
@@ -293,6 +330,7 @@ describe("FR-PUB-06 registration routes", () => {
   it.each([
     ["freelancer", FreelancerRegistrationPage],
     ["vendor", VendorRegistrationPage],
+    ["client", ClientRegistrationPage],
   ] as const)("links the %s path back to the role choice", (_, Page) => {
     render(<Page />);
 

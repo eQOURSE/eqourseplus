@@ -2,6 +2,12 @@
 
 import {
   authSessionSchema,
+  CLIENT_UPLOAD_CONTENT_TYPES,
+  CLIENT_UPLOAD_MAX_BYTES,
+  clientDraftSchema,
+  clientUploadRequestSchema,
+  clientUploadResponseSchema,
+  getCompanyCountryRequirements,
   getVendorCountryRequirements,
   otpRequestSchema,
   otpVerifySchema,
@@ -14,6 +20,7 @@ import {
   vendorUploadRequestSchema,
   vendorUploadResponseSchema,
   type AuthSession,
+  type ClientDraftInput,
   type RegistrationRequest,
   type VendorDraftInput,
 } from "@eqourse/shared";
@@ -82,6 +89,12 @@ const SUBMISSION_REQUIREMENT_COPY: Readonly<Record<string, {
     instruction: "select at least one service you can deliver",
     step: "capabilities",
     sectionId: "capabilities-section-title",
+  },
+  authorised_person: {
+    label: "Authorised person",
+    instruction: "enter the authorised person's name and upload their government identity document",
+    step: "company",
+    sectionId: "company-authorised-person",
   },
 };
 
@@ -153,7 +166,12 @@ interface CompanyFormState {
   tradingName: string;
   website: string;
   authorisedPersonName: string;
-  governmentIdentityDocument: string;
+  governmentIdentityDocumentKind: string;
+  governmentIdentityDocument?: {
+    kind: string;
+    objectKey: string;
+    uploadedAt: string;
+  };
   capabilitySlugs: string;
   identifiers: Record<string, string>;
   documents: Record<string, { objectKey: string; uploadedAt: string }>;
@@ -185,7 +203,7 @@ const EMPTY_FORM: CompanyFormState = {
   tradingName: "",
   website: "",
   authorisedPersonName: "",
-  governmentIdentityDocument: "",
+  governmentIdentityDocumentKind: "PASSPORT",
   capabilitySlugs: "",
   identifiers: {},
   documents: {},
@@ -242,6 +260,14 @@ function completeAddress(form: CompanyFormState): NonNullable<
   };
 }
 
+type CompanyDraftInput = VendorDraftInput | ClientDraftInput;
+
+function requirementsForActor(actor: CompanyActor, countryCode: string) {
+  return actor === "client"
+    ? getCompanyCountryRequirements(countryCode)
+    : getVendorCountryRequirements(countryCode);
+}
+
 function completeContact(form: CompanyFormState): NonNullable<
   VendorDraftInput["contactPerson"]
 > | undefined {
@@ -270,7 +296,7 @@ function completeBankDetails(form: CompanyFormState): NonNullable<
   };
 }
 
-function toCompanyPayload(form: CompanyFormState, actor: CompanyActor): VendorDraftInput {
+function toCompanyPayload(form: CompanyFormState, actor: CompanyActor): CompanyDraftInput {
   const config = companyActorConfig[actor];
   const capabilities = form.capabilitySlugs
     .split(",")
@@ -295,6 +321,22 @@ function toCompanyPayload(form: CompanyFormState, actor: CompanyActor): VendorDr
     ...(nonEmpty(form.countryCode) ? { countryCode: nonEmpty(form.countryCode) } : {}),
     ...(address ? { registeredAddress: address } : {}),
     ...(contact ? { contactPerson: contact } : {}),
+    ...(config.website && nonEmpty(form.website) ? { website: nonEmpty(form.website) } : {}),
+    ...(config.authorisedPerson && nonEmpty(form.authorisedPersonName)
+      ? {
+          authorisedPerson: {
+            name: nonEmpty(form.authorisedPersonName)!,
+            ...(form.governmentIdentityDocument
+              ? {
+                  governmentIdentityDocument: {
+                    ...form.governmentIdentityDocument,
+                    uploadedAt: new Date(form.governmentIdentityDocument.uploadedAt),
+                  },
+                }
+              : {}),
+          },
+        }
+      : {}),
     ...(config.capabilities && capabilities.length > 0 ? { capabilities } : {}),
     ...(countryIdentifiers.length > 0 ? { countryIdentifiers } : {}),
     ...(config.bankDetails && bankDetails ? { bankDetails } : {}),
@@ -307,6 +349,10 @@ function formFromDraft(draft: Record<string, unknown>): CompanyFormState {
   const contact = (draft.contactPerson ?? {}) as Record<string, unknown>;
   const bank = (draft.bankDetails ?? {}) as Record<string, unknown>;
   const account = (bank.accountIdentifier ?? {}) as Record<string, unknown>;
+  const authorisedPerson = (draft.authorisedPerson ?? {}) as Record<string, unknown>;
+  const governmentIdentityDocument = (
+    authorisedPerson.governmentIdentityDocument ?? {}
+  ) as Record<string, unknown>;
   const identifiers = Array.isArray(draft.countryIdentifiers)
     ? Object.fromEntries(draft.countryIdentifiers.flatMap((entry) => {
         const item = entry as Record<string, unknown>;
@@ -354,6 +400,24 @@ function formFromDraft(draft: Record<string, unknown>): CompanyFormState {
     bankAccountValue: typeof account.value === "string" ? account.value : "",
     bankCountryCode: typeof bank.bankCountryCode === "string" ? bank.bankCountryCode : "",
     bankCurrencyCode: typeof bank.currencyCode === "string" ? bank.currencyCode : "",
+    website: typeof draft.website === "string" ? draft.website : "",
+    authorisedPersonName: typeof authorisedPerson.name === "string" ? authorisedPerson.name : "",
+    governmentIdentityDocumentKind:
+      typeof governmentIdentityDocument.kind === "string"
+        ? governmentIdentityDocument.kind
+        : "PASSPORT",
+    governmentIdentityDocument:
+      typeof governmentIdentityDocument.kind === "string"
+      && typeof governmentIdentityDocument.objectKey === "string"
+        ? {
+            kind: governmentIdentityDocument.kind,
+            objectKey: governmentIdentityDocument.objectKey,
+            uploadedAt:
+              typeof governmentIdentityDocument.uploadedAt === "string"
+                ? governmentIdentityDocument.uploadedAt
+                : new Date().toISOString(),
+          }
+        : undefined,
     identifiers,
     capabilitySlugs: capabilities,
     documents,
@@ -365,14 +429,16 @@ function isComplete(step: StepId, form: CompanyFormState, actor: CompanyActor): 
     const actorSpecificDetails = companyActorConfig[actor].bankDetails
       ? completeBankDetails(form)
       : companyActorConfig[actor].website
-        ? nonEmpty(form.website) && nonEmpty(form.authorisedPersonName) && nonEmpty(form.governmentIdentityDocument)
+        ? nonEmpty(form.website) && nonEmpty(form.authorisedPersonName) && form.governmentIdentityDocument
         : true;
     return Boolean(nonEmpty(form.legalName) && nonEmpty(form.countryCode) && actorSpecificDetails);
   }
   if (step === "address") return Boolean(completeAddress(form));
   if (step === "contact") return Boolean(completeContact(form));
   if (step === "identifiers") {
-    const requirements = form.countryCode ? getVendorCountryRequirements(form.countryCode) : undefined;
+    const requirements = form.countryCode
+      ? requirementsForActor(actor, form.countryCode)
+      : undefined;
     return Boolean(
       requirements
       && requirements.identifierSchemes.every((scheme) => nonEmpty(form.identifiers[scheme] ?? ""))
@@ -395,12 +461,25 @@ function firstIncompleteStep(form: CompanyFormState, actor: CompanyActor): StepI
 function firstIncompleteField(form: CompanyFormState, actor: CompanyActor): { step: StepId; id: string } {
   const step = firstIncompleteStep(form, actor);
   if (step === "company") {
-    return { step, id: `company-${!nonEmpty(form.legalName) ? "legalName" : !nonEmpty(form.countryCode) ? "countryCode" : "bankAccountHolderName"}` };
+    const id = !nonEmpty(form.legalName)
+      ? "legalName"
+      : !nonEmpty(form.countryCode)
+        ? "countryCode"
+        : companyActorConfig[actor].bankDetails
+          ? "bankAccountHolderName"
+          : !nonEmpty(form.website)
+            ? "website"
+            : !nonEmpty(form.authorisedPersonName)
+              ? "authorisedPersonName"
+              : "governmentIdentityDocument";
+    return { step, id: `company-${id}` };
   }
   if (step === "address") return { step, id: "company-addressLine1" };
   if (step === "contact") return { step, id: "company-contactName" };
   if (step === "identifiers") {
-    const requirements = form.countryCode ? getVendorCountryRequirements(form.countryCode) : undefined;
+    const requirements = form.countryCode
+      ? requirementsForActor(actor, form.countryCode)
+      : undefined;
     const missingScheme = requirements?.identifierSchemes.find((scheme) => !nonEmpty(form.identifiers[scheme] ?? ""));
     const missingDocument = requirements?.documentKinds.find((kind) => !form.documents[kind]?.objectKey);
     return { step, id: missingScheme ? `company-identifier-${missingScheme}` : missingDocument ? `company-document-${missingDocument}` : "identifiers-section-title" };
@@ -412,6 +491,7 @@ function firstIncompleteField(form: CompanyFormState, actor: CompanyActor): { st
 function submissionRequirementTarget(
   code: string,
   form: CompanyFormState,
+  actor: CompanyActor,
 ): { id: string; sectionId: string; step: StepId } {
   const copy = SUBMISSION_REQUIREMENT_COPY[code];
   if (!copy) {
@@ -440,10 +520,18 @@ function submissionRequirementTarget(
     return { ...copy, id: copy.sectionId };
   }
   if (code === "bank_details") return { ...copy, id: "company-bankAccountHolderName" };
+  if (code === "authorised_person") {
+    return {
+      ...copy,
+      id: !nonEmpty(form.authorisedPersonName)
+        ? "company-authorisedPersonName"
+        : "company-governmentIdentityDocument",
+    };
+  }
   if (code === "country_requirements") return { ...copy, id: "company-countryCode" };
   if (code === "country_identifiers") {
     const requirements = form.countryCode
-      ? getVendorCountryRequirements(form.countryCode)
+      ? requirementsForActor(actor, form.countryCode)
       : undefined;
     const scheme = requirements?.identifierSchemes.find(
       (candidate) => !nonEmpty(form.identifiers[candidate] ?? ""),
@@ -452,7 +540,7 @@ function submissionRequirementTarget(
   }
   if (code === "documents") {
     const requirements = form.countryCode
-      ? getVendorCountryRequirements(form.countryCode)
+      ? requirementsForActor(actor, form.countryCode)
       : undefined;
     const kind = requirements?.documentKinds.find(
       (candidate) => !form.documents[candidate]?.objectKey,
@@ -515,6 +603,23 @@ function apiUrl(path: string): string {
 
 export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthenticated }: CompanyOnboardingFormProps) {
   const config = companyActorConfig[actor];
+  const apiBase = `/api/v1/${actor}s`;
+  const steps = config.capabilities
+    ? STEPS
+    : STEPS.filter((item) => item.id !== "capabilities");
+  const draftSchema = actor === "client" ? clientDraftSchema : vendorDraftSchema;
+  const uploadRequestSchema = actor === "client"
+    ? clientUploadRequestSchema
+    : vendorUploadRequestSchema;
+  const uploadResponseSchema = actor === "client"
+    ? clientUploadResponseSchema
+    : vendorUploadResponseSchema;
+  const uploadContentTypes = actor === "client"
+    ? CLIENT_UPLOAD_CONTENT_TYPES
+    : VENDOR_UPLOAD_CONTENT_TYPES;
+  const uploadMaxBytes = actor === "client"
+    ? CLIENT_UPLOAD_MAX_BYTES
+    : VENDOR_UPLOAD_MAX_BYTES;
   const [countryOptions, setCountryOptions] = useState<CountryOption[]>([]);
   const [form, setForm] = useState<CompanyFormState>(EMPTY_FORM);
   const [step, setStep] = useState<StepId>("company");
@@ -532,6 +637,13 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   const pendingFocus = useRef<string | null>(null);
   const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
   const [documentUploads, setDocumentUploads] = useState<Record<string, DocumentUploadState>>({});
+  const [identityDocumentName, setIdentityDocumentName] = useState("");
+  const [identityDocumentUpload, setIdentityDocumentUpload] = useState<DocumentUploadState>({
+    status: "idle",
+    message: guest
+      ? "Create your account before uploading this document."
+      : "No file uploaded.",
+  });
   const [accessStep, setAccessStep] = useState<AccessStep | null>(null);
   const [accessEmail, setAccessEmail] = useState("");
   const [accessPhone, setAccessPhone] = useState("");
@@ -605,10 +717,10 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   useEffect(() => {
     if (guest) return;
     let active = true;
-    void fetch("/api/v1/vendors/me", { cache: "no-store" })
+    void fetch(`${apiBase}/me`, { cache: "no-store" })
       .then(async (response) => {
         if (response.status === 404) {
-          const created = await fetch("/api/v1/vendors", {
+          const created = await fetch(apiBase, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: "{}",
@@ -630,6 +742,13 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
           status: "uploaded" as const,
           message: "Uploaded. Choose another file to replace it.",
         }])));
+        if (nextForm.governmentIdentityDocument) {
+          setIdentityDocumentName(nextForm.governmentIdentityDocument.objectKey);
+          setIdentityDocumentUpload({
+            status: "uploaded",
+            message: "Uploaded. Choose another file to replace it.",
+          });
+        }
       })
       .catch(() => {
         if (active) setLoadError(true);
@@ -640,11 +759,13 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     return () => {
       active = false;
     };
-  }, [actor, guest]);
+  }, [actor, apiBase, guest]);
 
   const requirements = useMemo(
-    () => form.countryCode ? getVendorCountryRequirements(form.countryCode) : undefined,
-    [form.countryCode],
+    () => form.countryCode
+      ? requirementsForActor(actor, form.countryCode)
+      : undefined,
+    [actor, form.countryCode],
   );
 
   function updateField(field: keyof Omit<CompanyFormState, "identifiers" | "documents">, value: string): void {
@@ -707,7 +828,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
       return;
     }
 
-    const request = vendorUploadRequestSchema.safeParse({
+    const request = uploadRequestSchema.safeParse({
       kind,
       contentType: file.type,
       size: file.size,
@@ -716,7 +837,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
       setDocumentUploads((current) => ({ ...current, [kind]: {
         status: "failed",
         name: file.name,
-        message: file.size > VENDOR_UPLOAD_MAX_BYTES
+        message: file.size > uploadMaxBytes
           ? "This file is larger than 10 MiB. Choose a smaller PDF or image and try again."
           : "This file type is not supported. Choose a PDF, JPEG, PNG or WebP file and try again.",
       } }));
@@ -729,13 +850,13 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
       message: `Uploading ${file.name}…`,
     } }));
     try {
-      const credentialResponse = await fetch("/api/v1/vendors/me/documents/upload-url", {
+      const credentialResponse = await fetch(`${apiBase}/me/documents/upload-url`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request.data),
       });
       if (!credentialResponse.ok) throw new Error("Upload authorization failed");
-      const credential = vendorUploadResponseSchema.safeParse(await credentialResponse.json());
+      const credential = uploadResponseSchema.safeParse(await credentialResponse.json());
       if (!credential.success) throw new Error("Invalid upload authorization");
 
       const uploadResponse = await fetch(credential.data.uploadUrl, {
@@ -753,8 +874,8 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
         },
       };
       const nextForm = { ...form, documents: nextDocuments };
-      const draft = vendorDraftSchema.parse(toCompanyPayload(nextForm, actor));
-      const saved = await fetch("/api/v1/vendors/me", {
+      const draft = draftSchema.parse(toCompanyPayload(nextForm, actor));
+      const saved = await fetch(`${apiBase}/me`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(draft),
@@ -777,8 +898,93 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     }
   }
 
+  async function updateIdentityDocument(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (guest) {
+      setIdentityDocumentUpload({
+        status: "failed",
+        name: file.name,
+        message: "Create your account, then choose this file again to upload it.",
+      });
+      return;
+    }
+
+    const request = clientUploadRequestSchema.safeParse({
+      kind: form.governmentIdentityDocumentKind,
+      contentType: file.type,
+      size: file.size,
+    });
+    if (!request.success) {
+      setIdentityDocumentUpload({
+        status: "failed",
+        name: file.name,
+        message: file.size > CLIENT_UPLOAD_MAX_BYTES
+          ? "This file is larger than 10 MiB. Choose a smaller PDF or image and try again."
+          : "This file type is not supported. Choose a PDF, JPEG, PNG or WebP file and try again.",
+      });
+      return;
+    }
+
+    setIdentityDocumentUpload({
+      status: "uploading",
+      name: file.name,
+      message: `Uploading ${file.name}…`,
+    });
+    try {
+      const credentialResponse = await fetch(
+        `${apiBase}/me/authorised-person/government-identity-document/upload-url`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(request.data),
+        },
+      );
+      if (!credentialResponse.ok) throw new Error("Upload authorization failed");
+      const credential = clientUploadResponseSchema.safeParse(
+        await credentialResponse.json(),
+      );
+      if (!credential.success) throw new Error("Invalid upload authorization");
+      const uploadResponse = await fetch(credential.data.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!uploadResponse.ok) throw new Error("Object upload failed");
+
+      const nextForm: CompanyFormState = {
+        ...form,
+        governmentIdentityDocument: {
+          kind: request.data.kind,
+          objectKey: credential.data.objectKey,
+          uploadedAt: new Date().toISOString(),
+        },
+      };
+      const draft = clientDraftSchema.parse(toCompanyPayload(nextForm, "client"));
+      const saved = await fetch(`${apiBase}/me`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draft),
+      });
+      if (!saved.ok) throw new Error("Upload record failed");
+      setForm(nextForm);
+      setIdentityDocumentName(file.name);
+      setIdentityDocumentUpload({
+        status: "uploaded",
+        name: file.name,
+        message: `${file.name} uploaded. Choose another file to replace it.`,
+      });
+    } catch {
+      setIdentityDocumentUpload({
+        status: "failed",
+        name: file.name,
+        message: `Upload failed for ${file.name}. Choose the file and try again.`,
+      });
+    }
+  }
+
   async function persistDraft(): Promise<boolean> {
-    const parsed = vendorDraftSchema.safeParse(toCompanyPayload(form, actor));
+    const parsed = draftSchema.safeParse(toCompanyPayload(form, actor));
     if (!parsed.success) {
       const nextErrors: Record<string, string> = {};
       for (const issue of parsed.error.issues) {
@@ -814,7 +1020,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     setMessage("");
     setMessageError(false);
     try {
-      const response = await fetch("/api/v1/vendors/me", {
+      const response = await fetch(`${apiBase}/me`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed.data),
@@ -856,7 +1062,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     setSubmissionMissing([]);
     setSaving(true);
     try {
-      const response = await fetch("/api/v1/vendors/me/submit", { method: "POST" });
+      const response = await fetch(`${apiBase}/me/submit`, { method: "POST" });
       if (response.ok) {
         setSubmitted(true);
         setMessage("");
@@ -864,7 +1070,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
         const missing = await readSubmissionMissing(response);
         const firstMissing = missing.at(0);
         const first = firstMissing
-          ? submissionRequirementTarget(firstMissing, form)
+          ? submissionRequirementTarget(firstMissing, form, actor)
           : firstIncompleteField(form, actor);
         pendingFocus.current = first.id;
         setStep(first.step);
@@ -957,16 +1163,16 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   }
 
   async function saveDraftAfterAuthentication(): Promise<void> {
-    const draftResult = vendorDraftSchema.safeParse(toCompanyPayload(form, actor));
+    const draftResult = draftSchema.safeParse(toCompanyPayload(form, actor));
     if (!draftResult.success) throw new Error("Invalid company draft");
-    const created = await fetch("/api/v1/vendors", {
+    const created = await fetch(apiBase, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(draftResult.data),
     });
     if (!created.ok) throw new Error("Draft creation failed");
     if (pendingSubmission.current) {
-      const submittedResponse = await fetch("/api/v1/vendors/me/submit", { method: "POST" });
+      const submittedResponse = await fetch(`${apiBase}/me/submit`, { method: "POST" });
       if (!submittedResponse.ok) throw new Error("Submission failed");
     }
     const sessionResponse = await fetch("/api/auth/session", { cache: "no-store" });
@@ -1023,7 +1229,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
       queueMicrotask(() => document.getElementById("company-access-emailOtp")?.focus());
       return;
     }
-    const draftResult = vendorDraftSchema.safeParse(toCompanyPayload(form, actor));
+    const draftResult = draftSchema.safeParse(toCompanyPayload(form, actor));
     if (!draftResult.success) return;
     setSaving(true);
     setAccessErrors({});
@@ -1044,7 +1250,9 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     }
   }
 
-  type TextField = Exclude<keyof CompanyFormState, "identifiers" | "documents">;
+  type TextField = {
+    [Key in keyof CompanyFormState]-?: CompanyFormState[Key] extends string ? Key : never;
+  }[keyof CompanyFormState];
   const field = (label: string, fieldName: TextField, type = "text", autoComplete?: string) => (
     <div className="company-onboarding-field" key={fieldName}>
       <label htmlFor={`company-${fieldName}`}>{label}</label>
@@ -1057,7 +1265,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     return (
       <div className="company-onboarding-actions">
         <GlassButton type="button" variant="secondary" disabled={saving} onClick={() => { pendingSubmission.current = false; void persistDraft(); }}>{saving ? "Saving…" : "Save draft"}</GlassButton>
-        {nextStep ? <GlassButton type="button" variant="primary" disabled={saving} onClick={() => void continueTo(nextStep)}>Continue to {STEPS.find((item) => item.id === nextStep)?.label}</GlassButton> : null}
+        {nextStep ? <GlassButton type="button" variant="primary" disabled={saving} onClick={() => void continueTo(nextStep)}>Continue to {steps.find((item) => item.id === nextStep)?.label}</GlassButton> : null}
       </div>
     );
   }
@@ -1088,10 +1296,78 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
         ) : null}
         {config.website ? field("Website", "website", "url", "url") : null}
         {config.authorisedPerson ? (
-          <fieldset className="company-onboarding-subsection">
+          <fieldset id="company-authorised-person" className="company-onboarding-subsection">
             <legend>Authorised person</legend>
             {field("Authorised person name", "authorisedPersonName", "text", "name")}
-            <div className="company-onboarding-field"><label htmlFor="company-governmentIdentityDocument">Government identity document</label><input id="company-governmentIdentityDocument" type="file" disabled={saving} onChange={(event) => updateField("governmentIdentityDocument", event.target.files?.[0]?.name ?? "")} /></div>
+            <div className="company-onboarding-field">
+              <label htmlFor="company-governmentIdentityDocumentKind">
+                Government identity document type
+              </label>
+              <select
+                id="company-governmentIdentityDocumentKind"
+                value={form.governmentIdentityDocumentKind}
+                disabled={saving || identityDocumentUpload.status === "uploading"}
+                onChange={(event) => updateField(
+                  "governmentIdentityDocumentKind",
+                  event.target.value,
+                )}
+              >
+                <option value="PASSPORT">Passport</option>
+                <option value="DRIVING_LICENCE">Driving licence</option>
+                <option value="VOTER_ID">Voter ID</option>
+                {form.countryCode === "IN" ? (
+                  <option value="MASKED_AADHAAR_REFERENCE">
+                    Masked Aadhaar
+                  </option>
+                ) : null}
+              </select>
+            </div>
+            <div className="company-onboarding-field">
+              <label htmlFor="company-governmentIdentityDocument">
+                Government identity document
+              </label>
+              <input
+                id="company-governmentIdentityDocument"
+                type="file"
+                accept={CLIENT_UPLOAD_CONTENT_TYPES.join(",")}
+                disabled={
+                  saving
+                  || identityDocumentUpload.status === "uploading"
+                  || !nonEmpty(form.authorisedPersonName)
+                }
+                aria-describedby="company-governmentIdentityDocument-status"
+                onChange={(event) => void updateIdentityDocument(event)}
+              />
+              <p
+                id="company-governmentIdentityDocument-status"
+                className={identityDocumentUpload.status === "failed"
+                  ? "company-onboarding-error"
+                  : "company-onboarding-help"}
+                role={identityDocumentUpload.status === "failed" ? "alert" : "status"}
+                aria-live="polite"
+              >
+                {identityDocumentUpload.message}
+              </p>
+              {!nonEmpty(form.authorisedPersonName) ? (
+                <p className="company-onboarding-help">
+                  Enter the authorised person&apos;s name before choosing a file.
+                </p>
+              ) : null}
+              {form.countryCode === "IN" ? (
+                <p className="company-onboarding-help">
+                  Prefer a passport, driving licence or voter ID. If you use
+                  Aadhaar, <strong>Aadhaar must be masked</strong>; never upload
+                  raw Aadhaar. You can{" "}
+                  <a
+                    href="https://myaadhaar.uidai.gov.in/genricDownloadAadhaar/en"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Download masked Aadhaar from UIDAI
+                  </a>.
+                </p>
+              ) : null}
+            </div>
           </fieldset>
         ) : null}
         {stepActions("address")}
@@ -1127,7 +1403,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
                   <input
                     id={`company-document-${kind}`}
                     type="file"
-                    accept={VENDOR_UPLOAD_CONTENT_TYPES.join(",")}
+                    accept={uploadContentTypes.join(",")}
                     disabled={saving || upload?.status === "uploading"}
                     aria-describedby={statusId}
                     onChange={(event) => void updateDocument(kind, event)}
@@ -1248,7 +1524,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   function renderReview(): React.ReactNode {
     const selectedDocuments = Object.values(documentNames).filter((value) => value.trim()).join(", ");
     const selectedCapabilityNames = selectedCapabilities.map(taxonomyLeaf).join(", ");
-    return <section aria-labelledby="review-section-title"><h2 id="review-section-title" className="home-section-title" tabIndex={-1}>Review</h2><p className="company-onboarding-help">Review the information you entered. You can return to any section before submitting.</p><dl className="company-onboarding-summary">{summary("Legal name", nonEmpty(form.legalName))}{summary("Trading name", nonEmpty(form.tradingName))}{summary("Country", form.countryCode)}{summary("Address", completeAddress(form) ? `${form.addressLine1}, ${form.addressCity}, ${form.addressPostalCode}` : undefined)}{summary("Contact", completeContact(form) ? `${form.contactName} · ${form.contactEmail} · ${form.contactPhone}` : undefined)}{summary("Identifiers", Object.values(form.identifiers).filter((value) => value.trim()).join(", "))}{summary("Documents", selectedDocuments)}{config.capabilities ? summary("Capabilities", selectedCapabilityNames) : null}{config.bankDetails ? summary("Bank details", completeBankDetails(form) ? "Entered" : undefined) : null}{config.website ? summary("Website", nonEmpty(form.website)) : null}{config.authorisedPerson ? summary("Authorised person", nonEmpty(form.authorisedPersonName)) : null}{config.authorisedPerson ? summary("Government identity document", nonEmpty(form.governmentIdentityDocument)) : null}</dl><div className="company-onboarding-review-actions">{STEPS.slice(0, -1).map((item) => <GlassButton key={item.id} type="button" variant="secondary" disabled={saving} onClick={() => setStep(item.id)}>Edit {item.label}</GlassButton>)}<GlassButton type="button" variant="secondary" disabled={saving} onClick={() => { pendingSubmission.current = false; void persistDraft(); }}>{saving ? "Saving…" : "Save draft"}</GlassButton><GlassButton type="submit" variant="primary" disabled={saving}>{saving ? "Submitting…" : "Submit registration"}</GlassButton></div></section>;
+    return <section aria-labelledby="review-section-title"><h2 id="review-section-title" className="home-section-title" tabIndex={-1}>Review</h2><p className="company-onboarding-help">Review the information you entered. You can return to any section before submitting.</p><dl className="company-onboarding-summary">{summary("Legal name", nonEmpty(form.legalName))}{summary("Trading name", nonEmpty(form.tradingName))}{summary("Country", form.countryCode)}{summary("Address", completeAddress(form) ? `${form.addressLine1}, ${form.addressCity}, ${form.addressPostalCode}` : undefined)}{summary("Contact", completeContact(form) ? `${form.contactName} · ${form.contactEmail} · ${form.contactPhone}` : undefined)}{summary("Identifiers", Object.values(form.identifiers).filter((value) => value.trim()).join(", "))}{summary("Documents", selectedDocuments)}{config.capabilities ? summary("Capabilities", selectedCapabilityNames) : null}{config.bankDetails ? summary("Bank details", completeBankDetails(form) ? "Entered" : undefined) : null}{config.website ? summary("Website", nonEmpty(form.website)) : null}{config.authorisedPerson ? summary("Authorised person", nonEmpty(form.authorisedPersonName)) : null}{config.authorisedPerson ? summary("Government identity document", identityDocumentName || form.governmentIdentityDocument?.objectKey) : null}</dl><div className="company-onboarding-review-actions">{steps.slice(0, -1).map((item) => <GlassButton key={item.id} type="button" variant="secondary" disabled={saving} onClick={() => setStep(item.id)}>Edit {item.label}</GlassButton>)}<GlassButton type="button" variant="secondary" disabled={saving} onClick={() => { pendingSubmission.current = false; void persistDraft(); }}>{saving ? "Saving…" : "Save draft"}</GlassButton><GlassButton type="submit" variant="primary" disabled={saving}>{saving ? "Submitting…" : "Submit registration"}</GlassButton></div></section>;
   }
 
   function renderSubmissionMessage(): React.ReactNode {
@@ -1264,7 +1540,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
               label: code,
               instruction: "review this requirement and try again",
             };
-            const target = submissionRequirementTarget(code, form);
+            const target = submissionRequirementTarget(code, form, actor);
             return (
               <li key={`${code}-${index}`}>
                 <a
@@ -1309,5 +1585,5 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     return <FrostedSurface aria-labelledby="company-access-title" className="company-onboarding-shell" variant="panel"><p className="home-eyebrow">Company registration</p><h1 id="company-access-title">Verify your email</h1><p className="company-onboarding-copy">Enter the six-digit code sent to {accessIdentity?.email}.</p><form className="company-onboarding-form" noValidate onSubmit={verifyAccount}><div className="company-onboarding-field"><label htmlFor="company-access-emailOtp">Email verification code</label><input id="company-access-emailOtp" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={accessOtp} disabled={saving} aria-invalid={Boolean(accessErrors.emailOtp)} onChange={(event) => setAccessOtp(event.target.value)} />{accessErrors.emailOtp ? <p className="company-onboarding-error" role="alert">{accessErrors.emailOtp}</p> : null}</div><p className="registration-form-message" role={messageError ? "alert" : undefined} aria-live="polite">{message}</p><div className="company-onboarding-actions"><GlassButton type="button" variant="secondary" disabled={saving} onClick={() => setAccessStep("details")}>Change details</GlassButton><GlassButton type="submit" variant="primary" disabled={saving}>{saving ? "Verifying…" : "Verify and save draft"}</GlassButton></div></form></FrostedSurface>;
   }
 
-  return <FrostedSurface aria-labelledby="company-onboarding-title" className="company-onboarding-shell" variant="panel"><p className="home-eyebrow">Company registration</p><h1 id="company-onboarding-title">Register your company.</h1><p className="company-onboarding-copy">{guest ? "Fill the company form now. When you save or continue, verify your email once so your draft is protected and available when you return." : "Save your details as you go. Country selection shows only the identifiers and documents that apply to your company."}</p><nav className="company-onboarding-stepper" aria-label="Company registration steps"><ol>{STEPS.map((item) => <li key={item.id}><button type="button" disabled={saving} data-current={step === item.id} data-state={step === item.id ? "current" : STEPS.findIndex((part) => part.id === item.id) < STEPS.findIndex((part) => part.id === step) ? "previous" : "upcoming"} aria-current={step === item.id ? "step" : undefined} onClick={() => guest ? setStep(item.id) : void continueTo(item.id)}>{item.label}</button></li>)}</ol></nav><form className="company-onboarding-form" noValidate onSubmit={submitRegistration}>{step === "company" ? renderCompany() : null}{step === "address" ? renderAddress() : null}{step === "contact" ? renderContact() : null}{step === "identifiers" ? renderIdentifiers() : null}{step === "capabilities" ? renderCapabilities() : null}{step === "review" ? renderReview() : null}{renderSubmissionMessage()}</form></FrostedSurface>;
+  return <FrostedSurface aria-labelledby="company-onboarding-title" className="company-onboarding-shell" variant="panel"><p className="home-eyebrow">Company registration</p><h1 id="company-onboarding-title">Register your company.</h1><p className="company-onboarding-copy">{guest ? "Fill the company form now. When you save or continue, verify your email once so your draft is protected and available when you return." : "Save your details as you go. Country selection shows only the identifiers and documents that apply to your company."}</p><nav className="company-onboarding-stepper" aria-label="Company registration steps"><ol>{steps.map((item) => <li key={item.id}><button type="button" disabled={saving} data-current={step === item.id} data-state={step === item.id ? "current" : steps.findIndex((part) => part.id === item.id) < steps.findIndex((part) => part.id === step) ? "previous" : "upcoming"} aria-current={step === item.id ? "step" : undefined} onClick={() => guest ? setStep(item.id) : void continueTo(item.id)}>{item.label}</button></li>)}</ol></nav><form className="company-onboarding-form" noValidate onSubmit={submitRegistration}>{step === "company" ? renderCompany() : null}{step === "address" ? renderAddress() : null}{step === "contact" ? renderContact() : null}{step === "identifiers" ? renderIdentifiers() : null}{step === "capabilities" ? renderCapabilities() : null}{step === "review" ? renderReview() : null}{renderSubmissionMessage()}</form></FrostedSurface>;
 }

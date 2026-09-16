@@ -1,8 +1,8 @@
 export const REGISTER_TITLE =
-  "Register as a freelancer or vendor | eQOURSE+";
+  "Register with eQOURSE+";
 
 export const REGISTER_DESCRIPTION =
-  "eQOURSE+ registration is not open yet. The freelancer and vendor paths will open here when it does.";
+  "Choose the freelancer, vendor or client registration path that fits how you will work with eQOURSE+.";
 
 export const FREELANCER_REGISTER_TITLE =
   "Freelancer Registration | eQOURSE+";
@@ -15,6 +15,11 @@ export const VENDOR_REGISTER_TITLE = "Vendor Registration | eQOURSE+";
 export const VENDOR_REGISTER_DESCRIPTION =
   "Register your company with eQOURSE+ using country-specific details, identifiers, documents and bank information.";
 
+export const CLIENT_REGISTER_TITLE = "Client Registration | eQOURSE+";
+
+export const CLIENT_REGISTER_DESCRIPTION =
+  "Register your company with eQOURSE+ using country-specific identifiers, documents and an authorised person.";
+
 export const registrationRoles = [
   {
     label: "Continue as a freelancer",
@@ -23,5 +28,9 @@ export const registrationRoles = [
   {
     label: "Continue as a vendor",
     href: "/register/vendor",
+  },
+  {
+    label: "Continue as a client",
+    href: "/register/client",
   },
 ] as const;

@@ -17,6 +17,7 @@ const ALL_PUBLIC_ROUTES = [
   "/jobs",
   "/login",
   "/register",
+  "/register/client",
   "/register/freelancer",
   "/register/vendor",
   "/vendors",
@@ -60,7 +61,9 @@ describe("public route registry", () => {
 
   it("keeps registration out of the sitemap source", () => {
     expect(EXCLUDED_ROUTES).toContain("/register/vendor");
+    expect(EXCLUDED_ROUTES).toContain("/register/client");
     expect(RESOLVING_ROUTES).not.toContain("/register/vendor");
+    expect(RESOLVING_ROUTES).not.toContain("/register/client");
   });
 
   it("lists a route as resolving only when its page exists", () => {
