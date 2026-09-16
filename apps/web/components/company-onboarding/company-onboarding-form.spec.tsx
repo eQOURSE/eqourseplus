@@ -5,7 +5,7 @@ import {
   companyActorConfig,
   type CompanyActor,
 } from "./company-onboarding-config";
-import { CompanyOnboardingForm } from "./company-onboarding-form";
+import { CompanyOnboardingForm, schemaIssueField } from "./company-onboarding-form";
 
 const fetchMock = vi.fn<typeof fetch>();
 
@@ -81,6 +81,13 @@ async function goTo(step: string): Promise<void> {
 }
 
 describe("generic company onboarding", () => {
+  it("routes an unmapped schema issue to an actionable field", () => {
+    expect(schemaIssueField("website")).toBe("website");
+    expect(schemaIssueField("bankDetails.accountIdentifier.scheme")).toBe("bankAccountScheme");
+    expect(schemaIssueField("documents.0.objectKey")).toBe("countryCode");
+    expect(schemaIssueField("authorisedPerson.unexpectedDetail")).toBe("authorisedPersonName");
+    expect(schemaIssueField("unexpectedField")).toBe("legalName");
+  });
   it("lets a visitor fill and explore the vendor form without vendor API calls", async () => {
     render(<CompanyOnboardingForm actor="vendor" guest />);
 
@@ -96,7 +103,7 @@ describe("generic company onboarding", () => {
     fireEvent.click(screen.getByRole("button", { name: "Identifiers" }));
     expect(screen.getByLabelText("UEN")).toBeVisible();
     expect(screen.getByLabelText("UEN")).toBeEnabled();
-    expect(screen.getByLabelText("Acra Record")).toBeEnabled();
+    expect(screen.getByLabelText("Acra Record")).toBeDisabled();
     expect(screen.queryByLabelText("GSTIN")).toBeNull();
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:4000/api/v1/skill-taxonomy",
@@ -239,17 +246,17 @@ describe("generic company onboarding", () => {
     fireEvent.click(screen.getByRole("button", { name: "Identifiers" }));
 
     const upload = screen.getByLabelText("Acra Record");
-    expect(upload).toBeEnabled();
-    expect(screen.getByText(
-      "Create your account before uploading this document.",
-      { selector: "#company-document-ACRA_RECORD-status" },
-    )).toHaveAttribute("role", "status");
+    expect(upload).toBeDisabled();
+    expect(upload).toHaveAccessibleDescription(/create your account to upload this document/i);
     fireEvent.change(upload, {
       target: { files: [new File(["pdf"], "acra.pdf", { type: "application/pdf" })] },
     });
     expect(await screen.findByText(
-      "Create your account, then choose this file again to upload it.",
-    )).toHaveAttribute("role", "alert");
+      "Create your account to upload this document.",
+    )).toHaveClass("company-onboarding-help");
+    expect(screen.getByText(
+      "Create your account to upload this document.",
+    )).toHaveAttribute("role", "status");
   });
 
   it("keeps the actor differences in configuration rather than component branches", () => {
@@ -422,6 +429,72 @@ describe("generic company onboarding", () => {
     });
     expect(payload).not.toHaveProperty("bankDetails");
     expect(payload).not.toHaveProperty("capabilities");
+  });
+
+  it("guides signed-out visitors before company document selection without error styling", async () => {
+    render(<CompanyOnboardingForm actor="vendor" guest />);
+    await waitFor(() => expect(screen.getByLabelText("Country")).toBeEnabled());
+    fireEvent.change(screen.getByLabelText("Country"), { target: { value: "SG" } });
+    fireEvent.click(screen.getByRole("button", { name: "Identifiers" }));
+
+    const input = screen.getByLabelText("Acra Record");
+    const guidance = screen.getByText(/create your account.*upload this document/i, {
+      selector: "#company-document-ACRA_RECORD-status-guidance",
+    });
+    expect(guidance.nextElementSibling).toBe(input);
+    expect(input).toBeDisabled();
+    expect(guidance).toHaveClass("company-onboarding-help");
+    expect(guidance).not.toHaveClass("company-onboarding-error");
+    expect(screen.queryByText(/choose this file again/i)).toBeNull();
+  });
+
+  it("puts an actionable website error beside and focuses the website input", async () => {
+    fetchMock.mockImplementation((path) => path === "/api/v1/clients/me"
+      ? Promise.resolve(response(clientDraft))
+      : Promise.resolve(response({}, 404)));
+    await renderReady("client");
+    fireEvent.change(screen.getByLabelText("Website"), {
+      target: { value: "javascript:alert(1)" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+    const website = screen.getByLabelText("Website");
+    expect(website).toHaveFocus();
+    expect(website).toHaveAttribute("aria-invalid", "true");
+    expect(website).toHaveAccessibleDescription(/website.*http/i);
+    expect(screen.getByText(/website.*http/i)).toHaveClass("company-onboarding-error");
+  });
+
+  it("saves a scheme-less website using the normalized shared-schema value", async () => {
+    fetchMock.mockImplementation((path) => path === "/api/v1/clients/me"
+      ? Promise.resolve(response(clientDraft))
+      : Promise.resolve(response({}, 404)));
+    await renderReady("client");
+    fireEvent.change(screen.getByLabelText("Website"), {
+      target: { value: "www.eqourse.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/clients/me",
+      expect.objectContaining({
+        method: "PATCH",
+        body: expect.stringContaining('"website":"https://www.eqourse.com"'),
+      }),
+    ));
+  });
+
+  it("explains the identity upload deferral before file selection without error styling", async () => {
+    render(<CompanyOnboardingForm actor="client" guest />);
+    await waitFor(() => expect(screen.getByLabelText("Country")).toBeEnabled());
+    fireEvent.change(screen.getByLabelText("Authorised person name"), {
+      target: { value: "A. Person" },
+    });
+    const input = screen.getByLabelText("Government identity document");
+    expect(input).toBeDisabled();
+    const guidance = screen.getByText(/create your account.*upload/i);
+    expect(guidance).toHaveClass("company-onboarding-help");
+    expect(guidance).not.toHaveClass("company-onboarding-error");
   });
 
   it("guides Indian clients to alternatives and UIDAI masked Aadhaar without fake attestation", async () => {
