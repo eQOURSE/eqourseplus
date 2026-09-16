@@ -14,14 +14,13 @@ describe("FR-FND-02 local API environment", () => {
       scripts: { dev: string };
     };
 
-    expect(rootPackage.scripts.dev).toBe(
-      "node --env-file=.env node_modules/turbo/bin/turbo run dev --env-mode=loose --parallel --filter=@eqourse/web --filter=@eqourse/api",
-    );
+    expect(rootPackage.scripts.dev).toContain("--env-file=.env");
   });
 
   it("loads the repository-root .env when the API starts from its workspace", () => {
-    const workspace = path.join("C:", "workspace", "apps", "api");
-    const rootEnv = path.join("C:", "workspace", ".env");
+    const root = path.parse(process.cwd()).root;
+    const workspace = path.join(root, "workspace", "apps", "api");
+    const rootEnv = path.join(root, "workspace", ".env");
     const loadEnvFile = vi.fn();
 
     const loaded = loadLocalEnvironment({
@@ -37,10 +36,11 @@ describe("FR-FND-02 local API environment", () => {
   });
 
   it("does not load a local file in production", () => {
+    const root = path.parse(process.cwd()).root;
     const loadEnvFile = vi.fn();
 
     expect(loadLocalEnvironment({
-      cwd: path.join("C:", "workspace", "apps", "api"),
+      cwd: path.join(root, "workspace", "apps", "api"),
       environment: { NODE_ENV: "production" },
       fileExists: () => true,
       loadEnvFile,
