@@ -43,4 +43,15 @@ describe("FR-REG-15 client registration contracts", () => {
     expect(clientDraftSchema.safeParse({ paymentInstrument: {} }).success).toBe(false);
     expect(clientDraftSchema.safeParse({ unknownField: true }).success).toBe(false);
   });
+
+  it("normalizes ordinary website entries and rejects executable schemes", () => {
+    expect(clientDraftSchema.parse({ website: "www.eqourse.com" }).website)
+      .toBe("https://www.eqourse.com");
+    expect(clientDraftSchema.parse({ website: "  www.eqourse.com  " }).website)
+      .toBe("https://www.eqourse.com");
+    expect(clientDraftSchema.safeParse({ website: "javascript:alert(1)" }).success)
+      .toBe(false);
+    expect(clientDraftSchema.safeParse({ website: "ftp://www.eqourse.com" }).success)
+      .toBe(false);
+  });
 });

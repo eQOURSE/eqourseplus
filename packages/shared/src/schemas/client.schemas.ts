@@ -21,6 +21,12 @@ const document = z.strictObject({
   objectKey: z.string().min(1),
   uploadedAt: z.coerce.date(),
 });
+const website = z.string().trim()
+  .transform((value) => /^[A-Za-z][A-Za-z0-9+.-]*:/.test(value) ? value : `https://${value}`)
+  .pipe(z.url({ message: "Enter a website such as www.company.com or https://company.com." }))
+  .refine((value) => /^https?:\/\//i.test(value), {
+    message: "Enter a website starting with http:// or https://, or omit the scheme.",
+  });
 
 export const clientDraftSchema = z.strictObject({
   legalName: z.string().min(1).optional(),
@@ -36,7 +42,7 @@ export const clientDraftSchema = z.strictObject({
       countryCode,
     })
     .optional(),
-  website: z.url().optional(),
+  website: website.optional(),
   contactPerson: z
     .strictObject({
       name: z.string().min(1),

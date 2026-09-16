@@ -5,7 +5,7 @@ import {
   companyActorConfig,
   type CompanyActor,
 } from "./company-onboarding-config";
-import { CompanyOnboardingForm } from "./company-onboarding-form";
+import { CompanyOnboardingForm, schemaIssueField } from "./company-onboarding-form";
 
 const fetchMock = vi.fn<typeof fetch>();
 
@@ -81,6 +81,11 @@ async function goTo(step: string): Promise<void> {
 }
 
 describe("generic company onboarding", () => {
+  it("routes an unmapped schema issue to an actionable field", () => {
+    expect(schemaIssueField("website")).toBe("website");
+    expect(schemaIssueField("authorisedPerson.unexpectedDetail")).toBe("authorisedPersonName");
+    expect(schemaIssueField("unexpectedField")).toBe("legalName");
+  });
   it("lets a visitor fill and explore the vendor form without vendor API calls", async () => {
     render(<CompanyOnboardingForm actor="vendor" guest />);
 
@@ -422,6 +427,55 @@ describe("generic company onboarding", () => {
     });
     expect(payload).not.toHaveProperty("bankDetails");
     expect(payload).not.toHaveProperty("capabilities");
+  });
+
+  it("puts an actionable website error beside and focuses the website input", async () => {
+    fetchMock.mockImplementation((path) => path === "/api/v1/clients/me"
+      ? Promise.resolve(response(clientDraft))
+      : Promise.resolve(response({}, 404)));
+    await renderReady("client");
+    fireEvent.change(screen.getByLabelText("Website"), {
+      target: { value: "javascript:alert(1)" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+    const website = screen.getByLabelText("Website");
+    expect(website).toHaveFocus();
+    expect(website).toHaveAttribute("aria-invalid", "true");
+    expect(website).toHaveAccessibleDescription(/website.*http/i);
+    expect(screen.getByText(/website.*http/i)).toHaveClass("company-onboarding-error");
+  });
+
+  it("saves a scheme-less website using the normalized shared-schema value", async () => {
+    fetchMock.mockImplementation((path) => path === "/api/v1/clients/me"
+      ? Promise.resolve(response(clientDraft))
+      : Promise.resolve(response({}, 404)));
+    await renderReady("client");
+    fireEvent.change(screen.getByLabelText("Website"), {
+      target: { value: "www.eqourse.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/clients/me",
+      expect.objectContaining({
+        method: "PATCH",
+        body: expect.stringContaining('"website":"https://www.eqourse.com"'),
+      }),
+    ));
+  });
+
+  it("explains the identity upload deferral before file selection without error styling", async () => {
+    render(<CompanyOnboardingForm actor="client" guest />);
+    await waitFor(() => expect(screen.getByLabelText("Country")).toBeEnabled());
+    fireEvent.change(screen.getByLabelText("Authorised person name"), {
+      target: { value: "A. Person" },
+    });
+    const input = screen.getByLabelText("Government identity document");
+    expect(input).toBeDisabled();
+    const guidance = screen.getByText(/create your account.*upload/i);
+    expect(guidance).toHaveClass("company-onboarding-help");
+    expect(guidance).not.toHaveClass("company-onboarding-error");
   });
 
   it("guides Indian clients to alternatives and UIDAI masked Aadhaar without fake attestation", async () => {

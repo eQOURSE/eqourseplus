@@ -107,14 +107,28 @@ const SCHEMA_FIELD_IDS: Readonly<Record<string, string>> = {
   "registeredAddress.city": "addressCity",
   "registeredAddress.region": "addressRegion",
   "registeredAddress.postalCode": "addressPostalCode",
+  "registeredAddress.countryCode": "countryCode",
   "contactPerson.name": "contactName",
   "contactPerson.email": "contactEmail",
   "contactPerson.phone": "contactPhone",
+  website: "website",
+  "authorisedPerson.name": "authorisedPersonName",
   "bankDetails.accountHolderName": "bankAccountHolderName",
   "bankDetails.bankCountryCode": "bankCountryCode",
   "bankDetails.currencyCode": "bankCurrencyCode",
   "bankDetails.accountIdentifier.value": "bankAccountValue",
 };
+
+export function schemaIssueField(path: string): string {
+  if (SCHEMA_FIELD_IDS[path]) return SCHEMA_FIELD_IDS[path];
+  if (path.startsWith("registeredAddress.")) return "addressLine1";
+  if (path.startsWith("contactPerson.")) return "contactName";
+  if (path.startsWith("authorisedPerson.")) return "authorisedPersonName";
+  if (path.startsWith("countryIdentifiers") || path.startsWith("documents")) return "countryCode";
+  if (path.startsWith("bankDetails.")) return "bankAccountHolderName";
+  if (path.startsWith("website")) return "website";
+  return "legalName";
+}
 
 function stepForField(fieldId: string): StepId {
   if (fieldId.startsWith("address")) return "address";
@@ -640,9 +654,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   const [identityDocumentName, setIdentityDocumentName] = useState("");
   const [identityDocumentUpload, setIdentityDocumentUpload] = useState<DocumentUploadState>({
     status: "idle",
-    message: guest
-      ? "Create your account before uploading this document."
-      : "No file uploaded.",
+    message: "No file uploaded.",
   });
   const [accessStep, setAccessStep] = useState<AccessStep | null>(null);
   const [accessEmail, setAccessEmail] = useState("");
@@ -807,6 +819,12 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
 
   function updateCountry(value: string): void {
     setForm((current) => ({ ...current, countryCode: value, addressCountryCode: value, bankCountryCode: value, identifiers: {}, documents: {} }));
+    setFieldErrors((current) => {
+      if (!current.countryCode) return current;
+      const next = { ...current };
+      delete next.countryCode;
+      return next;
+    });
     setDocumentNames({});
     setDocumentUploads({});
     setMessage("");
@@ -903,9 +921,9 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     if (!file) return;
     if (guest) {
       setIdentityDocumentUpload({
-        status: "failed",
+        status: "idle",
         name: file.name,
-        message: "Create your account, then choose this file again to upload it.",
+        message: "Create your account to upload this document.",
       });
       return;
     }
@@ -989,8 +1007,8 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
       const nextErrors: Record<string, string> = {};
       for (const issue of parsed.error.issues) {
         const path = issue.path.join(".");
-        const fieldId = SCHEMA_FIELD_IDS[path];
-        if (fieldId && !nextErrors[fieldId]) nextErrors[fieldId] = issue.message;
+        const fieldId = schemaIssueField(path);
+        if (!nextErrors[fieldId]) nextErrors[fieldId] = issue.message;
       }
       const firstField = Object.keys(nextErrors)[0];
       setFieldErrors(nextErrors);
@@ -1278,10 +1296,11 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
         {field("Trading name (optional)", "tradingName", "text", "organization")}
         <div className="company-onboarding-field">
           <label htmlFor="company-countryCode">Country</label>
-          <select id="company-countryCode" value={form.countryCode} disabled={!countryOptions.length || saving} onChange={(event) => updateCountry(event.target.value)}>
+          <select id="company-countryCode" value={form.countryCode} disabled={!countryOptions.length || saving} aria-invalid={fieldErrors.countryCode ? true : undefined} aria-describedby={fieldErrors.countryCode ? "company-countryCode-error" : undefined} onChange={(event) => updateCountry(event.target.value)}>
             <option value="">{countryOptions.length ? "Choose a country" : "Loading countries…"}</option>
             {countryOptions.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}
           </select>
+          {fieldErrors.countryCode ? <p id="company-countryCode-error" className="company-onboarding-error" role="alert">Country: {fieldErrors.countryCode}</p> : null}
           <p className="company-onboarding-help">Country selection drives the identifiers and documents for your company.</p>
         </div>
         {config.bankDetails ? (
@@ -1326,6 +1345,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
               <label htmlFor="company-governmentIdentityDocument">
                 Government identity document
               </label>
+              {guest ? <p className="company-onboarding-help">Create your account to upload this document. You can choose a file after email verification.</p> : null}
               <input
                 id="company-governmentIdentityDocument"
                 type="file"
@@ -1334,6 +1354,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
                   saving
                   || identityDocumentUpload.status === "uploading"
                   || !nonEmpty(form.authorisedPersonName)
+                  || guest
                 }
                 aria-describedby="company-governmentIdentityDocument-status"
                 onChange={(event) => void updateIdentityDocument(event)}
