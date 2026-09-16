@@ -24,6 +24,7 @@ import type {
 import { InMemoryAuthRateLimitStore } from "../src/auth/auth-rate-limit.store";
 import { JwtTokenService } from "../src/auth/jwt-token.service";
 import { activeRefreshSessionPredicate } from "../src/auth/refresh-session";
+import { configureTrustProxy } from "../src/trust-proxy.config";
 
 class MutableClock {
   now = new Date("2026-07-20T10:00:00.000Z");
@@ -209,10 +210,7 @@ describe("FR-FND-02 auth core", () => {
       .compile();
 
     app = moduleRef.createNestApplication();
-    const express = app.getHttpAdapter().getInstance() as {
-      set(setting: string, value: boolean): void;
-    };
-    express.set("trust proxy", true);
+    configureTrustProxy(app);
     await app.init();
     tokens = app.get(JwtTokenService);
   });
