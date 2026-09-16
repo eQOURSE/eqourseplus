@@ -24,7 +24,11 @@ afterEach(() => {
 
 describe("company onboarding entry", () => {
   it("shows the fillable public registration flow when no session exists", async () => {
-    fetchMock.mockResolvedValueOnce(response({}, 401));
+    fetchMock.mockImplementation((path) => {
+      if (path === "/api/auth/session") return Promise.resolve(response({}, 401));
+      if (String(path).endsWith("/api/v1/skill-taxonomy")) return Promise.resolve(response([]));
+      return Promise.resolve(response({}, 404));
+    });
     render(<CompanyOnboardingEntry actor="vendor" />);
 
     expect(await screen.findByRole("heading", { name: "Register your company." })).toBeVisible();
@@ -33,14 +37,15 @@ describe("company onboarding entry", () => {
   });
 
   it("shows the authenticated shell and loads the persisted draft for a signed-in person", async () => {
-    fetchMock
-      .mockResolvedValueOnce(response({
+    fetchMock.mockImplementation((path) => {
+      if (path === "/api/auth/session") return Promise.resolve(response({
         userId: "user-1",
         email: "owner@example.com",
         roleAssignments: [],
         profileState: "DRAFT",
-      }))
-      .mockResolvedValueOnce(response({
+      }));
+      if (String(path).endsWith("/api/v1/skill-taxonomy")) return Promise.resolve(response([]));
+      if (path === "/api/v1/vendors/me") return Promise.resolve(response({
         _id: "vendor-1",
         ownerUserId: "user-1",
         state: "DRAFT",
@@ -49,6 +54,8 @@ describe("company onboarding entry", () => {
         countryIdentifiers: [],
         documents: [],
       }));
+      return Promise.resolve(response({}, 404));
+    });
 
     render(<CompanyOnboardingEntry actor="vendor" />);
 
