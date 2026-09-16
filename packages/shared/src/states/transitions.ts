@@ -1,4 +1,5 @@
 import { EarningLineStatus } from "./earning-line-status";
+import { ClientState } from "./client-state";
 import { PayoutBatchState } from "./payout-batch-state";
 import { ProfileState } from "./profile-state";
 import { TaskState } from "./task-state";
@@ -48,6 +49,21 @@ const vendorTransitions: Readonly<
   [VendorState.MORE_INFO_NEEDED]: [VendorState.SUBMITTED],
   [VendorState.ACTIVE]: [],
   [VendorState.REJECTED]: [],
+};
+
+const clientTransitions: Readonly<
+  Record<ClientState, readonly ClientState[]>
+> = {
+  [ClientState.DRAFT]: [ClientState.SUBMITTED],
+  [ClientState.SUBMITTED]: [ClientState.UNDER_REVIEW],
+  [ClientState.UNDER_REVIEW]: [
+    ClientState.MORE_INFO_NEEDED,
+    ClientState.APPROVED,
+    ClientState.REJECTED,
+  ],
+  [ClientState.MORE_INFO_NEEDED]: [ClientState.SUBMITTED],
+  [ClientState.APPROVED]: [],
+  [ClientState.REJECTED]: [],
 };
 
 const payoutBatchTransitions: Readonly<
@@ -106,6 +122,13 @@ export function canTransitionVendor(
   to: VendorState,
 ): boolean {
   return vendorTransitions[from].includes(to);
+}
+
+export function canTransitionClient(
+  from: ClientState,
+  to: ClientState,
+): boolean {
+  return clientTransitions[from].includes(to);
 }
 
 export function canTransitionPayoutBatch(
