@@ -1,3 +1,4 @@
+import "./load-local-environment";
 import "./instrument";
 import "reflect-metadata";
 

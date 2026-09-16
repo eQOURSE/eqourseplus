@@ -42,8 +42,7 @@ export default function RegisterPage() {
           <p className="home-eyebrow">Registration</p>
           <h1 id="register-title">Choose how you&apos;ll work with eQOURSE+.</h1>
           <p className="freelancer-hero-copy">
-            Registration is not open yet. Choose the role you would register
-            under.
+            Choose the role that matches how you will work with eQOURSE+.
           </p>
           <div className="home-audience-links">
             {registrationRoles.map((role) => (

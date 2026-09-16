@@ -12,6 +12,7 @@ export const EXCLUDED_ROUTES = [
   "/register",
   "/register/freelancer",
   "/register/vendor",
+  "/register/client",
 ] as const;
 
 export const UNBUILT_ROUTES = [] as const;
