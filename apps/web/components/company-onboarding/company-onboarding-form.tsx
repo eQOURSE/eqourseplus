@@ -41,6 +41,50 @@ const STEPS: readonly { id: StepId; label: string }[] = [
   { id: "review", label: "Review" },
 ];
 
+const SUBMISSION_REQUIREMENT_COPY: Readonly<Record<string, {
+  instruction: string;
+  label: string;
+  sectionId: string;
+  step: StepId;
+}>> = {
+  business_details: {
+    label: "Business details",
+    instruction: "enter your company, registered address, and contact information",
+    step: "company",
+    sectionId: "company-section-title",
+  },
+  bank_details: {
+    label: "Bank details",
+    instruction: "enter the account holder, bank country, currency, and account identifier",
+    step: "company",
+    sectionId: "company-section-title",
+  },
+  country_requirements: {
+    label: "Country requirements",
+    instruction: "choose a supported country for this registration",
+    step: "company",
+    sectionId: "company-section-title",
+  },
+  country_identifiers: {
+    label: "Identifiers",
+    instruction: "enter every identifier required for your country",
+    step: "identifiers",
+    sectionId: "identifiers-section-title",
+  },
+  documents: {
+    label: "Required documents",
+    instruction: "upload every document required for your country",
+    step: "identifiers",
+    sectionId: "identifiers-section-title",
+  },
+  capabilities: {
+    label: "Capabilities",
+    instruction: "select at least one service you can deliver",
+    step: "capabilities",
+    sectionId: "capabilities-section-title",
+  },
+};
+
 const SCHEMA_FIELD_IDS: Readonly<Record<string, string>> = {
   legalName: "legalName",
   tradingName: "tradingName",
@@ -72,6 +116,16 @@ interface CompanyOnboardingFormProps {
   guest?: boolean;
   onAuthenticated?: (session: AuthSession) => void;
 }
+
+interface SkillTaxonomyOption {
+  businessUnit: string;
+  serviceLine: string;
+  skill: string;
+  specialization: string | null;
+  slug: string;
+}
+
+type TaxonomyStatus = "loading" | "ready" | "error";
 
 type AccessStep =
   | "details"
@@ -351,8 +405,103 @@ function firstIncompleteField(form: CompanyFormState, actor: CompanyActor): { st
     const missingDocument = requirements?.documentKinds.find((kind) => !form.documents[kind]?.objectKey);
     return { step, id: missingScheme ? `company-identifier-${missingScheme}` : missingDocument ? `company-document-${missingDocument}` : "identifiers-section-title" };
   }
-  if (step === "capabilities") return { step, id: "company-capabilitySlugs" };
+  if (step === "capabilities") return { step, id: "company-capability-search" };
   return { step, id: "review-section-title" };
+}
+
+function submissionRequirementTarget(
+  code: string,
+  form: CompanyFormState,
+): { id: string; sectionId: string; step: StepId } {
+  const copy = SUBMISSION_REQUIREMENT_COPY[code];
+  if (!copy) {
+    return { step: "review", sectionId: "review-section-title", id: "review-section-title" };
+  }
+
+  if (code === "business_details") {
+    if (!nonEmpty(form.legalName)) return { ...copy, id: "company-legalName" };
+    if (!nonEmpty(form.countryCode)) return { ...copy, id: "company-countryCode" };
+    if (!completeAddress(form)) {
+      return {
+        ...copy,
+        step: "address",
+        sectionId: "address-section-title",
+        id: "company-addressLine1",
+      };
+    }
+    if (!completeContact(form)) {
+      return {
+        ...copy,
+        step: "contact",
+        sectionId: "contact-section-title",
+        id: "company-contactName",
+      };
+    }
+    return { ...copy, id: copy.sectionId };
+  }
+  if (code === "bank_details") return { ...copy, id: "company-bankAccountHolderName" };
+  if (code === "country_requirements") return { ...copy, id: "company-countryCode" };
+  if (code === "country_identifiers") {
+    const requirements = form.countryCode
+      ? getVendorCountryRequirements(form.countryCode)
+      : undefined;
+    const scheme = requirements?.identifierSchemes.find(
+      (candidate) => !nonEmpty(form.identifiers[candidate] ?? ""),
+    );
+    return { ...copy, id: scheme ? `company-identifier-${scheme}` : copy.sectionId };
+  }
+  if (code === "documents") {
+    const requirements = form.countryCode
+      ? getVendorCountryRequirements(form.countryCode)
+      : undefined;
+    const kind = requirements?.documentKinds.find(
+      (candidate) => !form.documents[candidate]?.objectKey,
+    );
+    return { ...copy, id: kind ? `company-document-${kind}` : copy.sectionId };
+  }
+  if (code === "capabilities") return { ...copy, id: "company-capability-search" };
+  return { ...copy, id: copy.sectionId };
+}
+
+async function readSubmissionMissing(response: Response): Promise<string[]> {
+  try {
+    const body = await response.json() as { missing?: unknown };
+    return Array.isArray(body.missing)
+      ? body.missing.filter(
+          (code): code is string => typeof code === "string" && code.length > 0,
+        )
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function taxonomyLeaf(option: SkillTaxonomyOption): string {
+  return option.specialization ?? option.skill;
+}
+
+async function requestSkillTaxonomy(): Promise<SkillTaxonomyOption[]> {
+  const response = await fetch(apiUrl("/api/v1/skill-taxonomy"), { cache: "force-cache" });
+  if (!response.ok) throw new Error("Skill taxonomy request failed");
+  const body = await response.json() as unknown;
+  if (!Array.isArray(body)) throw new Error("Skill taxonomy response was not a list");
+  return body.map((row) => {
+    if (
+      !row
+      || typeof row !== "object"
+      || typeof (row as Record<string, unknown>).businessUnit !== "string"
+      || typeof (row as Record<string, unknown>).serviceLine !== "string"
+      || typeof (row as Record<string, unknown>).skill !== "string"
+      || !(
+        typeof (row as Record<string, unknown>).specialization === "string"
+        || (row as Record<string, unknown>).specialization === null
+      )
+      || typeof (row as Record<string, unknown>).slug !== "string"
+    ) {
+      throw new Error("Skill taxonomy response contained an invalid option");
+    }
+    return row as SkillTaxonomyOption;
+  });
 }
 
 async function readDraft(response: Response): Promise<Record<string, unknown>> {
@@ -376,6 +525,10 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   const [submitted, setSubmitted] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [messageError, setMessageError] = useState(false);
+  const [submissionMissing, setSubmissionMissing] = useState<string[]>([]);
+  const [taxonomyOptions, setTaxonomyOptions] = useState<SkillTaxonomyOption[]>([]);
+  const [taxonomyStatus, setTaxonomyStatus] = useState<TaxonomyStatus>("loading");
+  const [capabilitySearch, setCapabilitySearch] = useState("");
   const pendingFocus = useRef<string | null>(null);
   const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
   const [documentUploads, setDocumentUploads] = useState<Record<string, DocumentUploadState>>({});
@@ -387,7 +540,60 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   const [accessErrors, setAccessErrors] = useState<Record<string, string>>({});
   const pendingSubmission = useRef(false);
 
+  const selectedCapabilitySlugs = useMemo(
+    () => new Set(form.capabilitySlugs.split(",").map((slug) => slug.trim()).filter(Boolean)),
+    [form.capabilitySlugs],
+  );
+  const selectedCapabilities = useMemo(
+    () => taxonomyOptions.filter((option) => selectedCapabilitySlugs.has(option.slug)),
+    [selectedCapabilitySlugs, taxonomyOptions],
+  );
+  const groupedCapabilities = useMemo(() => {
+    const query = capabilitySearch.trim().toLocaleLowerCase();
+    const filtered = taxonomyOptions.filter((option) => !query || [
+      option.businessUnit,
+      option.serviceLine,
+      option.skill,
+      option.specialization ?? "",
+    ].some((value) => value.toLocaleLowerCase().includes(query)));
+    const groups = new Map<string, Map<string, SkillTaxonomyOption[]>>();
+    for (const option of filtered) {
+      const businessUnit = groups.get(option.businessUnit) ?? new Map();
+      const serviceLine = businessUnit.get(option.serviceLine) ?? [];
+      serviceLine.push(option);
+      businessUnit.set(option.serviceLine, serviceLine);
+      groups.set(option.businessUnit, businessUnit);
+    }
+    return Array.from(groups, ([businessUnit, serviceLines]) => ({
+      businessUnit,
+      serviceLines: Array.from(serviceLines, ([serviceLine, options]) => ({
+        serviceLine,
+        options,
+      })),
+    }));
+  }, [capabilitySearch, taxonomyOptions]);
+
   useEffect(() => setCountryOptions(createCountryOptions()), []);
+
+  useEffect(() => {
+    if (!config.capabilities) {
+      setTaxonomyStatus("ready");
+      return;
+    }
+    let active = true;
+    void requestSkillTaxonomy()
+      .then((options) => {
+        if (!active) return;
+        setTaxonomyOptions(options);
+        setTaxonomyStatus("ready");
+      })
+      .catch(() => {
+        if (active) setTaxonomyStatus("error");
+      });
+    return () => {
+      active = false;
+    };
+  }, [config.capabilities]);
 
   useEffect(() => {
     if (!pendingFocus.current) return;
@@ -447,6 +653,33 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
       if (!current[field]) return current;
       const next = { ...current };
       delete next[field];
+      return next;
+    });
+  }
+
+  async function retrySkillTaxonomy(): Promise<void> {
+    setTaxonomyStatus("loading");
+    try {
+      setTaxonomyOptions(await requestSkillTaxonomy());
+      setTaxonomyStatus("ready");
+    } catch {
+      setTaxonomyStatus("error");
+    }
+  }
+
+  function setCapabilitySelected(slug: string, selected: boolean): void {
+    setForm((current) => {
+      const slugs = new Set(
+        current.capabilitySlugs.split(",").map((value) => value.trim()).filter(Boolean),
+      );
+      if (selected) slugs.add(slug);
+      else slugs.delete(slug);
+      return { ...current, capabilitySlugs: Array.from(slugs).join(",") };
+    });
+    setFieldErrors((current) => {
+      if (!current.capabilitySlugs) return current;
+      const next = { ...current };
+      delete next.capabilitySlugs;
       return next;
     });
   }
@@ -620,6 +853,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
       return;
     }
     if (!(await persistDraft())) return;
+    setSubmissionMissing([]);
     setSaving(true);
     try {
       const response = await fetch("/api/v1/vendors/me/submit", { method: "POST" });
@@ -627,13 +861,21 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
         setSubmitted(true);
         setMessage("");
       } else {
-        const first = firstIncompleteField(form, actor);
+        const missing = await readSubmissionMissing(response);
+        const firstMissing = missing.at(0);
+        const first = firstMissing
+          ? submissionRequirementTarget(firstMissing, form)
+          : firstIncompleteField(form, actor);
         pendingFocus.current = first.id;
         setStep(first.step);
         setMessageError(true);
-        setMessage("We could not submit this registration. Check the required information and try again.");
+        setSubmissionMissing(missing);
+        setMessage(missing.length > 0
+          ? "Complete these requirements before submitting:"
+          : "We could not submit this registration. Check the required information and try again.");
       }
     } catch {
+      setSubmissionMissing([]);
       setMessageError(true);
       setMessage("We could not submit this registration. Try again.");
     } finally {
@@ -823,7 +1065,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   function renderCompany(): React.ReactNode {
     return (
       <section aria-labelledby="company-section-title">
-        <h2 id="company-section-title" className="home-section-title">Company</h2>
+        <h2 id="company-section-title" className="home-section-title" tabIndex={-1}>Company</h2>
         {field("Legal name", "legalName", "text", "organization")}
         {field("Trading name (optional)", "tradingName", "text", "organization")}
         <div className="company-onboarding-field">
@@ -858,17 +1100,17 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   }
 
   function renderAddress(): React.ReactNode {
-    return <section aria-labelledby="address-section-title"><h2 id="address-section-title" className="home-section-title">Address</h2>{field("Address line one", "addressLine1", "text", "address-line1")}{field("Address line two (optional)", "addressLine2", "text", "address-line2")}{field("City", "addressCity", "text", "address-level2")}{field("Region (optional)", "addressRegion", "text", "address-level1")}{field("Postal code", "addressPostalCode", "text", "postal-code")}{stepActions("contact")}</section>;
+    return <section aria-labelledby="address-section-title"><h2 id="address-section-title" className="home-section-title" tabIndex={-1}>Address</h2>{field("Address line one", "addressLine1", "text", "address-line1")}{field("Address line two (optional)", "addressLine2", "text", "address-line2")}{field("City", "addressCity", "text", "address-level2")}{field("Region (optional)", "addressRegion", "text", "address-level1")}{field("Postal code", "addressPostalCode", "text", "postal-code")}{stepActions("contact")}</section>;
   }
 
   function renderContact(): React.ReactNode {
-    return <section aria-labelledby="contact-section-title"><h2 id="contact-section-title" className="home-section-title">Contact</h2>{field("Name", "contactName", "text", "name")}{field("Email", "contactEmail", "email", "email")}{field("Phone", "contactPhone", "tel", "tel")}{stepActions("identifiers")}</section>;
+    return <section aria-labelledby="contact-section-title"><h2 id="contact-section-title" className="home-section-title" tabIndex={-1}>Contact</h2>{field("Name", "contactName", "text", "name")}{field("Email", "contactEmail", "email", "email")}{field("Phone", "contactPhone", "tel", "tel")}{stepActions("identifiers")}</section>;
   }
 
   function renderIdentifiers(): React.ReactNode {
     return (
       <section aria-labelledby="identifiers-section-title">
-        <h2 id="identifiers-section-title" className="home-section-title">Identifiers</h2>
+        <h2 id="identifiers-section-title" className="home-section-title" tabIndex={-1}>Identifiers</h2>
         {requirements ? requirements.identifierSchemes.map((scheme) => <div className="company-onboarding-field" key={scheme}><label htmlFor={`company-identifier-${scheme}`}>{labelForScheme(scheme)}</label><input id={`company-identifier-${scheme}`} type="text" value={form.identifiers[scheme] ?? ""} disabled={saving} onChange={(event) => updateIdentifier(scheme, event.target.value)} /></div>) : <p className="company-onboarding-help">Choose a country to see the applicable identifiers.</p>}
         {requirements ? (
           <fieldset className="company-onboarding-subsection">
@@ -909,7 +1151,94 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   }
 
   function renderCapabilities(): React.ReactNode {
-    return <section aria-labelledby="capabilities-section-title"><h2 id="capabilities-section-title" className="home-section-title">Capabilities</h2>{field("Capability taxonomy slugs", "capabilitySlugs")}<p className="company-onboarding-help">Separate skillTaxonomy slugs with commas.</p>{stepActions("review")}</section>;
+    return (
+      <section aria-labelledby="capabilities-section-title">
+        <h2 id="capabilities-section-title" className="home-section-title" tabIndex={-1}>Capabilities</h2>
+        <p className="company-onboarding-help">Select every service your company can deliver.</p>
+        {taxonomyStatus === "loading" ? (
+          <p className="company-onboarding-help" role="status">Loading services…</p>
+        ) : null}
+        {taxonomyStatus === "error" ? (
+          <div className="company-onboarding-taxonomy-error" role="alert">
+            <p>The service list could not be loaded. Try again.</p>
+            <GlassButton type="button" variant="secondary" disabled={saving} onClick={() => void retrySkillTaxonomy()}>
+              Retry loading services
+            </GlassButton>
+          </div>
+        ) : null}
+        {taxonomyStatus === "ready" ? (
+          <div className="company-onboarding-taxonomy">
+            {selectedCapabilities.length > 0 ? (
+              <div className="company-onboarding-selected-capabilities">
+                <h3>Selected services</h3>
+                <ul aria-label="Selected services">
+                  {selectedCapabilities.map((option) => (
+                    <li key={option.slug}>
+                      <span>{taxonomyLeaf(option)}</span>
+                      <button
+                        type="button"
+                        disabled={saving}
+                        aria-label={`Remove ${taxonomyLeaf(option)}`}
+                        onClick={() => setCapabilitySelected(option.slug, false)}
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            <div className="company-onboarding-field">
+              <label htmlFor="company-capability-search">Search services</label>
+              <input
+                id="company-capability-search"
+                type="search"
+                value={capabilitySearch}
+                disabled={saving}
+                onChange={(event) => setCapabilitySearch(event.target.value)}
+              />
+            </div>
+            {taxonomyOptions.length === 0 ? (
+              <p className="company-onboarding-help" role="status">No services are currently available.</p>
+            ) : groupedCapabilities.length === 0 ? (
+              <p className="company-onboarding-help" role="status">No services match your search.</p>
+            ) : (
+              <div className="company-onboarding-taxonomy-groups" aria-label="Available services">
+                {groupedCapabilities.map((businessUnit) => (
+                  <section key={businessUnit.businessUnit} aria-labelledby={`taxonomy-${businessUnit.businessUnit}`}>
+                    <h3 id={`taxonomy-${businessUnit.businessUnit}`}>{businessUnit.businessUnit}</h3>
+                    {businessUnit.serviceLines.map((serviceLine) => (
+                      <div key={serviceLine.serviceLine} className="company-onboarding-taxonomy-service-line">
+                        <h4>{serviceLine.serviceLine}</h4>
+                        <ul>
+                          {serviceLine.options.map((option) => {
+                            const selected = selectedCapabilitySlugs.has(option.slug);
+                            return (
+                              <li key={option.slug}>
+                                <button
+                                  type="button"
+                                  disabled={saving || selected}
+                                  aria-pressed={selected}
+                                  aria-label={`${selected ? "Selected" : "Select"} ${option.businessUnit} ${option.serviceLine} ${taxonomyLeaf(option)}`}
+                                  onClick={() => setCapabilitySelected(option.slug, true)}
+                                >
+                                  {taxonomyLeaf(option)}
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    ))}
+                  </section>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null}
+        {stepActions("review")}
+      </section>
+    );
   }
 
   function summary(label: string, value: string | undefined): React.ReactNode {
@@ -918,7 +1247,42 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
 
   function renderReview(): React.ReactNode {
     const selectedDocuments = Object.values(documentNames).filter((value) => value.trim()).join(", ");
-    return <section aria-labelledby="review-section-title"><h2 id="review-section-title" className="home-section-title">Review</h2><p className="company-onboarding-help">Review the information you entered. You can return to any section before submitting.</p><dl className="company-onboarding-summary">{summary("Legal name", nonEmpty(form.legalName))}{summary("Trading name", nonEmpty(form.tradingName))}{summary("Country", form.countryCode)}{summary("Address", completeAddress(form) ? `${form.addressLine1}, ${form.addressCity}, ${form.addressPostalCode}` : undefined)}{summary("Contact", completeContact(form) ? `${form.contactName} · ${form.contactEmail} · ${form.contactPhone}` : undefined)}{summary("Identifiers", Object.values(form.identifiers).filter((value) => value.trim()).join(", "))}{summary("Documents", selectedDocuments)}{config.capabilities ? summary("Capabilities", form.capabilitySlugs) : null}{config.bankDetails ? summary("Bank details", completeBankDetails(form) ? "Entered" : undefined) : null}{config.website ? summary("Website", nonEmpty(form.website)) : null}{config.authorisedPerson ? summary("Authorised person", nonEmpty(form.authorisedPersonName)) : null}{config.authorisedPerson ? summary("Government identity document", nonEmpty(form.governmentIdentityDocument)) : null}</dl><div className="company-onboarding-review-actions">{STEPS.slice(0, -1).map((item) => <GlassButton key={item.id} type="button" variant="secondary" disabled={saving} onClick={() => setStep(item.id)}>Edit {item.label}</GlassButton>)}<GlassButton type="button" variant="secondary" disabled={saving} onClick={() => { pendingSubmission.current = false; void persistDraft(); }}>{saving ? "Saving…" : "Save draft"}</GlassButton><GlassButton type="submit" variant="primary" disabled={saving}>{saving ? "Submitting…" : "Submit registration"}</GlassButton></div></section>;
+    const selectedCapabilityNames = selectedCapabilities.map(taxonomyLeaf).join(", ");
+    return <section aria-labelledby="review-section-title"><h2 id="review-section-title" className="home-section-title" tabIndex={-1}>Review</h2><p className="company-onboarding-help">Review the information you entered. You can return to any section before submitting.</p><dl className="company-onboarding-summary">{summary("Legal name", nonEmpty(form.legalName))}{summary("Trading name", nonEmpty(form.tradingName))}{summary("Country", form.countryCode)}{summary("Address", completeAddress(form) ? `${form.addressLine1}, ${form.addressCity}, ${form.addressPostalCode}` : undefined)}{summary("Contact", completeContact(form) ? `${form.contactName} · ${form.contactEmail} · ${form.contactPhone}` : undefined)}{summary("Identifiers", Object.values(form.identifiers).filter((value) => value.trim()).join(", "))}{summary("Documents", selectedDocuments)}{config.capabilities ? summary("Capabilities", selectedCapabilityNames) : null}{config.bankDetails ? summary("Bank details", completeBankDetails(form) ? "Entered" : undefined) : null}{config.website ? summary("Website", nonEmpty(form.website)) : null}{config.authorisedPerson ? summary("Authorised person", nonEmpty(form.authorisedPersonName)) : null}{config.authorisedPerson ? summary("Government identity document", nonEmpty(form.governmentIdentityDocument)) : null}</dl><div className="company-onboarding-review-actions">{STEPS.slice(0, -1).map((item) => <GlassButton key={item.id} type="button" variant="secondary" disabled={saving} onClick={() => setStep(item.id)}>Edit {item.label}</GlassButton>)}<GlassButton type="button" variant="secondary" disabled={saving} onClick={() => { pendingSubmission.current = false; void persistDraft(); }}>{saving ? "Saving…" : "Save draft"}</GlassButton><GlassButton type="submit" variant="primary" disabled={saving}>{saving ? "Submitting…" : "Submit registration"}</GlassButton></div></section>;
+  }
+
+  function renderSubmissionMessage(): React.ReactNode {
+    if (submissionMissing.length === 0) {
+      return <p className="registration-form-message" role={messageError && Object.keys(fieldErrors).length === 0 ? "alert" : undefined} aria-live="polite">{message}</p>;
+    }
+    return (
+      <div className="company-onboarding-requirements" role="alert" aria-live="assertive">
+        <p>{message}</p>
+        <ul>
+          {submissionMissing.map((code, index) => {
+            const copy = SUBMISSION_REQUIREMENT_COPY[code] ?? {
+              label: code,
+              instruction: "review this requirement and try again",
+            };
+            const target = submissionRequirementTarget(code, form);
+            return (
+              <li key={`${code}-${index}`}>
+                <a
+                  href={`#${target.sectionId}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    pendingFocus.current = target.id;
+                    setStep(target.step);
+                  }}
+                >
+                  <strong>{copy.label}:</strong> {copy.instruction}
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
   }
 
   function renderSubmitted(): React.ReactNode {
@@ -945,5 +1309,5 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     return <FrostedSurface aria-labelledby="company-access-title" className="company-onboarding-shell" variant="panel"><p className="home-eyebrow">Company registration</p><h1 id="company-access-title">Verify your email</h1><p className="company-onboarding-copy">Enter the six-digit code sent to {accessIdentity?.email}.</p><form className="company-onboarding-form" noValidate onSubmit={verifyAccount}><div className="company-onboarding-field"><label htmlFor="company-access-emailOtp">Email verification code</label><input id="company-access-emailOtp" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={accessOtp} disabled={saving} aria-invalid={Boolean(accessErrors.emailOtp)} onChange={(event) => setAccessOtp(event.target.value)} />{accessErrors.emailOtp ? <p className="company-onboarding-error" role="alert">{accessErrors.emailOtp}</p> : null}</div><p className="registration-form-message" role={messageError ? "alert" : undefined} aria-live="polite">{message}</p><div className="company-onboarding-actions"><GlassButton type="button" variant="secondary" disabled={saving} onClick={() => setAccessStep("details")}>Change details</GlassButton><GlassButton type="submit" variant="primary" disabled={saving}>{saving ? "Verifying…" : "Verify and save draft"}</GlassButton></div></form></FrostedSurface>;
   }
 
-  return <FrostedSurface aria-labelledby="company-onboarding-title" className="company-onboarding-shell" variant="panel"><p className="home-eyebrow">Company registration</p><h1 id="company-onboarding-title">Register your company.</h1><p className="company-onboarding-copy">{guest ? "Fill the company form now. When you save or continue, verify your email once so your draft is protected and available when you return." : "Save your details as you go. Country selection shows only the identifiers and documents that apply to your company."}</p><nav className="company-onboarding-stepper" aria-label="Company registration steps"><ol>{STEPS.map((item) => <li key={item.id}><button type="button" disabled={saving} data-current={step === item.id} data-state={step === item.id ? "current" : STEPS.findIndex((part) => part.id === item.id) < STEPS.findIndex((part) => part.id === step) ? "previous" : "upcoming"} aria-current={step === item.id ? "step" : undefined} onClick={() => guest ? setStep(item.id) : void continueTo(item.id)}>{item.label}</button></li>)}</ol></nav><form className="company-onboarding-form" noValidate onSubmit={submitRegistration}>{step === "company" ? renderCompany() : null}{step === "address" ? renderAddress() : null}{step === "contact" ? renderContact() : null}{step === "identifiers" ? renderIdentifiers() : null}{step === "capabilities" ? renderCapabilities() : null}{step === "review" ? renderReview() : null}<p className="registration-form-message" role={messageError && Object.keys(fieldErrors).length === 0 ? "alert" : undefined} aria-live="polite">{message}</p></form></FrostedSurface>;
+  return <FrostedSurface aria-labelledby="company-onboarding-title" className="company-onboarding-shell" variant="panel"><p className="home-eyebrow">Company registration</p><h1 id="company-onboarding-title">Register your company.</h1><p className="company-onboarding-copy">{guest ? "Fill the company form now. When you save or continue, verify your email once so your draft is protected and available when you return." : "Save your details as you go. Country selection shows only the identifiers and documents that apply to your company."}</p><nav className="company-onboarding-stepper" aria-label="Company registration steps"><ol>{STEPS.map((item) => <li key={item.id}><button type="button" disabled={saving} data-current={step === item.id} data-state={step === item.id ? "current" : STEPS.findIndex((part) => part.id === item.id) < STEPS.findIndex((part) => part.id === step) ? "previous" : "upcoming"} aria-current={step === item.id ? "step" : undefined} onClick={() => guest ? setStep(item.id) : void continueTo(item.id)}>{item.label}</button></li>)}</ol></nav><form className="company-onboarding-form" noValidate onSubmit={submitRegistration}>{step === "company" ? renderCompany() : null}{step === "address" ? renderAddress() : null}{step === "contact" ? renderContact() : null}{step === "identifiers" ? renderIdentifiers() : null}{step === "capabilities" ? renderCapabilities() : null}{step === "review" ? renderReview() : null}{renderSubmissionMessage()}</form></FrostedSurface>;
 }
