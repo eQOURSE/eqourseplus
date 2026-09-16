@@ -878,9 +878,9 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     if (!file) return;
     if (guest) {
       setDocumentUploads((current) => ({ ...current, [kind]: {
-        status: "failed",
+        status: "idle",
         name: file.name,
-        message: "Create your account, then choose this file again to upload it.",
+        message: "Create your account to upload this document.",
       } }));
       return;
     }
@@ -1460,12 +1460,13 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
               return (
                 <div className="company-onboarding-field" key={kind}>
                   <label htmlFor={`company-document-${kind}`}>{labelForDocument(kind)}</label>
+                  {guest ? <p id={`${statusId}-guidance`} className="company-onboarding-help">Create your account to upload this document. You can choose a file after email verification.</p> : null}
                   <input
                     id={`company-document-${kind}`}
                     type="file"
                     accept={uploadContentTypes.join(",")}
-                    disabled={saving || upload?.status === "uploading"}
-                    aria-describedby={statusId}
+                    disabled={saving || upload?.status === "uploading" || guest}
+                    aria-describedby={guest ? `${statusId}-guidance ${statusId}` : statusId}
                     onChange={(event) => void updateDocument(kind, event)}
                   />
                   <p
@@ -1474,7 +1475,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
                     role={upload?.status === "failed" ? "alert" : "status"}
                     aria-live="polite"
                   >
-                    {upload?.message ?? (guest ? "Create your account before uploading this document." : "No file uploaded.")}
+                    {upload?.message ?? "No file uploaded."}
                   </p>
                 </div>
               );

@@ -103,7 +103,7 @@ describe("generic company onboarding", () => {
     fireEvent.click(screen.getByRole("button", { name: "Identifiers" }));
     expect(screen.getByLabelText("UEN")).toBeVisible();
     expect(screen.getByLabelText("UEN")).toBeEnabled();
-    expect(screen.getByLabelText("Acra Record")).toBeEnabled();
+    expect(screen.getByLabelText("Acra Record")).toBeDisabled();
     expect(screen.queryByLabelText("GSTIN")).toBeNull();
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:4000/api/v1/skill-taxonomy",
@@ -246,17 +246,17 @@ describe("generic company onboarding", () => {
     fireEvent.click(screen.getByRole("button", { name: "Identifiers" }));
 
     const upload = screen.getByLabelText("Acra Record");
-    expect(upload).toBeEnabled();
-    expect(screen.getByText(
-      "Create your account before uploading this document.",
-      { selector: "#company-document-ACRA_RECORD-status" },
-    )).toHaveAttribute("role", "status");
+    expect(upload).toBeDisabled();
+    expect(upload).toHaveAccessibleDescription(/create your account to upload this document/i);
     fireEvent.change(upload, {
       target: { files: [new File(["pdf"], "acra.pdf", { type: "application/pdf" })] },
     });
     expect(await screen.findByText(
-      "Create your account, then choose this file again to upload it.",
-    )).toHaveAttribute("role", "alert");
+      "Create your account to upload this document.",
+    )).toHaveClass("company-onboarding-help");
+    expect(screen.getByText(
+      "Create your account to upload this document.",
+    )).toHaveAttribute("role", "status");
   });
 
   it("keeps the actor differences in configuration rather than component branches", () => {
@@ -429,6 +429,23 @@ describe("generic company onboarding", () => {
     });
     expect(payload).not.toHaveProperty("bankDetails");
     expect(payload).not.toHaveProperty("capabilities");
+  });
+
+  it("guides signed-out visitors before company document selection without error styling", async () => {
+    render(<CompanyOnboardingForm actor="vendor" guest />);
+    await waitFor(() => expect(screen.getByLabelText("Country")).toBeEnabled());
+    fireEvent.change(screen.getByLabelText("Country"), { target: { value: "SG" } });
+    fireEvent.click(screen.getByRole("button", { name: "Identifiers" }));
+
+    const input = screen.getByLabelText("Acra Record");
+    const guidance = screen.getByText(/create your account.*upload this document/i, {
+      selector: "#company-document-ACRA_RECORD-status-guidance",
+    });
+    expect(guidance.nextElementSibling).toBe(input);
+    expect(input).toBeDisabled();
+    expect(guidance).toHaveClass("company-onboarding-help");
+    expect(guidance).not.toHaveClass("company-onboarding-error");
+    expect(screen.queryByText(/choose this file again/i)).toBeNull();
   });
 
   it("puts an actionable website error beside and focuses the website input", async () => {
