@@ -1,12 +1,15 @@
-export type VendorIdentifierCanonicalizer = (value: string) => string;
+export type CompanyIdentifierCanonicalizer = (value: string) => string;
 
-export interface VendorCountryRequirements {
+export interface CompanyCountryRequirements {
   countryCode: string;
   identifierSchemes: readonly string[];
   documentKinds: readonly string[];
-  canonicalForms: Readonly<Record<string, VendorIdentifierCanonicalizer>>;
+  canonicalForms: Readonly<Record<string, CompanyIdentifierCanonicalizer>>;
   canonicalize(scheme: string, value: string): string;
 }
+
+export type VendorIdentifierCanonicalizer = CompanyIdentifierCanonicalizer;
+export type VendorCountryRequirements = CompanyCountryRequirements;
 
 const normalizeIdentifier = (value: string): string =>
   value.trim().toUpperCase().replace(/[\s./\\_-]+/g, "");
@@ -15,14 +18,14 @@ const canonicalForms = (...schemes: string[]) =>
   Object.freeze(
     Object.fromEntries(
       schemes.map((scheme) => [scheme, normalizeIdentifier]),
-    ) as Record<string, VendorIdentifierCanonicalizer>,
+    ) as Record<string, CompanyIdentifierCanonicalizer>,
   );
 
 const createRequirements = (
   countryCode: string,
   identifierSchemes: readonly string[],
   documentKinds: readonly string[],
-): VendorCountryRequirements => {
+): CompanyCountryRequirements => {
   const forms = canonicalForms(...identifierSchemes);
 
   return Object.freeze({
@@ -45,43 +48,43 @@ const createRequirements = (
 const INDIA = createRequirements(
   "IN",
   ["GSTIN", "COMPANY_PAN", "UDYAM"],
-  ["GST_CERTIFICATE", "COMPANY_PAN", "UDYAM_CERTIFICATE", "BANK_PROOF"],
+  ["GST_CERTIFICATE", "COMPANY_PAN", "UDYAM_CERTIFICATE"],
 );
 
 const UNITED_STATES = createRequirements(
   "US",
   ["INCORPORATION_NUMBER", "EIN"],
-  ["INCORPORATION_DOCUMENT", "W_9", "BANK_PROOF"],
+  ["INCORPORATION_DOCUMENT", "W_9"],
 );
 
 const UNITED_KINGDOM = createRequirements(
   "GB",
   ["COMPANIES_HOUSE", "VAT"],
-  ["COMPANIES_HOUSE_RECORD", "VAT_CERTIFICATE", "BANK_PROOF"],
+  ["COMPANIES_HOUSE_RECORD", "VAT_CERTIFICATE"],
 );
 
 const EUROPEAN_UNION = createRequirements(
   "EU",
   ["EU_VAT"],
-  ["EU_VAT_CERTIFICATE", "BANK_PROOF"],
+  ["EU_VAT_CERTIFICATE"],
 );
 
 const SINGAPORE = createRequirements(
   "SG",
   ["UEN"],
-  ["ACRA_RECORD", "BANK_PROOF"],
+  ["ACRA_RECORD"],
 );
 
 const CHINA = createRequirements(
   "CN",
   ["CN_USCC"],
-  ["CN_USCC_CERTIFICATE", "BANK_PROOF"],
+  ["CN_USCC_CERTIFICATE"],
 );
 
 const REST_OF_WORLD = createRequirements(
   "ROW",
   ["INCORPORATION_NUMBER", "TAX_ID"],
-  ["INCORPORATION_DOCUMENT", "TAX_ID_DOCUMENT", "BANK_PROOF"],
+  ["INCORPORATION_DOCUMENT", "TAX_ID_DOCUMENT"],
 );
 
 const EUROPEAN_UNION_COUNTRIES = [
@@ -114,8 +117,8 @@ const EUROPEAN_UNION_COUNTRIES = [
   "SE",
 ] as const;
 
-export const vendorCountryRequirements: Readonly<
-  Record<string, VendorCountryRequirements>
+export const companyCountryRequirements: Readonly<
+  Record<string, CompanyCountryRequirements>
 > = Object.freeze({
   IN: INDIA,
   US: UNITED_STATES,
@@ -134,6 +137,28 @@ export const vendorCountryRequirements: Readonly<
   CN: CHINA,
 });
 
+const withVendorDocuments = (
+  requirements: CompanyCountryRequirements,
+): VendorCountryRequirements =>
+  Object.freeze({
+    ...requirements,
+    documentKinds: Object.freeze([
+      ...requirements.documentKinds,
+      "BANK_PROOF",
+    ]),
+  });
+
+export const vendorCountryRequirements: Readonly<
+  Record<string, VendorCountryRequirements>
+> = Object.freeze(
+  Object.fromEntries(
+    Object.entries(companyCountryRequirements).map(([countryCode, requirements]) => [
+      countryCode,
+      withVendorDocuments(requirements),
+    ]),
+  ),
+);
+
 const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
 
 const isIsoCountryCode = (countryCode: string): boolean => {
@@ -144,20 +169,28 @@ const isIsoCountryCode = (countryCode: string): boolean => {
   return Boolean(displayName && displayName !== countryCode);
 };
 
-export function getVendorCountryRequirements(
+export function getCompanyCountryRequirements(
   countryCode: string,
-): VendorCountryRequirements | undefined {
+): CompanyCountryRequirements | undefined {
   const normalizedCountryCode = countryCode.trim().toUpperCase();
   if (!isIsoCountryCode(normalizedCountryCode)) {
     return undefined;
   }
 
   return (
-    vendorCountryRequirements[normalizedCountryCode] ??
+    companyCountryRequirements[normalizedCountryCode] ??
     createRequirements(
       normalizedCountryCode,
       REST_OF_WORLD.identifierSchemes,
       REST_OF_WORLD.documentKinds,
     )
   );
+}
+
+export function getVendorCountryRequirements(
+  countryCode: string,
+): VendorCountryRequirements | undefined {
+  const requirements = getCompanyCountryRequirements(countryCode);
+  if (!requirements) return undefined;
+  return vendorCountryRequirements[requirements.countryCode] ?? withVendorDocuments(requirements);
 }

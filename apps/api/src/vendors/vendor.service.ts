@@ -3,7 +3,6 @@ import {
   Inject,
   Injectable,
   NotFoundException,
-  ServiceUnavailableException,
 } from "@nestjs/common";
 import {
   VendorState,
@@ -14,14 +13,18 @@ import {
   type VendorDraftInput,
 } from "@eqourse/shared";
 import type { StorageAdapter } from "@eqourse/adapters";
-import { randomUUID } from "node:crypto";
 import { SkillTaxonomyModel } from "../database/skill-taxonomy.schema";
+import {
+  assertDocumentKey,
+  canonicalizeCompanyIdentifier,
+  createCompanyUpload,
+  missingCompanyRequirements,
+} from "../company-registration/company-registration";
 
 import { digestVendorIdentifier } from "./vendor-identifier-digest";
 import {
   STORAGE_ADAPTER,
   VENDOR_IDENTIFIER_HMAC_SECRET,
-  VENDOR_UPLOAD_EXPIRY_SECONDS,
 } from "./vendor.constants";
 import { type VendorDocument } from "./vendor.schema";
 import { VENDOR_STORE, type VendorStore } from "./vendor.store";
@@ -58,11 +61,7 @@ export class VendorService {
     if (input.documents) {
       for (const document of input.documents) {
         const expectedPrefix = `vendors/${current._id.toString()}/${document.kind}/`;
-        if (!document.objectKey.startsWith(expectedPrefix)) {
-          throw new BadRequestException(
-            "Document key does not belong to this vendor and document kind",
-          );
-        }
+        assertDocumentKey(document.objectKey, expectedPrefix, "vendor");
       }
     }
     if (input.countryIdentifiers) {
@@ -70,7 +69,7 @@ export class VendorService {
       if (!countryCode) throw new BadRequestException("Country is required for identifiers");
       patch.countryIdentifiers = input.countryIdentifiers.map((identifier) => ({
         scheme: identifier.scheme.trim().toUpperCase(),
-        value: this.canonicalize(countryCode, identifier.scheme, identifier.value),
+        value: canonicalizeCompanyIdentifier(countryCode, identifier.scheme, identifier.value, "vendor"),
         lookupDigest: digestVendorIdentifier(
           countryCode,
           identifier.scheme,
@@ -113,41 +112,11 @@ export class VendorService {
       throw new BadRequestException("Document kind is not applicable to this country");
     }
 
-    const extension = {
-      "application/pdf": "pdf",
-      "image/jpeg": "jpg",
-      "image/png": "png",
-      "image/webp": "webp",
-    }[input.contentType];
-    const objectKey = `vendors/${vendor._id.toString()}/${input.kind}/${randomUUID()}.${extension}`;
-    let signed: Awaited<ReturnType<StorageAdapter["createSignedUrl"]>>;
-    try {
-      signed = await this.storage.createSignedUrl({
-        objectKey,
-        contentType: input.contentType,
-        contentLength: input.size,
-        expiresInSeconds: VENDOR_UPLOAD_EXPIRY_SECONDS,
-      });
-    } catch {
-      throw new ServiceUnavailableException(
-        "Document upload is temporarily unavailable",
-      );
-    }
-    return {
-      uploadUrl: signed.url,
-      objectKey,
-      expiresAt: new Date(Date.now() + VENDOR_UPLOAD_EXPIRY_SECONDS * 1_000).toISOString(),
-    };
-  }
-
-  private canonicalize(countryCode: string, scheme: string, value: string): string {
-    const requirements = getVendorCountryRequirements(countryCode);
-    if (!requirements) throw new BadRequestException("Unsupported vendor country");
-    try {
-      return requirements.canonicalize(scheme.trim().toUpperCase(), value);
-    } catch {
-      throw new BadRequestException("Identifier scheme is not applicable to this country");
-    }
+    return createCompanyUpload(
+      this.storage,
+      `vendors/${vendor._id.toString()}/${input.kind}/`,
+      input,
+    );
   }
 
   private async assertComplete(vendor: VendorDocument): Promise<void> {
@@ -158,18 +127,7 @@ export class VendorService {
       missing.push("business_details");
     }
     if (!vendor.bankDetails) missing.push("bank_details");
-    if (!requirements) {
-      missing.push("country_requirements");
-    } else {
-      const schemes = new Set(vendor.countryIdentifiers.map((identifier) => identifier.scheme));
-      if (requirements.identifierSchemes.some((scheme) => !schemes.has(scheme))) {
-        missing.push("country_identifiers");
-      }
-      const documentKinds = new Set(vendor.documents.map((document) => document.kind));
-      if (requirements.documentKinds.some((kind) => !documentKinds.has(kind))) {
-        missing.push("documents");
-      }
-    }
+    missing.push(...missingCompanyRequirements(vendor.countryIdentifiers, vendor.documents, requirements));
     const capabilities = vendor.capabilities.map((capability) => capability.taxonomySlug);
     if (capabilities.length === 0) {
       missing.push("capabilities");

@@ -2,7 +2,7 @@ import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 
 import { STORAGE_ADAPTER, VENDOR_IDENTIFIER_HMAC_SECRET, VENDOR_MODEL_NAME } from "./vendor.constants";
-import { createStorageAdapter } from "./r2-storage.adapter";
+import { createStorageAdapter } from "../company-registration/r2-storage.adapter";
 import { VendorController } from "./vendor.controller";
 import { loadVendorIdentifierHmacSecret } from "./vendor-identifier-digest";
 import { VendorService } from "./vendor.service";

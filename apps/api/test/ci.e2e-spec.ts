@@ -159,7 +159,7 @@ describe("FR-FND-05 API deployment", () => {
     expect(workflow).toContain("--min-instances=0");
     expect(workflow).toContain("--allow-unauthenticated");
     expect(workflow).toContain(
-      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
+      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
     );
     expect(workflow).toContain("--startup-probe=httpGet.path=/health");
     expect(workflow).toContain("--liveness-probe=httpGet.path=/health");
@@ -188,7 +188,7 @@ describe("FR-FND-05 API deployment", () => {
     ).toBeGreaterThanOrEqual(2);
     expect(
       workflow.match(
-        /--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest(?:,RESEND_API_KEY=RESEND_API_KEY:latest)?/g,
+        /--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest(?:,RESEND_API_KEY=RESEND_API_KEY:latest)?/g,
       )?.length,
     ).toBeGreaterThanOrEqual(2);
     expect(
@@ -232,10 +232,10 @@ describe("FR-FND-05 API deployment", () => {
       '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}"',
     );
     expect(stagingJob).toContain(
-      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
+      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
     );
     expect(productionJob).toContain(
-      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
+      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
     );
   });
 
@@ -302,7 +302,7 @@ describe("FR-FND-05 API deployment", () => {
       '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}",SMS_PROVIDER="${SMS_PROVIDER}"',
     );
     expect(productionJob).toContain(
-      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
+      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
     );
   });
 
@@ -324,15 +324,21 @@ describe("FR-FND-05 API deployment", () => {
     expect(runbook).toContain(
       "gcloud secrets create JWT_SECRET --replication-policy=automatic --data-file=-",
     );
-    expect(runbook).toContain(
-      "gcloud secrets create VENDOR_IDENTIFIER_HMAC_SECRET --replication-policy=automatic --data-file=-",
-    );
+      expect(runbook).toContain(
+        "gcloud secrets create VENDOR_IDENTIFIER_HMAC_SECRET --replication-policy=automatic --data-file=-",
+      );
+      expect(runbook).toContain(
+        "gcloud secrets create CLIENT_IDENTIFIER_HMAC_SECRET --replication-policy=automatic --data-file=-",
+      );
     expect(runbook).toContain(
       'gcloud secrets add-iam-policy-binding JWT_SECRET',
     );
-    expect(runbook).toContain(
-      "gcloud secrets add-iam-policy-binding VENDOR_IDENTIFIER_HMAC_SECRET",
-    );
+      expect(runbook).toContain(
+        "gcloud secrets add-iam-policy-binding VENDOR_IDENTIFIER_HMAC_SECRET",
+      );
+      expect(runbook).toContain(
+        "gcloud secrets add-iam-policy-binding CLIENT_IDENTIFIER_HMAC_SECRET",
+      );
     expect(runbook).toMatch(/VENDOR_IDENTIFIER_HMAC_SECRET[\s\S]+at least 32 characters/i);
     expect(runbook).toMatch(
       /rotating[\s\S]+countryIdentifiers\.lookupDigest[\s\S]+recomputing every digest[\s\S]+rebuilding that index/i,
