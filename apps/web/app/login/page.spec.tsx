@@ -98,6 +98,7 @@ describe("FR-PUB-06 login page", () => {
     expect(pageSource).not.toMatch(/<Glass(?:\s|>)/);
     expect(pageSource).not.toContain('tier="focal"');
     expect(pageSource).not.toContain("fetch(");
+    expect(pageSource).not.toMatch(/action\s*=/);
     expect(pageSource).not.toMatch(/from\s+["'][^"']*apps\/api/);
   });
 

@@ -10,15 +10,12 @@ import {
 import { GlassButton } from "@eqourse/ui";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
+import { publicApiUrl } from "../../lib/public-api-url";
+
 type Step = "email" | "otp";
 
 interface LoginFormProps {
   navigate?: (href: string) => void;
-}
-
-function apiUrl(path: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.trim() || "http://localhost:4000";
-  return `${baseUrl.replace(/\/+$/, "")}${path}`;
 }
 
 function defaultNavigate(href: string): void {
@@ -88,7 +85,7 @@ export function LoginForm({ navigate = defaultNavigate }: LoginFormProps) {
     setMessage("");
     setSubmitting(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/auth/otp/request"), {
+      const response = await fetch(publicApiUrl("/api/v1/auth/otp/request"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed.data),

@@ -34,6 +34,7 @@ afterEach(() => {
 
 describe("FR-FND-02 / FR-REG-02A login form", () => {
   it("validates the email before requesting an OTP directly from the API", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "https://api.eqourse.test/");
     render(<LoginForm navigate={vi.fn()} />);
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       "/api/auth/session",
@@ -57,7 +58,7 @@ describe("FR-FND-02 / FR-REG-02A login form", () => {
 
     expect(await screen.findByLabelText("Email sign-in code")).toBeEnabled();
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:4000/api/v1/auth/otp/request",
+      "https://api.eqourse.test/api/v1/auth/otp/request",
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ email: "owner@example.com" }),

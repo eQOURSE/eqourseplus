@@ -35,6 +35,7 @@ import {
 } from "react";
 
 import { createCountryOptions, type CountryOption } from "../../app/register/country-codes";
+import { publicApiUrl } from "../../lib/public-api-url";
 import { companyActorConfig, type CompanyActor } from "./company-onboarding-config";
 
 type StepId = "company" | "address" | "contact" | "identifiers" | "capabilities" | "review";
@@ -622,7 +623,7 @@ function taxonomyLeaf(option: SkillTaxonomyOption): string {
 }
 
 async function requestSkillTaxonomy(): Promise<SkillTaxonomyOption[]> {
-  const response = await fetch(apiUrl("/api/v1/skill-taxonomy"));
+  const response = await fetch(publicApiUrl("/api/v1/skill-taxonomy"));
   if (!response.ok) throw new Error("Skill taxonomy request failed");
   const body = await response.json() as unknown;
   if (!Array.isArray(body)) throw new Error("Skill taxonomy response was not a list");
@@ -647,11 +648,6 @@ async function requestSkillTaxonomy(): Promise<SkillTaxonomyOption[]> {
 
 async function readDraft(response: Response): Promise<Record<string, unknown>> {
   return response.json() as Promise<Record<string, unknown>>;
-}
-
-function apiUrl(path: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.trim() || "http://localhost:4000";
-  return `${baseUrl.replace(/\/+$/, "")}${path}`;
 }
 
 export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthenticated }: CompanyOnboardingFormProps) {
@@ -1165,7 +1161,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     setAccessErrors({});
     setMessage("");
     try {
-      const response = await fetch(apiUrl("/api/v1/auth/register/request"), {
+      const response = await fetch(publicApiUrl("/api/v1/auth/register/request"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(result.data),
@@ -1203,7 +1199,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     setMessage("");
     setMessageError(false);
     try {
-      const response = await fetch(apiUrl("/api/v1/auth/otp/request"), {
+      const response = await fetch(publicApiUrl("/api/v1/auth/otp/request"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(result.data),

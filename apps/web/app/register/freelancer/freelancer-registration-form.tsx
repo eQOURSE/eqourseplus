@@ -18,6 +18,7 @@ import {
   createCountryOptions,
   type CountryOption,
 } from "../country-codes";
+import { publicApiUrl } from "../../../lib/public-api-url";
 
 type Step = "details" | "verification" | "success";
 type FieldName =
@@ -35,12 +36,6 @@ const FIELD_ERROR_COPY: Record<FieldName, string> = {
   pan: "Enter your PAN or leave this field blank.",
   emailOtp: "Enter the six-digit code sent to your email.",
 };
-
-function apiUrl(path: string): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_URL?.trim() || "http://localhost:4000";
-  return `${baseUrl.replace(/\/+$/, "")}${path}`;
-}
 
 function describedBy(helperId: string, errorId: string, hasError: boolean) {
   return hasError ? `${helperId} ${errorId}` : helperId;
@@ -134,7 +129,7 @@ export function FreelancerRegistrationForm() {
     setSubmitting(true);
     try {
       const response = await fetch(
-        apiUrl("/api/v1/auth/register/request"),
+        publicApiUrl("/api/v1/auth/register/request"),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
