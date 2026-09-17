@@ -3,10 +3,10 @@ import { GlassSubstrate } from "@eqourse/ui";
 
 import { PublicAmbientCanvas } from "../../components/public/public-client-islands";
 import {
-  ArrowMark,
   SiteFooter,
   SiteNavigation,
 } from "../../components/public/site-chrome";
+import { LoginForm } from "./login-form";
 import { LOGIN_DESCRIPTION, LOGIN_TITLE } from "./login-data";
 
 export const metadata: Metadata = {
@@ -38,14 +38,9 @@ export default function LoginPage() {
           <p className="home-eyebrow">Account access</p>
           <h1 id="login-title">Log in to eQOURSE+.</h1>
           <p className="freelancer-hero-copy">
-            Sign-in is not open yet. It opens when registration opens.
+            Enter your account email and we&apos;ll send you a secure sign-in code.
           </p>
-          <div className="home-hero-actions">
-            <a className="home-freelancer-link" href="/register">
-              Go to registration
-              <ArrowMark />
-            </a>
-          </div>
+          <LoginForm />
         </div>
       </section>
 

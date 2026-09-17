@@ -56,6 +56,9 @@ export default function RegisterPage() {
               </a>
             ))}
           </div>
+          <p className="entry-switch-copy">
+            Already have an account? <a href="/login">Log in</a>
+          </p>
         </div>
       </section>
 
