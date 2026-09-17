@@ -1194,6 +1194,33 @@ margin: 0;
   gap: 0.75rem;
 }
 
+.login-form {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 32rem);
+  margin-top: 1.5rem;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--card) / 0.72);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+.login-form-instruction {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.6;
+}
+
+.login-form-instruction strong {
+  color: hsl(var(--foreground));
+}
+
+.login-form-actions {
+  align-items: center;
+}
+
 .authenticated-shell {
   min-height: 100vh;
   background: hsl(var(--background));
