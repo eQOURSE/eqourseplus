@@ -79,37 +79,27 @@ describe("FR-REG-02C login form", () => {
   it("does not relabel missing deployed API configuration as an OTP delivery failure", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("NEXT_PUBLIC_API_URL", "");
-    const configurationErrors: Error[] = [];
-    const captureConfigurationError = (event: ErrorEvent) => {
-      configurationErrors.push(event.error as Error);
-      event.preventDefault();
-    };
-    window.addEventListener("error", captureConfigurationError);
 
-    try {
-      render(<LoginForm navigate={vi.fn()} />);
-      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
-        "/api/auth/session",
-        { cache: "no-store" },
-      ));
-      fetchMock.mockClear();
+    render(<LoginForm navigate={vi.fn()} />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/auth/session",
+      { cache: "no-store" },
+    ));
+    fetchMock.mockClear();
 
-      fireEvent.change(screen.getByLabelText("Email address"), {
-        target: { value: "owner@example.com" },
-      });
-      fireEvent.click(screen.getByRole("button", { name: "Send sign-in code" }));
+    fireEvent.change(screen.getByLabelText("Email address"), {
+      target: { value: "owner@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send sign-in code" }));
 
-      expect(configurationErrors[0]).toHaveProperty(
-        "message",
-        "NEXT_PUBLIC_API_URL is required in deployed environments",
-      );
-      expect(fetchMock).not.toHaveBeenCalled();
-      expect(screen.queryByText(
-        "We couldn’t send a sign-in code. Please wait a moment and try again.",
-      )).not.toBeInTheDocument();
-    } finally {
-      window.removeEventListener("error", captureConfigurationError);
-    }
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.queryByText(
+      "We couldn’t send a sign-in code. Please wait a moment and try again.",
+    )).not.toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Sign-in is unavailable because this deployment is missing API configuration.",
+    );
+    expect(screen.getByRole("button", { name: "Send sign-in code" })).toBeEnabled();
   });
 
   it.each([

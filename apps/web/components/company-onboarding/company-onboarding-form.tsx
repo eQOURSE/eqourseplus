@@ -1142,7 +1142,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     }
   }
 
-  function requestAccount(event: FormEvent<HTMLFormElement>): void {
+  async function requestAccount(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     const result = registrationRequestSchema.safeParse({
       countryCode: form.countryCode,
@@ -1157,40 +1157,48 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
       queueMicrotask(() => document.getElementById(`company-access-${String(result.error.issues[0]?.path[0] ?? "email")}`)?.focus());
       return;
     }
-    setSaving(true);
     setAccessErrors({});
     setMessage("");
-    const registrationRequestUrl = publicApiUrl("/api/v1/auth/register/request");
-    void (async () => {
-      try {
-        const response = await fetch(registrationRequestUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(result.data),
-        });
-        if (response.status === 409) {
-          setAccessIdentity({ email: result.data.email, phone: result.data.phone });
-          setAccessOtp("");
-          setMessage("");
-          setMessageError(false);
-          setAccessStep("existing-account");
-          return;
-        }
-        if (!response.ok) throw new Error("Registration request failed");
-        const accepted = registrationRequestAcceptedSchema.safeParse(await response.json());
-        if (!accepted.success) throw new Error("Invalid registration response");
+    let registrationRequestUrl: string;
+    try {
+      registrationRequestUrl = publicApiUrl("/api/v1/auth/register/request");
+    } catch {
+      setMessageError(true);
+      setMessage(
+        "Registration is unavailable because this deployment is missing API configuration.",
+      );
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await fetch(registrationRequestUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(result.data),
+      });
+      if (response.status === 409) {
         setAccessIdentity({ email: result.data.email, phone: result.data.phone });
-        setAccessStep("verification");
-      } catch {
-        setMessageError(true);
-        setMessage("We could not send your verification code. Try again.");
-      } finally {
-        setSaving(false);
+        setAccessOtp("");
+        setMessage("");
+        setMessageError(false);
+        setAccessStep("existing-account");
+        return;
       }
-    })();
+      if (!response.ok) throw new Error("Registration request failed");
+      const accepted = registrationRequestAcceptedSchema.safeParse(await response.json());
+      if (!accepted.success) throw new Error("Invalid registration response");
+      setAccessIdentity({ email: result.data.email, phone: result.data.phone });
+      setAccessStep("verification");
+    } catch {
+      setMessageError(true);
+      setMessage("We could not send your verification code. Try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function requestSignIn(event: FormEvent<HTMLFormElement>): void {
+  async function requestSignIn(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     const result = otpRequestSchema.safeParse({ email: accessIdentity?.email ?? "" });
     if (!result.success) {
@@ -1198,27 +1206,35 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
       setMessage("Enter the email address for your existing account and try again.");
       return;
     }
-    setSaving(true);
     setMessage("");
     setMessageError(false);
-    const otpRequestUrl = publicApiUrl("/api/v1/auth/otp/request");
-    void (async () => {
-      try {
-        const response = await fetch(otpRequestUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(result.data),
-        });
-        if (!response.ok) throw new Error("Sign-in request failed");
-        setAccessOtp("");
-        setAccessStep("signin-verification");
-      } catch {
-        setMessageError(true);
-        setMessage("We could not send the sign-in code. Check your connection and try again.");
-      } finally {
-        setSaving(false);
-      }
-    })();
+    let otpRequestUrl: string;
+    try {
+      otpRequestUrl = publicApiUrl("/api/v1/auth/otp/request");
+    } catch {
+      setMessageError(true);
+      setMessage(
+        "Sign-in is unavailable because this deployment is missing API configuration.",
+      );
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await fetch(otpRequestUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(result.data),
+      });
+      if (!response.ok) throw new Error("Sign-in request failed");
+      setAccessOtp("");
+      setAccessStep("signin-verification");
+    } catch {
+      setMessageError(true);
+      setMessage("We could not send the sign-in code. Check your connection and try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function saveDraftAfterAuthentication(): Promise<void> {

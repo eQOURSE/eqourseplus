@@ -65,7 +65,7 @@ export function LoginForm({ navigate = defaultNavigate }: LoginFormProps) {
     };
   }, [navigate]);
 
-  function requestOtp(event: FormEvent<HTMLFormElement>): void {
+  async function requestOtp(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     const parsed = otpRequestSchema.safeParse({ email });
     if (!parsed.success) {
@@ -76,26 +76,33 @@ export function LoginForm({ navigate = defaultNavigate }: LoginFormProps) {
 
     setEmailError("");
     setMessage("");
+    let otpRequestUrl: string;
+    try {
+      otpRequestUrl = publicApiUrl("/api/v1/auth/otp/request");
+    } catch {
+      setMessage(
+        "Sign-in is unavailable because this deployment is missing API configuration.",
+      );
+      return;
+    }
+
     setSubmitting(true);
-    const otpRequestUrl = publicApiUrl("/api/v1/auth/otp/request");
-    void (async () => {
-      try {
-        const response = await fetch(otpRequestUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(parsed.data),
-        });
-        if (!response.ok) throw new Error("OTP request failed");
-        setVerifiedEmail(parsed.data.email);
-        setEmail(parsed.data.email);
-        setStep("otp");
-        queueMicrotask(() => otpRef.current?.focus());
-      } catch {
-        setMessage("We couldn’t send a sign-in code. Please wait a moment and try again.");
-      } finally {
-        setSubmitting(false);
-      }
-    })();
+    try {
+      const response = await fetch(otpRequestUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed.data),
+      });
+      if (!response.ok) throw new Error("OTP request failed");
+      setVerifiedEmail(parsed.data.email);
+      setEmail(parsed.data.email);
+      setStep("otp");
+      queueMicrotask(() => otpRef.current?.focus());
+    } catch {
+      setMessage("We couldn’t send a sign-in code. Please wait a moment and try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function verifyOtp(event: FormEvent<HTMLFormElement>): Promise<void> {
