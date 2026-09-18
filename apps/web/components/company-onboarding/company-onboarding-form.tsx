@@ -1142,7 +1142,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     }
   }
 
-  async function requestAccount(event: FormEvent<HTMLFormElement>): Promise<void> {
+  function requestAccount(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     const result = registrationRequestSchema.safeParse({
       countryCode: form.countryCode,
@@ -1160,34 +1160,37 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     setSaving(true);
     setAccessErrors({});
     setMessage("");
-    try {
-      const response = await fetch(publicApiUrl("/api/v1/auth/register/request"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(result.data),
-      });
-      if (response.status === 409) {
+    const registrationRequestUrl = publicApiUrl("/api/v1/auth/register/request");
+    void (async () => {
+      try {
+        const response = await fetch(registrationRequestUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(result.data),
+        });
+        if (response.status === 409) {
+          setAccessIdentity({ email: result.data.email, phone: result.data.phone });
+          setAccessOtp("");
+          setMessage("");
+          setMessageError(false);
+          setAccessStep("existing-account");
+          return;
+        }
+        if (!response.ok) throw new Error("Registration request failed");
+        const accepted = registrationRequestAcceptedSchema.safeParse(await response.json());
+        if (!accepted.success) throw new Error("Invalid registration response");
         setAccessIdentity({ email: result.data.email, phone: result.data.phone });
-        setAccessOtp("");
-        setMessage("");
-        setMessageError(false);
-        setAccessStep("existing-account");
-        return;
+        setAccessStep("verification");
+      } catch {
+        setMessageError(true);
+        setMessage("We could not send your verification code. Try again.");
+      } finally {
+        setSaving(false);
       }
-      if (!response.ok) throw new Error("Registration request failed");
-      const accepted = registrationRequestAcceptedSchema.safeParse(await response.json());
-      if (!accepted.success) throw new Error("Invalid registration response");
-      setAccessIdentity({ email: result.data.email, phone: result.data.phone });
-      setAccessStep("verification");
-    } catch {
-      setMessageError(true);
-      setMessage("We could not send your verification code. Try again.");
-    } finally {
-      setSaving(false);
-    }
+    })();
   }
 
-  async function requestSignIn(event: FormEvent<HTMLFormElement>): Promise<void> {
+  function requestSignIn(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     const result = otpRequestSchema.safeParse({ email: accessIdentity?.email ?? "" });
     if (!result.success) {
@@ -1198,21 +1201,24 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     setSaving(true);
     setMessage("");
     setMessageError(false);
-    try {
-      const response = await fetch(publicApiUrl("/api/v1/auth/otp/request"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(result.data),
-      });
-      if (!response.ok) throw new Error("Sign-in request failed");
-      setAccessOtp("");
-      setAccessStep("signin-verification");
-    } catch {
-      setMessageError(true);
-      setMessage("We could not send the sign-in code. Check your connection and try again.");
-    } finally {
-      setSaving(false);
-    }
+    const otpRequestUrl = publicApiUrl("/api/v1/auth/otp/request");
+    void (async () => {
+      try {
+        const response = await fetch(otpRequestUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(result.data),
+        });
+        if (!response.ok) throw new Error("Sign-in request failed");
+        setAccessOtp("");
+        setAccessStep("signin-verification");
+      } catch {
+        setMessageError(true);
+        setMessage("We could not send the sign-in code. Check your connection and try again.");
+      } finally {
+        setSaving(false);
+      }
+    })();
   }
 
   async function saveDraftAfterAuthentication(): Promise<void> {
