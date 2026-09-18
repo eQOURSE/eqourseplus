@@ -210,7 +210,7 @@ describe("FR-FND-05 API deployment", () => {
     );
 
     expect(stagingJob).toContain(
-      'CORS_ORIGINS: "http://localhost:3000"',
+      'CORS_ORIGINS: "http://localhost:3000,https://preview.plus.eqourse.com"',
     );
     expect(productionJob).toContain(
       'CORS_ORIGINS: "https://plus.eqourse.com"',
@@ -237,6 +237,40 @@ describe("FR-FND-05 API deployment", () => {
     expect(productionJob).toContain(
       "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
     );
+  });
+
+  it("connects one exact stable Vercel preview origin to the staging API", () => {
+    const workflow = readFileSync(workflowPath, "utf8");
+    const runbook = readFileSync(deploymentRunbookPath, "utf8");
+    const previewJob = workflow.slice(
+      workflow.indexOf("  preview-config:"),
+      workflow.indexOf("  staging-deploy:"),
+    );
+
+    expect(previewJob).toContain(
+      'STAGING_API_URL: "https://eqplus-api-staging-48495065742.asia-south1.run.app"',
+    );
+    expect(previewJob).toContain(
+      'PREVIEW_ORIGIN: "https://preview.plus.eqourse.com"',
+    );
+    expect(previewJob).toContain("NEXT_PUBLIC_API_URL");
+    expect(previewJob).toContain("API_URL");
+    expect(previewJob).toContain("APP_URL");
+    expect(previewJob).toContain("${{ github.head_ref }}");
+    expect(previewJob).toContain("${{ secrets.VERCEL_TOKEN }}");
+    expect(previewJob).toContain("${{ vars.VERCEL_PROJECT_ID }}");
+    expect(previewJob).toContain("${{ vars.VERCEL_TEAM_ID }}");
+    expect(previewJob).not.toContain("*.vercel.app");
+    expect(previewJob).not.toContain("plus.eqourse.com/api");
+
+    expect(runbook).toContain("preview.plus.eqourse.com");
+    expect(runbook).toContain(
+      "https://eqplus-api-staging-48495065742.asia-south1.run.app",
+    );
+    expect(runbook).toContain("VERCEL_TOKEN");
+    expect(runbook).toContain("VERCEL_PROJECT_ID");
+    expect(runbook).toContain("VERCEL_TEAM_ID");
+    expect(runbook).toMatch(/sandbox mailer[\s\S]+in\s+memory/i);
   });
 
   it("uses the real environment-specific private R2 bucket in both deploy jobs", () => {

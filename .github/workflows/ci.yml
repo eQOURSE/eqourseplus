@@ -65,6 +65,82 @@ jobs:
       - name: Build
         run: pnpm build
 
+  preview-config:
+    # FR-FND-05: keep one exact preview origin bound to the staging API.
+    name: Configure stable Vercel preview
+    needs: ci
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      STAGING_API_URL: "https://eqplus-api-staging-48495065742.asia-south1.run.app"
+      PREVIEW_ORIGIN: "https://preview.plus.eqourse.com"
+      PREVIEW_BRANCH: ${{ github.head_ref }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      VERCEL_TEAM_ID: ${{ vars.VERCEL_TEAM_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    steps:
+      - name: Validate Vercel preview configuration
+        run: |
+          for name in STAGING_API_URL PREVIEW_ORIGIN PREVIEW_BRANCH VERCEL_PROJECT_ID VERCEL_TEAM_ID VERCEL_TOKEN; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing required preview configuration: ${name}"
+              exit 1
+            fi
+          done
+
+      - name: Sync Preview variables and stable branch domain
+        run: |
+          node --input-type=module <<'NODE'
+          const required = (name) => {
+            const value = process.env[name]?.trim();
+            if (!value) throw new Error(`Missing ${name}`);
+            return value;
+          };
+
+          const token = required("VERCEL_TOKEN");
+          const projectId = required("VERCEL_PROJECT_ID");
+          const teamId = required("VERCEL_TEAM_ID");
+          const stagingApiUrl = required("STAGING_API_URL");
+          const previewOrigin = required("PREVIEW_ORIGIN");
+          const previewBranch = required("PREVIEW_BRANCH");
+          const query = `teamId=${encodeURIComponent(teamId)}`;
+
+          async function vercelRequest(path, method, body) {
+            const response = await fetch(`https://api.vercel.com${path}${path.includes("?") ? "&" : "?"}${query}`, {
+              method,
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(body),
+            });
+            if (!response.ok) {
+              const detail = await response.text();
+              throw new Error(`Vercel ${method} ${path} failed (${response.status}): ${detail}`);
+            }
+          }
+
+          await vercelRequest(
+            `/v10/projects/${encodeURIComponent(projectId)}/env?upsert=true`,
+            "POST",
+            [
+              { key: "NEXT_PUBLIC_API_URL", value: stagingApiUrl, type: "plain", target: ["preview"] },
+              { key: "API_URL", value: stagingApiUrl, type: "plain", target: ["preview"] },
+              { key: "APP_URL", value: previewOrigin, type: "plain", target: ["preview"] },
+            ],
+          );
+          await vercelRequest(
+            `/v9/projects/${encodeURIComponent(projectId)}/domains/${encodeURIComponent(new URL(previewOrigin).hostname)}`,
+            "PATCH",
+            { gitBranch: previewBranch },
+          );
+          NODE
+
   staging-deploy:
     # FR-FND-05: build once on main, then promote this immutable image to prod.
     name: Build, push, and deploy staging API
@@ -72,7 +148,7 @@ jobs:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     env:
-      CORS_ORIGINS: "http://localhost:3000"
+      CORS_ORIGINS: "http://localhost:3000,https://preview.plus.eqourse.com"
       MAILER_PROVIDER: "sandbox"
       SMS_PROVIDER: "sandbox"
       STORAGE_PROVIDER: "r2"

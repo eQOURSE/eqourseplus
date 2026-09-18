@@ -9,7 +9,8 @@ the FR-FND-05 API pipeline. They do not deploy to Vercel or Utho.
 to `main`.** The staging workflow fires on the merge itself, so Artifact
 Registry, both service accounts, Workload Identity Federation, `MONGODB_URI`,
 `JWT_SECRET`, `VENDOR_IDENTIFIER_HMAC_SECRET`, `CLIENT_IDENTIFIER_HMAC_SECRET`, the per-service `CORS_ORIGINS`
-values, the GitHub repository variables, and the protected `production`
+values, the GitHub repository variables, the stable Vercel preview configuration,
+and the protected `production`
 environment must already exist. Before enabling real email delivery, also
 complete Section 10 without changing any existing company-mail DNS record.
 
@@ -203,13 +204,16 @@ holding real user data.
 configuration that the workflow sets directly on each service with
 `--set-env-vars`:
 
-- `eqplus-api-staging`: `http://localhost:3000`
+- `eqplus-api-staging`: `http://localhost:3000,https://preview.plus.eqourse.com`
 - `eqplus-api`: `https://plus.eqourse.com`
 
-Staging is deliberately limited to the local web origin. Vercel preview URLs
-cannot make browser-originated calls to the staging API until a stable preview
-origin exists. The browser-originated registration and OTP-request endpoints
-therefore cannot be exercised from per-branch previews.
+The workflow now expands staging to the exact allow-list
+`http://localhost:3000,https://preview.plus.eqourse.com`. The custom preview
+origin is deliberately singular. Never replace it with `*.vercel.app`: that
+would let a deployment owned by any Vercel customer call the staging API from a
+browser. Raw per-branch Vercel URLs remain unable to make the direct
+registration and OTP-request calls; use the stable preview origin for those
+checks.
 
 `--set-env-vars` replaces the service's complete plain environment-variable
 group. Before adding another plain variable outside this workflow, update the
@@ -236,6 +240,70 @@ gh variable set GCP_DEPLOY_SERVICE_ACCOUNT `
 
 These identifiers are not secrets. Do not create a `GCP_CREDENTIALS` secret or
 upload a JSON service-account key.
+
+### Configure the stable Vercel preview as code-managed state
+
+The workflow manages Preview environment variables and points the one stable
+preview domain at the current same-repository pull-request branch. It refuses
+fork pull requests because repository secrets are never exposed to them. Set
+the following prerequisites once; do not duplicate these values by clicking
+them into the Vercel dashboard.
+
+Create a company-owned Vercel access token scoped to the `tutrain's projects`
+team, then store it directly in GitHub without putting it in a file or chat:
+
+```powershell
+gh secret set VERCEL_TOKEN --repo $GitHubRepository
+```
+
+Record the non-secret Vercel identifiers as repository variables:
+
+```powershell
+gh variable set VERCEL_PROJECT_ID `
+  --repo $GitHubRepository `
+  --body "prj_kNnnDCw49iOD9vyh5QQXMMuZhvGd"
+
+gh variable set VERCEL_TEAM_ID `
+  --repo $GitHubRepository `
+  --body "team_nxAn0lKroRlgvXWUt3fg07SR"
+```
+
+Add `preview.plus.eqourse.com` to the `eqourseplus-web` Vercel project using
+the Vercel CLI, then inspect the required DNS value:
+
+```powershell
+vercel domains add preview.plus.eqourse.com eqourseplus-web `
+  --scope "tutrains-projects"
+vercel domains inspect preview.plus.eqourse.com `
+  --scope "tutrains-projects"
+```
+
+At the authoritative GoDaddy zone, add only the exact CNAME Vercel reports.
+Never replace or delete an existing record. Re-run `vercel domains inspect`
+until the domain and certificate are valid. The pull-request workflow then uses
+Vercel's API to assign that domain to `${{ github.head_ref }}`; no dashboard
+branch assignment is required.
+
+For every same-repository pull request, the `Configure stable Vercel preview`
+job upserts these Preview-scoped variables:
+
+| Variable | Preview value |
+| --- | --- |
+| `NEXT_PUBLIC_API_URL` | `https://eqplus-api-staging-48495065742.asia-south1.run.app` |
+| `API_URL` | `https://eqplus-api-staging-48495065742.asia-south1.run.app` |
+| `APP_URL` | `https://preview.plus.eqourse.com` |
+
+`NEXT_PUBLIC_API_URL` serves only the two direct browser request endpoints;
+`API_URL` supplies the same-origin Next.js handlers; and `APP_URL` pins their
+CSRF origin. None points at production. Because `NEXT_PUBLIC_API_URL` is
+compiled into the client bundle, the first run that creates these variables
+must be followed by a new git-triggered preview build. A dashboard redeploy is
+not an acceptable substitute.
+
+There is intentionally only one shared stable preview. When multiple internal
+pull requests run concurrently, the most recently successful configuration job
+owns `preview.plus.eqourse.com`; do not conduct two human preview walkthroughs
+at once.
 
 ## 6. Create and protect the GitHub `production` environment
 
@@ -282,7 +350,8 @@ reviewer. Only then merge the PR.
 
 The staging job builds and pushes the commit-SHA image, deploys
 `eqplus-api-staging` in `asia-south1` with `min-instances=0`, public invocation,
-`CORS_ORIGINS=http://localhost:3000` as non-secret runtime configuration,
+`CORS_ORIGINS=http://localhost:3000,https://preview.plus.eqourse.com` as
+non-secret runtime configuration,
 Secret Manager injection for `MONGODB_URI`, `JWT_SECRET`, and
 `VENDOR_IDENTIFIER_HMAC_SECRET`, `CLIENT_IDENTIFIER_HMAC_SECRET`, plus HTTP startup/liveness probes. It then
 calls `/health` and fails if the endpoint does not return a successful response.
@@ -335,6 +404,17 @@ the web CSRF check compare exact origins, so a trailing slash fails the match.
 deployment does not re-inline the value, even when the build cache is disabled.
 A fresh git-triggered build is required. `API_URL` and `APP_URL` are read at
 runtime and take effect immediately.
+
+Preview values are not configured here or in the dashboard. Section 5 and the
+`Configure stable Vercel preview` workflow job are their source of truth.
+
+### Staging sandbox-mailer limitation
+
+The staging API still uses the sandbox mailer. It keeps generated OTPs only in
+memory and exposes no retrieval surface, so a human can exercise the preview's
+request path but cannot complete sign-in. Do not point Preview at the production
+API to work around this. The available policy choices and their costs must be
+decided separately before changing the staging mailer.
 
 ## 10. Configure Resend email delivery
 
