@@ -22,4 +22,13 @@ describe("publicApiUrl", () => {
       "http://localhost:4000/api/v1/auth/register/request",
     );
   });
+
+  it("fails loudly in a deployed build when the public API origin is missing", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "");
+
+    expect(() => publicApiUrl("/api/v1/auth/otp/request")).toThrow(
+      "NEXT_PUBLIC_API_URL is required in deployed environments",
+    );
+  });
 });
