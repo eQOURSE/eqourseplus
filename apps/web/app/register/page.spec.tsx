@@ -292,6 +292,14 @@ describe("FR-PUB-06 registration routes", () => {
     ).toHaveAttribute("href", "/register/client");
   });
 
+  it("links existing account holders to login in one action", () => {
+    render(<RegisterPage />);
+
+    expect(
+      screen.getByRole("link", { name: "Log in" }),
+    ).toHaveAttribute("href", "/login");
+  });
+
   it(
     "keeps the vendor route server-rendered with a session-aware company onboarding entry",
     () => {

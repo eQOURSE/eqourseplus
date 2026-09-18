@@ -32,9 +32,9 @@ describe("FR-PUB-06 login page", () => {
     expect(LOGIN_TITLE).toBe("Log in | eQOURSE+");
     expect(LOGIN_TITLE).toHaveLength(17);
     expect(LOGIN_DESCRIPTION).toBe(
-      "Sign-in to eQOURSE+ is not open yet. It opens when registration opens.",
+      "Securely sign in to eQOURSE+ with a one-time code sent to your email.",
     );
-    expect(LOGIN_DESCRIPTION).toHaveLength(70);
+    expect(LOGIN_DESCRIPTION.length).toBeLessThanOrEqual(160);
     expect(metadata).toEqual({
       title: LOGIN_TITLE,
       description: LOGIN_DESCRIPTION,
@@ -93,7 +93,7 @@ describe("FR-PUB-06 login page", () => {
     ).toBeNull();
   });
 
-  it("stays server-only with zero focal glass and no auth wiring", () => {
+  it("keeps the metadata shell server-rendered with zero focal glass", () => {
     expect(pageSource).not.toMatch(/["']use client["']/);
     expect(pageSource).not.toMatch(/<Glass(?:\s|>)/);
     expect(pageSource).not.toContain('tier="focal"');
@@ -121,18 +121,16 @@ describe("FR-PUB-06 login page", () => {
     }
   });
 
-  it("states sign-in availability honestly and links to registration", () => {
+  it("opens email-code sign-in and links to registration in one action", () => {
     render(<LoginPage />);
 
+    expect(screen.getByRole("textbox", { name: "Email address" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Send sign-in code" })).toBeEnabled();
     expect(
-      screen.getByText(
-        "Sign-in is not open yet. It opens when registration opens.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Go to registration" }),
+      screen.getByRole("link", { name: "Create an account" }),
     ).toHaveAttribute("href", "/register");
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-    expect(screen.queryByRole("form")).not.toBeInTheDocument();
+    expect(screen.queryByText(/not open yet/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/forgot password/i)).not.toBeInTheDocument();
   });
 });
