@@ -7,7 +7,8 @@ the FR-FND-05 API pipeline. They do not deploy to Vercel or Utho.
 
 **Run every step in Sections 1–6 while the PR is still open, before merging it
 to `main`.** The staging workflow fires on the merge itself, so Artifact
-Registry, both service accounts, Workload Identity Federation, `MONGODB_URI`,
+Registry, all three service accounts, Workload Identity Federation,
+`MONGODB_URI_STAGING`, `MONGODB_URI_PRODUCTION`,
 `JWT_SECRET`, `VENDOR_IDENTIFIER_HMAC_SECRET`, `CLIENT_IDENTIFIER_HMAC_SECRET`, the per-service `CORS_ORIGINS`
 values, the GitHub repository variables, and the protected `production`
 environment must already exist. Before enabling real email delivery, also
@@ -26,13 +27,15 @@ $ArtifactRepository = "eqplus-api"
 $PoolId = "github-actions"
 $ProviderId = "eqourseplus"
 $DeployServiceAccountId = "github-eqplus-deployer"
-$RuntimeServiceAccountId = "eqplus-api-runtime"
+$StagingRuntimeServiceAccountId = "eqplus-api-staging-runtime"
+$ProductionRuntimeServiceAccountId = "eqplus-api-runtime"
 $GitHubRepository = "eQOURSE/eqourseplus"
 
 gcloud config set project $ProjectId
 $ProjectNumber = gcloud projects describe $ProjectId --format="value(projectNumber)"
 $DeployServiceAccount = "$DeployServiceAccountId@$ProjectId.iam.gserviceaccount.com"
-$RuntimeServiceAccount = "$RuntimeServiceAccountId@$ProjectId.iam.gserviceaccount.com"
+$StagingRuntimeServiceAccount = "$StagingRuntimeServiceAccountId@$ProjectId.iam.gserviceaccount.com"
+$ProductionRuntimeServiceAccount = "$ProductionRuntimeServiceAccountId@$ProjectId.iam.gserviceaccount.com"
 ```
 
 The project must print a non-empty numeric project number before continuing:
@@ -41,7 +44,7 @@ The project must print a non-empty numeric project number before continuing:
 $ProjectNumber
 ```
 
-## 2. Create Artifact Registry and the two service accounts
+## 2. Create Artifact Registry and the three service accounts
 
 The deploy identity and Cloud Run runtime identity are deliberately separate.
 The running API therefore cannot push images or administer Cloud Run.
@@ -57,9 +60,13 @@ gcloud iam service-accounts create $DeployServiceAccountId `
   --project=$ProjectId `
   --display-name="GitHub deployer for eQOURSE+ API"
 
-gcloud iam service-accounts create $RuntimeServiceAccountId `
+gcloud iam service-accounts create $StagingRuntimeServiceAccountId `
   --project=$ProjectId `
-  --display-name="Cloud Run runtime for eQOURSE+ API"
+  --display-name="Staging runtime for eQOURSE+ API"
+
+gcloud iam service-accounts create $ProductionRuntimeServiceAccountId `
+  --project=$ProjectId `
+  --display-name="Production runtime for eQOURSE+ API"
 ```
 
 Grant only the deployment permissions needed by the workflow:
@@ -75,7 +82,12 @@ gcloud artifacts repositories add-iam-policy-binding $ArtifactRepository `
   --member="serviceAccount:$DeployServiceAccount" `
   --role="roles/artifactregistry.writer"
 
-gcloud iam service-accounts add-iam-policy-binding $RuntimeServiceAccount `
+gcloud iam service-accounts add-iam-policy-binding $StagingRuntimeServiceAccount `
+  --project=$ProjectId `
+  --member="serviceAccount:$DeployServiceAccount" `
+  --role="roles/iam.serviceAccountUser"
+
+gcloud iam service-accounts add-iam-policy-binding $ProductionRuntimeServiceAccount `
   --project=$ProjectId `
   --member="serviceAccount:$DeployServiceAccount" `
   --role="roles/iam.serviceAccountUser"
@@ -121,13 +133,28 @@ For each command below, paste the requested raw value directly into the terminal
 then send end-of-input. In Windows PowerShell, press Enter, then `Ctrl+Z`, then
 Enter. In a Unix-like terminal, press Enter, then `Ctrl+D`.
 
-First, create the database secret using the complete connection string without
-an `MONGODB_URI=` prefix or surrounding quotes:
+The two Cloud Run services must never share a database credential. Create an
+explicitly production-named secret and, at the secure prompt, paste the current
+production connection string from the password manager or Atlas. Do not print
+or copy it through chat, a ticket, source control, or shell history:
 
 ```powershell
-gcloud secrets create MONGODB_URI --replication-policy=automatic --data-file=- `
+gcloud secrets create MONGODB_URI_PRODUCTION --replication-policy=automatic --data-file=- `
   --project=$ProjectId
 ```
+
+After completing the Atlas staging steps in Section 4.1, create the staging
+secret by pasting its complete connection string, including the dedicated
+`eqplus_staging` database name. Paste only the URI, with no `MONGODB_URI=` prefix
+or surrounding quotes:
+
+```powershell
+gcloud secrets create MONGODB_URI_STAGING --replication-policy=automatic --data-file=- `
+  --project=$ProjectId
+```
+
+Do not reuse the production URI, production database user, or production
+database name in `MONGODB_URI_STAGING`.
 
 Next, create the JWT signing secret using a password-manager-generated random
 value of at least 32 characters, without a `JWT_SECRET=` prefix or surrounding
@@ -168,34 +195,133 @@ Rotating `CLIENT_IDENTIFIER_HMAC_SECRET` invalidates the client
 digest and rebuild that index as one coordinated migration before changing the
 runtime secret; changing only the Secret Manager value is unsafe.
 
-Grant only the Cloud Run runtime identity access to these four secrets:
+Grant each database secret only to its matching Cloud Run runtime identity:
 
 ```powershell
-gcloud secrets add-iam-policy-binding MONGODB_URI `
+gcloud secrets add-iam-policy-binding MONGODB_URI_STAGING `
   --project=$ProjectId `
-  --member="serviceAccount:$RuntimeServiceAccount" `
+  --member="serviceAccount:$StagingRuntimeServiceAccount" `
   --role="roles/secretmanager.secretAccessor"
 
-gcloud secrets add-iam-policy-binding JWT_SECRET `
+gcloud secrets add-iam-policy-binding MONGODB_URI_PRODUCTION `
   --project=$ProjectId `
-  --member="serviceAccount:$RuntimeServiceAccount" `
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud secrets add-iam-policy-binding VENDOR_IDENTIFIER_HMAC_SECRET `
-  --project=$ProjectId `
-  --member="serviceAccount:$RuntimeServiceAccount" `
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud secrets add-iam-policy-binding CLIENT_IDENTIFIER_HMAC_SECRET `
-  --project=$ProjectId `
-  --member="serviceAccount:$RuntimeServiceAccount" `
+  --member="serviceAccount:$ProductionRuntimeServiceAccount" `
   --role="roles/secretmanager.secretAccessor"
 ```
 
-Per SPEC.md Section 20.1, the development-only Atlas cluster must permit the
-Cloud Run connection using the documented temporary `0.0.0.0/0` decision,
-SCRAM least-privilege credentials, and TLS. Never apply that rule to a cluster
-holding real user data.
+Both runtime identities still need the shared JWT, identifier-HMAC, and existing
+R2 credential secrets. Grant those common secrets to each identity without
+granting either identity the other environment's database secret:
+
+```powershell
+foreach ($RuntimePrincipal in @($StagingRuntimeServiceAccount, $ProductionRuntimeServiceAccount)) {
+  gcloud secrets add-iam-policy-binding JWT_SECRET `
+    --project=$ProjectId `
+    --member="serviceAccount:$RuntimePrincipal" `
+    --role="roles/secretmanager.secretAccessor"
+
+  gcloud secrets add-iam-policy-binding VENDOR_IDENTIFIER_HMAC_SECRET `
+    --project=$ProjectId `
+    --member="serviceAccount:$RuntimePrincipal" `
+    --role="roles/secretmanager.secretAccessor"
+
+  gcloud secrets add-iam-policy-binding CLIENT_IDENTIFIER_HMAC_SECRET `
+    --project=$ProjectId `
+    --member="serviceAccount:$RuntimePrincipal" `
+    --role="roles/secretmanager.secretAccessor"
+
+  gcloud secrets add-iam-policy-binding R2_ACCESS_KEY_ID `
+    --project=$ProjectId `
+    --member="serviceAccount:$RuntimePrincipal" `
+    --role="roles/secretmanager.secretAccessor"
+
+  gcloud secrets add-iam-policy-binding R2_SECRET_ACCESS_KEY `
+    --project=$ProjectId `
+    --member="serviceAccount:$RuntimePrincipal" `
+    --role="roles/secretmanager.secretAccessor"
+}
+```
+
+### 4.1 Create the isolated Atlas staging database (Bhavesh)
+
+Only an Atlas administrator can complete these steps. Do them before creating
+`MONGODB_URI_STAGING` or merging this change:
+
+1. In Atlas, create the separate `eqplus-staging` project and a staging
+   deployment inside it. Do not place it in the production Atlas project.
+   Choose the same cloud and nearest India
+   region used by production to keep network behaviour representative.
+2. In **Database & Network Access → Database Users**, create a distinct SCRAM
+   database user named `eqplus-staging-api`. Give it the least privilege
+   `readWrite` role on the `eqplus_staging` database only. It must have no role
+   on the production database and must not reuse the production password.
+3. In **Database & Network Access → IP Access List**, allow only the static
+   public IP used by the GCP VPC/Cloud NAT path for `eqplus-api-staging`.
+   Do not add `0.0.0.0/0` and do not allow a developer workstation permanently.
+4. In **Connect → Drivers**, copy the TLS/SRV connection string for the staging
+   user. Replace the password placeholder locally and make the path database
+   name `/eqplus_staging` (before the query string). Do not paste it into chat,
+   a ticket, source control, or shell history.
+5. Create `MONGODB_URI_STAGING` from that URI using the secure prompt above.
+   Keep the existing production data where it is: do not copy production data,
+   company documents, bank details, users, or OTP/session records into staging.
+
+The workflow maps each Secret Manager secret to the same runtime environment
+variable name: staging receives `MONGODB_URI_STAGING`; production receives
+`MONGODB_URI_PRODUCTION`. The old generic `MONGODB_URI` is retained temporarily
+for rollback only and may be disabled after both services have been verified.
+
+### 4.2 Create and verify the staging schema and index parity
+
+Use a trusted local checkout of the exact commit being deployed. Supply each URI
+only for the duration of its command; never save either URI in a repository
+file. First run the committed migrations against staging twice—the second run
+proves they are cleanly idempotent—and check status:
+
+```powershell
+$env:MONGODB_URI = gcloud secrets versions access latest --secret=MONGODB_URI_STAGING --project=$ProjectId
+pnpm --filter @eqourse/api db:migrate
+pnpm --filter @eqourse/api db:migrate
+pnpm --filter @eqourse/api db:migrate:status
+Remove-Item Env:MONGODB_URI
+```
+
+Run `db:migrate:status` against production as a read-only comparison. Do not run
+a production migration from this setup task:
+
+```powershell
+$env:MONGODB_URI = gcloud secrets versions access latest --secret=MONGODB_URI_PRODUCTION --project=$ProjectId
+pnpm --filter @eqourse/api db:migrate:status
+Remove-Item Env:MONGODB_URI
+```
+
+After the first staging API revision has started, compare the effective index
+manifests in Atlas Data Explorer. For every application collection shown in
+production, run `db.<collection>.getIndexes()` in the Atlas mongosh for both
+databases and compare the complete definitions: name, key order, `unique`,
+`sparse`, partial filter, collation, and TTL. Include `_id_`; ignore only the
+database name embedded in diagnostic output. The collection set and every index
+definition must match.
+
+If the comparison differs, stop. Add the missing or corrected index as a
+reviewed `migrate-mongo` migration, apply it to staging, and compare again.
+Never use `syncIndexes()` or manually drop a production index as a shortcut:
+both can remove a live constraint, and a manual Atlas-only fix would drift from
+the repository. Production migration remains separately approval-gated.
+
+### 4.3 Skill taxonomy decision (not executed by this change)
+
+The production database currently contains 3 taxonomy rows while the committed
+FR-FND-03A seed contains 59. Do not clone those 3 production rows into staging,
+and never make `db:seed` an automatic deploy or application-startup step.
+
+Proposal: after index parity is green, run the existing idempotent `db:seed`
+command on staging first, confirm exactly 59 unique slugs and exercise taxonomy
+selection there. Export or otherwise record the current three-row production
+state, then schedule that seed commit for production under explicit approval.
+Because the seed upserts by slug and does not hard-delete rows, this
+gives staging validation without silently mutating production. No seed command
+is run or wired into CI by this PR.
 
 ## 5. Confirm the non-secret runtime configuration and set repository variables
 
@@ -267,7 +393,8 @@ gcloud iam workload-identity-pools providers describe $ProviderId `
   --workload-identity-pool=$PoolId `
   --format="yaml(name,attributeMapping,attributeCondition)"
 
-gcloud secrets describe MONGODB_URI --project=$ProjectId
+gcloud secrets describe MONGODB_URI_STAGING --project=$ProjectId
+gcloud secrets describe MONGODB_URI_PRODUCTION --project=$ProjectId
 gcloud secrets describe JWT_SECRET --project=$ProjectId
 gcloud secrets describe VENDOR_IDENTIFIER_HMAC_SECRET --project=$ProjectId
 gcloud secrets describe CLIENT_IDENTIFIER_HMAC_SECRET --project=$ProjectId
@@ -283,11 +410,12 @@ reviewer. Only then merge the PR.
 The staging job builds and pushes the commit-SHA image, deploys
 `eqplus-api-staging` in `asia-south1` with `min-instances=0`, public invocation,
 `CORS_ORIGINS=http://localhost:3000` as non-secret runtime configuration,
-Secret Manager injection for `MONGODB_URI`, `JWT_SECRET`, and
+Secret Manager injection for staging-only `MONGODB_URI`, `JWT_SECRET`, and
 `VENDOR_IDENTIFIER_HMAC_SECRET`, `CLIENT_IDENTIFIER_HMAC_SECRET`, plus HTTP startup/liveness probes. It then
 calls `/health` and fails if the endpoint does not return a successful response.
 Production receives
-`CORS_ORIGINS=https://plus.eqourse.com` only after manual approval.
+`CORS_ORIGINS=https://plus.eqourse.com` and its production-only `MONGODB_URI`
+only after manual approval.
 
 After that succeeds, the `Deploy production API` job must be visibly waiting
 for approval. Approve it only when you intend to promote that exact commit image.
@@ -393,7 +521,7 @@ gcloud secrets create RESEND_API_KEY --replication-policy=automatic --data-file=
 
 gcloud secrets add-iam-policy-binding RESEND_API_KEY `
   --project=$ProjectId `
-  --member="serviceAccount:$RuntimeServiceAccount" `
+  --member="serviceAccount:$ProductionRuntimeServiceAccount" `
   --role="roles/secretmanager.secretAccessor"
 ```
 
