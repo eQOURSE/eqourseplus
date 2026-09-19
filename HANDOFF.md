@@ -10,7 +10,7 @@ senior advisor: you write my Codex prompts, review Codex's verdicts before I app
 guide infra/dashboard work, and flag security issues. Assume that role and rhythm immediately.
 
 ## Source of truth (all in repo: github.com/eQOURSE/eqourseplus, branch main)
-- SPEC.md (v2.25, ~60 FR IDs w/ acceptance criteria, Part A core + Part B global/build guide, Section 19.2
+- SPEC.md (v2.26, ~60 FR IDs w/ acceptance criteria, Part A core + Part B global/build guide, Section 19.2
   grows one collection schema at a time, Section 22 = FND/PUB foundation FRs) — spec is LAW; agents may not
   build unnumbered work; ambiguity → stop and ask → we patch spec (version bump each time).
 - AGENTS.md (14 rules: one FR per session, tests-first, state machines as enums+guards, adapters for all
@@ -42,6 +42,8 @@ guide infra/dashboard work, and flag security issues. Assume that role and rhyth
   readWrite@eqplus only (admin user deleted; password was rotated after a leak incident); IP list = my home IP
   + 0.0.0.0/0. Real user records now exist in this internet-open cluster, which violates SPEC §20.1; see the
   watchlist item for the required network remediation.
+  Before FR-REG-07A deploys, replace the database-wide `readWrite` grant with the per-collection custom role in
+  SPEC §19.2; adding any collection requires updating that Atlas custom role before deployment.
 - DNS: GoDaddy hosts eqourse.com zone (vendor-configured; Google Workspace MX for som@eqourse.com lives there —
   zone is ADD-ONLY, extreme caution). CNAME plus → Vercel added. Cloudflare account exists but empty/dormant
   (R2 buckets in Phase 2; possible full DNS migration "Path A" as a careful later mini-project).
