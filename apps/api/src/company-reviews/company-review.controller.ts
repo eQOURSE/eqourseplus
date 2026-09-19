@@ -10,18 +10,17 @@ import {
   Req,
 } from "@nestjs/common";
 import {
-  Role,
   companyReviewDecisionSchema,
   type CompanyReviewDecisionInput,
 } from "@eqourse/shared";
 
 import type { AuthenticatedRequest } from "../auth/auth.types";
-import { Roles } from "../auth/roles.decorator";
+import { CompanyVerifier } from "../auth/roles.decorator";
 import { ZodBodyPipe } from "../auth/zod-body.pipe";
 import { CompanyReviewService } from "./company-review.service";
 
 @Controller("api/v1/company-reviews")
-@Roles(Role.VERIFIER)
+@CompanyVerifier()
 export class CompanyReviewController {
   constructor(
     @Inject(CompanyReviewService)

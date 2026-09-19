@@ -98,7 +98,7 @@ export class CompanyReviewService {
   }
 
   async detail(type: CompanyType, id: string): Promise<Record<string, unknown>> {
-    const record = await this.find(type, id);
+    const record = await this.findReviewable(type, id);
     return this.authorisedDetail(record);
   }
 
@@ -107,7 +107,7 @@ export class CompanyReviewService {
     id: string,
     kind: string,
   ): Promise<{ url: string; expiresAt: string }> {
-    const record = await this.find(type, id);
+    const record = await this.findReviewable(type, id);
     const documents = [
       ...record.documents,
       ...(type === "clients" &&
@@ -225,6 +225,25 @@ export class CompanyReviewService {
     return record;
   }
 
+  private async findReviewable(
+    type: CompanyType,
+    id: string,
+  ): Promise<CompanyDocument> {
+    const record = await this.find(type, id);
+    const reviewable =
+      type === "vendors"
+        ? [VendorState.SUBMITTED, VendorState.UNDER_REVIEW].includes(
+            record.state as VendorState,
+          )
+        : [ClientState.SUBMITTED, ClientState.UNDER_REVIEW].includes(
+            record.state as ClientState,
+          );
+    if (!reviewable) {
+      throw new NotFoundException("Company is not available for review");
+    }
+    return record;
+  }
+
   private async conditionalTransition(
     type: CompanyType,
     id: string,
@@ -339,6 +358,19 @@ export class CompanyReviewService {
   ): void {
     const normalizedReason = normalize(reason);
     const knownValues = collectStrings(record.toObject());
+    if (/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i.test(reason)) {
+      throw new BadRequestException(
+        "Reason must not contain an email address",
+      );
+    }
+    if (hasPhonePattern(reason)) {
+      throw new BadRequestException("Reason must not contain a phone number");
+    }
+    if (hasCountryIdentifierPattern(reason)) {
+      throw new BadRequestException(
+        "Reason must not contain a country identifier",
+      );
+    }
     if (
       knownValues.some((value) => {
         const normalizedValue = normalize(value);
@@ -346,13 +378,10 @@ export class CompanyReviewService {
           normalizedValue.length >= 5 &&
           normalizedReason.includes(normalizedValue)
         );
-      }) ||
-      /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i.test(reason) ||
-      /(?:^|\s)\+?\d[\d\s().-]{7,}\d(?:\s|$)/.test(reason) ||
-      hasCountryIdentifierPattern(reason)
+      })
     ) {
       throw new BadRequestException(
-        "Reason must not contain reviewed or identifying data",
+        "Reason must not copy a value from the reviewed company",
       );
     }
     // Pattern matching cannot identify every possible piece of PII. Verifiers
@@ -401,4 +430,11 @@ function hasCountryIdentifierPattern(reason: string): boolean {
     const compact = candidate.replace(/[^A-Z0-9]/gi, "");
     return /[A-Z]/i.test(compact) && /\d/.test(compact);
   });
+}
+
+function hasPhonePattern(reason: string): boolean {
+  const candidates = reason.match(/(?:^|\s)\+?\d[\d\s().-]{7,}\d(?=\s|$)/g) ?? [];
+  return candidates.some(
+    (candidate) => candidate.replace(/\D/g, "").length >= 10,
+  );
 }

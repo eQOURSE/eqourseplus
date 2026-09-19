@@ -157,6 +157,7 @@ describe("FR-REG-07A company review API", () => {
 
   it("refuses an authenticated non-Verifier and an unauthenticated caller", async () => {
     const ordinary = await user(Role.CLIENT);
+    const superAdmin = await user(Role.SUPER_ADMIN);
     const record = await company("clients");
     await request(app.getHttpServer()).get("/api/v1/company-reviews").expect(401);
     await request(app.getHttpServer()).get("/api/v1/company-reviews").set(auth(ordinary.token)).expect(403);
@@ -165,6 +166,10 @@ describe("FR-REG-07A company review API", () => {
     await request(app.getHttpServer())
       .get(`${path("clients", record.id)}/documents/INCORPORATION/url`)
       .set(auth(ordinary.token))
+      .expect(403);
+    await request(app.getHttpServer())
+      .get("/api/v1/company-reviews")
+      .set(auth(superAdmin.token))
       .expect(403);
   });
 
@@ -217,6 +222,19 @@ describe("FR-REG-07A company review API", () => {
       documents: [{ objectKey: record.document.objectKey }],
     });
     expect(JSON.stringify(detail.body)).not.toContain("lookupDigest");
+  });
+
+  it("does not expose a draft company's record or documents to a Verifier", async () => {
+    const verifier = await user(Role.VERIFIER);
+    const draftClient = await company("clients", ClientState.DRAFT);
+    await request(app.getHttpServer())
+      .get(path("clients", draftClient.id))
+      .set(auth(verifier.token))
+      .expect(404);
+    await request(app.getHttpServer())
+      .get(`${path("clients", draftClient.id)}/documents/INCORPORATION/url`)
+      .set(auth(verifier.token))
+      .expect(404);
   });
 
   it("reports a referenced but absent R2 object instead of issuing a broken link", async () => {
@@ -495,19 +513,26 @@ describe("FR-REG-07A company review API", () => {
 
   // Pattern checks cannot catch every possible PII disclosure; verifiers must still avoid copying reviewed data.
   it.each([
-    "DE 123-456-789",
-    "private@EXAMPLE.test",
-    "+4915112345678",
-    "Private   Example GmbH",
-    "billing@unrelated.example",
-    "+447700900123",
-    "27ABCDE1234F1Z5",
+    ["DE 123-456-789", "Reason must not copy a value from the reviewed company"],
+    ["private@EXAMPLE.test", "Reason must not contain an email address"],
+    ["+4915112345678", "Reason must not contain a phone number"],
+    ["Private   Example GmbH", "Reason must not copy a value from the reviewed company"],
+    ["billing@unrelated.example", "Reason must not contain an email address"],
+    ["+447700900123", "Reason must not contain a phone number"],
+    ["27ABCDE1234F1Z5", "Reason must not contain a country identifier"],
   ])(
     "rejects a reason containing reviewed PII: %s",
-    async (value) => {
+    async (value, message) => {
       const verifier = await user(Role.VERIFIER);
       const record = await company("clients");
-      await decide("clients", record.id, verifier.token, "START_REVIEW", `Checked ${value}`).expect(400);
+      const response = await decide(
+        "clients",
+        record.id,
+        verifier.token,
+        "START_REVIEW",
+        `Checked ${value}`,
+      ).expect(400);
+      expect(response.body.message).toBe(message);
       expect((await clients.findById(record.id).lean())?.state).toBe(ClientState.SUBMITTED);
       expect(await connection.collection("auditLogs").countDocuments({})).toBe(0);
     },
