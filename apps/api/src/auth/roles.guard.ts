@@ -9,14 +9,14 @@ import { Role } from "@eqourse/shared";
 
 import { REQUIRED_ROLE } from "./auth.constants";
 import type { AuthenticatedRequest } from "./auth.types";
-import type { RequiredRole } from "./roles.decorator";
+import type { RoleRequirement } from "./roles.decorator";
 
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(@Inject(Reflector) private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const requirement = this.reflector.getAllAndOverride<RequiredRole>(
+    const requirement = this.reflector.getAllAndOverride<RoleRequirement>(
       REQUIRED_ROLE,
       [context.getHandler(), context.getClass()],
     );
@@ -26,6 +26,11 @@ export class RolesGuard implements CanActivate {
       .switchToHttp()
       .getRequest<AuthenticatedRequest>().authUser;
     if (!user) return false;
+    if ("companyVerification" in requirement) {
+      return user.roleAssignments.some(
+        (assignment) => assignment.role === Role.VERIFIER,
+      );
+    }
     if (
       user.roleAssignments.some(
         (assignment) => assignment.role === Role.SUPER_ADMIN,

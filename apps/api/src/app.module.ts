@@ -9,6 +9,7 @@ import { APP_FILTER } from "@nestjs/core";
 
 import { AuthModule } from "./auth/auth.module";
 import { ClientsModule } from "./clients/clients.module";
+import { CompanyReviewsModule } from "./company-reviews/company-reviews.module";
 import { DatabaseModule } from "./database/database.module";
 import { HealthController } from "./health.controller";
 import { RequestIdMiddleware } from "./observability/request-id.middleware";
@@ -21,6 +22,7 @@ import { VendorsModule } from "./vendors/vendors.module";
     DatabaseModule,
     AuthModule,
     ClientsModule,
+    CompanyReviewsModule,
     VendorsModule,
     SkillTaxonomyModule,
   ],

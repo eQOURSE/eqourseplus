@@ -1,9 +1,16 @@
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
   SandboxStorageAdapter,
   type SignedUpload,
   type SignedUploadRequest,
+  type SignedGet,
+  type SignedGetRequest,
   type StorageAdapter,
 } from "@eqourse/adapters";
 
@@ -46,6 +53,40 @@ export class R2StorageAdapter implements StorageAdapter {
       signableHeaders: new Set(["content-length", "content-type"]),
     });
     return { url };
+  }
+
+  async objectExists(objectKey: string): Promise<boolean> {
+    try {
+      await this.client.send(
+        new HeadObjectCommand({
+          Bucket: this.config.bucket,
+          Key: objectKey,
+        }),
+      );
+      return true;
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.name === "NotFound" ||
+          (error as Error & { $metadata?: { httpStatusCode?: number } }).$metadata
+            ?.httpStatusCode === 404)
+      ) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  async createSignedGetUrl(request: SignedGetRequest): Promise<SignedGet> {
+    const command = new GetObjectCommand({
+      Bucket: this.config.bucket,
+      Key: request.objectKey,
+    });
+    return {
+      url: await this.presign(this.client, command, {
+        expiresIn: request.expiresInSeconds,
+      }),
+    };
   }
 }
 
