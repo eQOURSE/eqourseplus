@@ -34,7 +34,12 @@ describe("FR-REG-07A company review API", () => {
     await app.init();
     vendors = app.get<Model<VendorRecord>>(getModelToken("Vendor"));
     clients = app.get<Model<ClientRecord>>(getModelToken("Client"));
-    await connection.db!.createCollection("auditLogs");
+    const auditCollectionExists = await connection.db!
+      .listCollections({ name: "auditLogs" }, { nameOnly: true })
+      .hasNext();
+    // The fallback keeps the red suite runnable before the module exists. It creates
+    // no indexes, so the index test still fails if the application stops owning them.
+    if (!auditCollectionExists) await connection.db!.createCollection("auditLogs");
   }, 90_000);
 
   beforeEach(async () => {
@@ -280,6 +285,115 @@ describe("FR-REG-07A company review API", () => {
     expect((await clients.findById(record.id).lean()).state).toBe(ClientState.UNDER_REVIEW);
   });
 
+  it("refuses decisions outside the existing client and vendor state machines", async () => {
+    const verifier = await user(Role.VERIFIER);
+    const submittedClient = await company("clients");
+    await decide(
+      "clients",
+      submittedClient.id,
+      verifier.token,
+      "APPROVE",
+      "Documents accepted",
+    ).expect(400);
+    expect((await clients.findById(submittedClient.id).lean())?.state).toBe(
+      ClientState.SUBMITTED,
+    );
+    expect(await connection.collection("auditLogs").countDocuments({
+      subjectId: new Types.ObjectId(submittedClient.id),
+    })).toBe(0);
+
+    const approvedClient = await company("clients");
+    await decide(
+      "clients",
+      approvedClient.id,
+      verifier.token,
+      "START_REVIEW",
+      "Opening company review",
+    ).expect(201);
+    await decide(
+      "clients",
+      approvedClient.id,
+      verifier.token,
+      "APPROVE",
+      "Documents accepted",
+    ).expect(201);
+    await decide(
+      "clients",
+      approvedClient.id,
+      verifier.token,
+      "REJECT",
+      "A later conflicting decision",
+    ).expect(400);
+    expect((await clients.findById(approvedClient.id).lean())?.state).toBe(
+      ClientState.APPROVED,
+    );
+
+    const rejectedVendor = await company("vendors");
+    await decide(
+      "vendors",
+      rejectedVendor.id,
+      verifier.token,
+      "START_REVIEW",
+      "Opening company review",
+    ).expect(201);
+    await decide(
+      "vendors",
+      rejectedVendor.id,
+      verifier.token,
+      "REJECT",
+      "Documents could not be accepted",
+    ).expect(201);
+    await decide(
+      "vendors",
+      rejectedVendor.id,
+      verifier.token,
+      "REQUEST_MORE_INFO",
+      "A later conflicting decision",
+    ).expect(400);
+    expect((await vendors.findById(rejectedVendor.id).lean())?.state).toBe(
+      VendorState.REJECTED,
+    );
+  });
+
+  it("allows only one of two concurrent verifier decisions on the same state", async () => {
+    const firstVerifier = await user(Role.VERIFIER, BusinessUnit.EQOURSE);
+    const secondVerifier = await user(Role.VERIFIER, BusinessUnit.TUTRAIN);
+    const record = await company("clients");
+    await decide(
+      "clients",
+      record.id,
+      firstVerifier.token,
+      "START_REVIEW",
+      "Opening company review",
+    ).expect(201);
+
+    const [approval, rejection] = await Promise.all([
+      decide(
+        "clients",
+        record.id,
+        firstVerifier.token,
+        "APPROVE",
+        "Documents accepted",
+      ),
+      decide(
+        "clients",
+        record.id,
+        secondVerifier.token,
+        "REJECT",
+        "Documents could not be accepted",
+      ),
+    ]);
+    expect([approval.status, rejection.status].sort()).toEqual([201, 400]);
+    const stored = await clients.findById(record.id).lean();
+    expect([ClientState.APPROVED, ClientState.REJECTED]).toContain(stored?.state);
+    const terminalEntries = await connection.collection("auditLogs").find({
+      subjectId: new Types.ObjectId(record.id),
+      toState: { $in: [ClientState.APPROVED, ClientState.REJECTED] },
+    }).toArray();
+    expect(terminalEntries).toHaveLength(1);
+    expect(terminalEntries[0]?.toState).toBe(stored?.state);
+  });
+
   it("approves a client and inserts one exact-shape audit entry with actor and reason", async () => {
     const verifier = await user(Role.VERIFIER);
     const record = await company("clients");
@@ -374,7 +488,7 @@ describe("FR-REG-07A company review API", () => {
       reason: "Opening company review",
       occurredAt: new Date(),
     })).rejects.toMatchObject({ code: 121 });
-    await decide("clients", record.id, verifier.token, "START_REVIEW", "Opening company review").expect(500);
+    await decide("clients", record.id, verifier.token, "START_REVIEW", "Opening company review").expect(503);
     expect((await clients.findById(record.id).lean())?.state).toBe(ClientState.SUBMITTED);
     expect(await connection.collection("auditLogs").countDocuments({ subjectId: new Types.ObjectId(record.id) })).toBe(0);
   });
