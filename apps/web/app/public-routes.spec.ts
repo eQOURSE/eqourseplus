@@ -12,6 +12,7 @@ import {
 const ALL_PUBLIC_ROUTES = [
   "/",
   "/about",
+  "/company-reviews",
   "/design-system",
   "/freelancers",
   "/jobs",
@@ -27,7 +28,11 @@ function pagePaths(route: string): string[] {
   const directPath = route === "/"
     ? resolve(process.cwd(), "app/page.tsx")
     : resolve(process.cwd(), `app${route}/page.tsx`);
-  return [directPath];
+  const authenticatedPath = resolve(
+    process.cwd(),
+    `app/(authenticated)${route}/page.tsx`,
+  );
+  return [directPath, authenticatedPath];
 }
 
 function routePageExists(route: string): boolean {
@@ -64,6 +69,11 @@ describe("public route registry", () => {
     expect(EXCLUDED_ROUTES).toContain("/register/client");
     expect(RESOLVING_ROUTES).not.toContain("/register/vendor");
     expect(RESOLVING_ROUTES).not.toContain("/register/client");
+  });
+
+  it("keeps the authenticated verification console excluded and out of the sitemap", () => {
+    expect(EXCLUDED_ROUTES).toContain("/company-reviews");
+    expect(RESOLVING_ROUTES).not.toContain("/company-reviews");
   });
 
   it("lists a route as resolving only when its page exists", () => {
