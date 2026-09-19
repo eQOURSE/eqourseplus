@@ -229,6 +229,368 @@ margin: 0;
   }
 }
 
+.company-review-console {
+  display: grid;
+  gap: 2rem;
+}
+
+.company-review-header {
+  max-width: 48rem;
+}
+
+.company-review-header h1 {
+  margin: 0.35rem 0 0.75rem;
+  color: hsl(var(--foreground));
+  font-family: var(--font-heading);
+  font-size: clamp(2.25rem, 5vw, 4.5rem);
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+
+.company-review-header > p:last-child,
+.company-review-record-header p,
+.company-review-facts > p,
+.company-review-reason-meta p {
+  color: hsl(var(--muted-foreground));
+  line-height: 1.6;
+}
+
+.company-review-eyebrow {
+  margin: 0;
+  color: hsl(var(--primary));
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.company-review-layout {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.75fr) minmax(0, 1.6fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.company-review-queue,
+.company-review-detail {
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+  border: 1px solid hsl(var(--border) / 0.72);
+  border-radius: calc(var(--radius) * 1.5);
+  box-shadow: var(--shadow-card);
+}
+
+.company-review-queue {
+  position: sticky;
+  top: 1rem;
+}
+
+.company-review-panel-heading,
+.company-review-record-header,
+.company-review-list-topline,
+.company-review-reason-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.company-review-panel-heading h2,
+.company-review-record-header h2,
+.company-review-facts h3,
+.company-review-decision h3,
+.company-review-detail-placeholder h2 {
+  margin: 0.25rem 0 0;
+  font-family: var(--font-heading);
+  color: hsl(var(--foreground));
+}
+
+.company-review-count {
+  display: grid;
+  place-items: center;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  border-radius: 999px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-weight: 800;
+}
+
+.company-review-list,
+.company-review-documents,
+.company-review-facts ul {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.company-review-list button {
+  display: grid;
+  gap: 0.55rem;
+  width: 100%;
+  min-height: 7rem;
+  padding: 1rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--card) / 0.72);
+  color: hsl(var(--foreground));
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-micro) var(--ease-standard),
+    transform var(--motion-hover) var(--ease-standard),
+    box-shadow var(--motion-hover) var(--ease-standard);
+}
+
+.company-review-list button:hover,
+.company-review-list button.is-selected {
+  border-color: hsl(var(--primary));
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-0.125rem);
+}
+
+.company-review-list button:focus-visible,
+.company-review-decision textarea:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.company-review-list code,
+.company-review-record-header code {
+  overflow-wrap: anywhere;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.78rem;
+}
+
+.company-review-list time,
+.company-review-documents span {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.85rem;
+}
+
+.company-review-state {
+  padding: 0.3rem 0.55rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.company-review-state--under_review {
+  border-color: hsl(var(--primary) / 0.45);
+  background: hsl(var(--accent) / 0.18);
+  color: hsl(var(--primary));
+}
+
+.company-review-detail-placeholder,
+.company-review-empty,
+.company-review-retry {
+  display: grid;
+  justify-items: start;
+  gap: 0.75rem;
+  min-height: 16rem;
+  align-content: center;
+}
+
+.company-review-detail-placeholder > span,
+.company-review-empty > span {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border: 1px solid hsl(var(--primary) / 0.4);
+  border-radius: 999px;
+  background: hsl(var(--accent) / 0.18);
+  color: hsl(var(--primary));
+  font-size: 1.35rem;
+}
+
+.company-review-record {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.company-review-record-header {
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.company-review-facts {
+  display: grid;
+  gap: 0.85rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.company-review-facts dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.company-review-facts dl > div {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.85rem;
+  border-radius: calc(var(--radius) * 0.8);
+  background: hsl(var(--surface-sunken) / 0.72);
+}
+
+.company-review-facts dt {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.company-review-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+.company-review-documents li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem 1rem;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--card) / 0.55);
+}
+
+.company-review-documents li > div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.company-review-documents li > p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+}
+
+.company-review-decision {
+  display: grid;
+  gap: 0.75rem;
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+  border: 1px solid hsl(var(--primary) / 0.42);
+  border-radius: var(--radius);
+  background: hsl(var(--accent) / 0.1);
+}
+
+.company-review-decision label {
+  font-family: var(--font-heading);
+  font-weight: 800;
+}
+
+.company-review-decision textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  padding: 0.9rem;
+  border: 1px solid hsl(var(--primary));
+  border-radius: var(--radius);
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  font: inherit;
+  line-height: 1.5;
+}
+
+.company-review-reason-meta p {
+  margin: 0;
+}
+
+.company-review-reason-meta span {
+  color: hsl(var(--muted-foreground));
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.company-review-decision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.company-review-error,
+.company-review-notice {
+  margin: 0;
+  padding: 0.75rem;
+  border-radius: calc(var(--radius) * 0.75);
+  line-height: 1.5;
+}
+
+.company-review-error {
+  border: 1px solid hsl(var(--destructive));
+  background: hsl(var(--destructive) / 0.08);
+  color: hsl(var(--destructive));
+}
+
+.company-review-notice {
+  border: 1px solid hsl(var(--primary) / 0.45);
+  background: hsl(var(--accent) / 0.16);
+  color: hsl(var(--foreground));
+}
+
+@media (max-width: 60rem) {
+  .company-review-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .company-review-queue {
+    position: static;
+  }
+
+  .company-review-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 40rem) {
+  .company-review-list,
+  .company-review-facts dl {
+    grid-template-columns: 1fr;
+  }
+
+  .company-review-panel-heading,
+  .company-review-record-header,
+  .company-review-reason-meta {
+    align-items: flex-start;
+  }
+
+  .company-review-record-header {
+    flex-direction: column;
+  }
+
+  .company-review-documents li {
+    grid-template-columns: 1fr;
+  }
+
+  .company-review-documents .eq-glass-button,
+  .company-review-decision-actions .eq-glass-button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .company-review-list button {
+    transition: none !important;
+  }
+
+  .company-review-list button:hover {
+    transform: none;
+  }
+}
+
 .home-shell {
   position: relative;
   isolation: isolate;

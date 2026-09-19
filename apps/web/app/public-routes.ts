@@ -6,6 +6,7 @@ export const RESOLVING_ROUTES = [
 ] as const;
 
 export const EXCLUDED_ROUTES = [
+  "/company-reviews",
   "/design-system",
   "/jobs",
   "/login",
