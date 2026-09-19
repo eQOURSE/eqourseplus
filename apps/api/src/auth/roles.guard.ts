@@ -36,7 +36,8 @@ export class RolesGuard implements CanActivate {
     return user.roleAssignments.some(
       (assignment) =>
         assignment.role === requirement.role &&
-        assignment.businessUnit === requirement.businessUnit,
+        (requirement.businessUnit === undefined ||
+          assignment.businessUnit === requirement.businessUnit),
     );
   }
 }
