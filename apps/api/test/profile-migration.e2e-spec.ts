@@ -143,4 +143,13 @@ describe("FR-REG-02B profiles migration", () => {
       usersBefore,
     );
   });
+
+  it("leaves the harmless legacy users profile-state index in place", async () => {
+    const users = db.collection("users");
+    await users.createIndex({ profileState: 1 }, { name: "users_profile_state" });
+
+    await migration().up(db);
+
+    expect(await users.indexExists("users_profile_state")).toBe(true);
+  });
 });

@@ -170,13 +170,6 @@ module.exports = {
       );
     }
 
-    if (await db.listCollections({ name: "users" }).hasNext()) {
-      const userIndexes = await db.collection("users").indexes();
-      const legacyStateIndex = userIndexes.find(
-        (index) => index.key && index.key.profileState === 1,
-      );
-      if (legacyStateIndex) await db.collection("users").dropIndex(legacyStateIndex.name);
-    }
   },
 
   async down() {

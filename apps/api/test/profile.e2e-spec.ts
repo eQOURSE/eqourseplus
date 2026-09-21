@@ -46,7 +46,7 @@ describe("FR-REG-02B authenticated profile draft API", () => {
 
   async function account(email: string) {
     const userId = new Types.ObjectId();
-    const now = new Date("2026-09-21T09:00:00.000Z");
+    const now = new Date();
     await connection.collection("users").insertOne({
       _id: userId,
       email,

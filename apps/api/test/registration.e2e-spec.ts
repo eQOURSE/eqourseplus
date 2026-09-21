@@ -533,11 +533,6 @@ describe("FR-REG-01 freelancer registration API", () => {
       expect.objectContaining({ key: { pan: 1 }, unique: true, sparse: true }),
       expect.objectContaining({ key: { "deviceFingerprints.hash": 1 } }),
     ]));
-    expect(indexes).not.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ key: { profileState: 1 } }),
-      ]),
-    );
   });
 
   it("migrates legacy users without inventing countryCode", async () => {
