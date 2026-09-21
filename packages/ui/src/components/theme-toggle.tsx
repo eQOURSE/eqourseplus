@@ -102,7 +102,9 @@ export function ThemeToggle() {
 
     try {
       persistTheme(window.localStorage, nextTheme);
-    } catch {}
+    } catch {
+      // Storage can be unavailable in privacy-restricted browser contexts.
+    }
   };
 
   return (

@@ -27,8 +27,8 @@ export function FeaturesSection() {
                   <li key={bullet}>{bullet}</li>
                 ))}
               </ul>
-              <Link className=" eq-glass-button--secondary eq-glass-surface eq-glass-tier-regular home-cta" href={pillar.href}>{pillar.cta}<span aria-hidden="true">→</span></Link>
-              {/* <Link className="home-inline-link" href={pillar.moreHref}>{pillar.more} →</Link> */}
+              <Link className="eq-glass-button eq-glass-button--secondary eq-glass-surface eq-glass-tier-regular home-cta" href={pillar.href}>{pillar.cta}<span aria-hidden="true">→</span></Link>
+              <Link className="home-inline-link" href={pillar.moreHref}>{pillar.more} →</Link>
             </article>
           ))}
         </div>
