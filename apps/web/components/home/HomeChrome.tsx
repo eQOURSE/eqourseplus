@@ -34,7 +34,7 @@ export function HomeHeader() {
           <a href="/about">About</a>
         </div>
         <div className={styles.headerActions}>
-          <span className={styles.themeControl}><PublicThemeToggle /></span>
+          <PublicThemeToggle />
           <Link href="/login">Login</Link>
           <Link className={styles.exploreButton} href="/register/client">Explore Platform</Link>
         </div>

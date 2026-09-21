@@ -239,7 +239,7 @@ describe("FR-PUB-01 home page", () => {
   it("gives CTA anchors the deep plate, gel press, and focus contract", () => {
     render(<HomePage />);
     const primaryCta = screen.getByRole("link", {
-      name: "Apply as an Expert (Work Remotely)",
+      name: "Apply as an Expert",
     });
 
     expect(primaryCta).toHaveClass(
@@ -261,11 +261,20 @@ describe("FR-PUB-01 home page", () => {
     );
   });
 
+  it("uses the confirmed Singapore and ISO wording without verification markers", () => {
+    render(<HomePage />);
+
+    expect(screen.getByText(/Singapore & India · ISO 9001:2015 and ISO\/IEC 27001 certified/)).toBeInTheDocument();
+    expect(screen.getByText("ISO 9001:2015")).toBeInTheDocument();
+    expect(screen.getByText("ISO/IEC 27001")).toBeInTheDocument();
+    expect(screen.queryByText(/⚠ VERIFY/)).not.toBeInTheDocument();
+  });
+
   it("uses the predefined UI glass substrate and button primitives", () => {
     const { container } = render(<HomePage />);
 
     expect(container.querySelector(".eq-glass-stage > .eq-glass-substrate")).not.toBeNull();
-    expect(container.querySelectorAll(".eq-glass-button").length).toBeGreaterThanOrEqual(8);
+    expect(container.querySelectorAll(".eq-glass-button").length).toBeGreaterThanOrEqual(7);
     expect(container.querySelector(".cockpit")).toHaveClass("eq-glass-stage");
     expect(heroSource).toContain("eq-glass-substrate");
     expect(heroSource).not.toContain("LiquidGlassHomeEffect");
