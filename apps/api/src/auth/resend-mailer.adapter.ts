@@ -29,11 +29,16 @@ export class ResendMailerAdapter implements MailerAdapter {
           from: this.from,
           to: [delivery.to],
           subject: "Your eQOURSE+ verification code",
-          text: [
-            `Your eQOURSE+ verification code is ${delivery.code}.`,
-            `It expires at ${delivery.expiresAt.toISOString()}.`,
-            "If you did not request this code, you can ignore this email.",
-          ].join("\n\n"),
+          template: {
+            id: "email-verification",
+            variables: {
+              otp: delivery.code,
+              expiry: delivery.expiresAt.toLocaleString("en-IN", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              }),
+            },
+          },
         }),
         signal: AbortSignal.timeout(this.timeoutMilliseconds),
       });

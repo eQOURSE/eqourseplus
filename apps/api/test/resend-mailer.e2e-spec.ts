@@ -72,10 +72,18 @@ describe("FR-FND-02 Resend mailer adapter", () => {
       to: [delivery.to],
       subject: "Your eQOURSE+ verification code",
     });
-    const text = String(JSON.parse(String(init?.body)).text);
-    expect(text).toContain(delivery.code);
-    expect(text).toContain(delivery.expiresAt.toISOString());
-    expect(text).toContain("If you did not request this code, you can ignore this email.");
+    expect(JSON.parse(String(init?.body))).toMatchObject({
+      template: {
+        id: "email-verification",
+        variables: {
+          otp: delivery.code,
+          expiry: delivery.expiresAt.toLocaleString("en-IN", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          }),
+        },
+      },
+    });
     expect(RESEND_REQUEST_TIMEOUT_MILLISECONDS).toBe(5_000);
   });
 
