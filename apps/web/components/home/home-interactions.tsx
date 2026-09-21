@@ -59,14 +59,14 @@ export function CapabilityExplorer() {
 }
 
 const specializationTracks = [
-  ["Language, Dialects & Multilingual AI", "Dialectical nuances, localization, transcription, and cultural safety across 30+ global languages."],
-  ["Advanced STEM & Scientific Reasoning", "Hallucination detection, paper critiques, mathematical proofs, and physical science verification."],
-  ["Software Engineering & Code Intelligence", "LLM code benchmarking, unit test debugging, repository evaluations, and architecture reviews."],
-  ["Quantitative Finance & Legal Analysis", "Statutory compliance interpretation, financial audits, risk logic assessment, and fiscal modeling."],
-  ["Clinical Medicine & Healthcare", "Diagnostic reviews, pharmacology evaluations, literature synthesis, and patient safety guardrails."],
-  ["Curriculum Design & Enterprise Content", "K-12 and higher-ed modules, corporate training, assessments, and technical instructional design."],
-  ["Robotics, Perception & Physical AI", "Sensor annotation (LiDAR, Radar, Video), scenario evaluation, edge-case tagging, and spatial data."],
-  ["RLHF, Preference Ranking & Red-Teaming", "Human feedback ranking, adversarial prompt crafting, bias mitigation, and safety rubric enforcement."],
+  ["Language, dialects and multilingual AI", "Dialectical nuance, localisation, transcription and cultural safety across many global languages."],
+  ["Advanced STEM and scientific reasoning", "Hallucination detection, paper critique, mathematical proof and physical-science verification."],
+  ["Software engineering and code intelligence", "LLM code benchmarking, unit-test debugging, repository evaluation and architecture review."],
+  ["Quantitative finance and legal analysis", "Statutory interpretation, financial audit, risk logic and fiscal modelling."],
+  ["Clinical medicine and healthcare", "Diagnostic review, pharmacology evaluation, literature synthesis and patient-safety guardrails."],
+  ["Curriculum design and enterprise content", "K-12 and higher-education modules, corporate training, assessment and instructional design."],
+  ["Robotics, perception and physical AI", "Sensor annotation across LiDAR, radar and video, scenario evaluation, edge-case tagging and spatial data."],
+  ["RLHF, preference ranking and red-teaming", "Human feedback ranking, adversarial prompt design, bias mitigation and safety rubric enforcement."],
 ] as const;
 
 export function SpecializationTracks() {

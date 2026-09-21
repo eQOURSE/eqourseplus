@@ -1,11 +1,11 @@
 import styles from "./home-redesign.module.css";
 
 const rows = [
-  ["Review Process", "Opaque algorithms; silent disqualification", "Documented rubrics, human QA review, clear feedback loops"],
-  ["Work Flexibility", "Sudden task droughts without notice", "Transparent task availability matched to verified skill tiers"],
-  ["Vendor Agency Model", "Ignored or treated as unauthorized shared accounts", "Formal vendor onboarding, master agreements, team tooling"],
-  ["Client Visibility", "Blind aggregate data delivered without provenance", "Full telemetry, transparent contributor credentials, live QA dashboards"],
-  ["Payment Integrity", "Delayed, disputed, or arbitrarily docked payouts", "Milestone locked escrow, transparent ledgers, on-time disbursement"],
+  ["Review process", "Opaque scoring, with little explanation of outcomes", "Documented rubrics, human QA review and clear feedback loops"],
+  ["Work flexibility", "Task availability that appears and disappears without notice", "Transparent task availability matched to verified skill tiers"],
+  ["Vendor agency model", "No formal route for agencies to participate as teams", "Formal vendor onboarding, master agreements and team tooling"],
+  ["Client visibility", "Aggregate output delivered with limited provenance", "Full telemetry, contributor credentials and live QA dashboards"],
+  ["Payment integrity", "Payment disputes with unclear resolution", "Milestone-locked terms, transparent ledgers and scheduled disbursement"],
 ] as const;
 
 export function GlassBoxSection() {

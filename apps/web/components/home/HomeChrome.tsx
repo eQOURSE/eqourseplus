@@ -128,8 +128,8 @@ export function HomeFooter() {
       </div>
       <div className={styles.footerBottom}>
         <p>
-          eQOURSE+ is an enterprise division of eQOURSE. Certified ISO 9001:2015
-          &amp; ISO 27001:2013. Operating across Singapore &amp; India.
+          eQOURSE+ is an enterprise division of EQOURSE ONLINE EDUCATIONERS LLP.
+          Operating across Singapore and India.
         </p>
         <p>
           <span className={styles.statusDot} />

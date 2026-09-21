@@ -60,7 +60,7 @@ describe("authenticated application shell", () => {
 
     expect(await screen.findByText("owner@example.com")).toBeVisible();
     expect(screen.getByRole("link", { name: /eQOURSE/i })).toBeVisible();
-    expect(screen.getByRole("button", { name: /Switch to (dark|light) mode/ })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Sign out" })).toBeVisible();
     expect(screen.getByText("Private content")).toBeVisible();
   });
