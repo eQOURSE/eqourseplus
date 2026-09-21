@@ -1,6 +1,14 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const { captureMessage } = vi.hoisted(() => ({
+  captureMessage: vi.fn(),
+}));
+
+vi.mock("@sentry/nextjs", () => ({
+  captureMessage,
+}));
+
 import { LoginForm } from "./login-form";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -20,6 +28,7 @@ const session = {
 };
 
 beforeEach(() => {
+  captureMessage.mockReset();
   fetchMock.mockReset();
   fetchMock.mockResolvedValue(response({}, 401));
   vi.stubEnv("NEXT_PUBLIC_API_URL", "https://api.eqourse.test/");
@@ -140,6 +149,124 @@ describe("FR-REG-02C login form", () => {
     expect(window.localStorage).toHaveLength(0);
     expect(window.sessionStorage).toHaveLength(0);
     expect(document.body.textContent).not.toMatch(/accessToken|refreshToken/);
+  });
+
+  it.each(["EQOURSE", "TUTRAIN"])(
+    "routes a %s Verifier with no company to the company-review console after OTP verification",
+    async (businessUnit) => {
+      const navigate = vi.fn();
+      let sessionReads = 0;
+      fetchMock.mockImplementation((path) => {
+        if (String(path).endsWith("/api/v1/auth/otp/request")) {
+          return Promise.resolve(response({ status: "accepted" }, 202));
+        }
+        if (path === "/api/auth/otp/verify") {
+          return Promise.resolve(response({ status: "authenticated" }));
+        }
+        if (path === "/api/auth/session") {
+          sessionReads += 1;
+          return Promise.resolve(sessionReads === 1
+            ? response({}, 401)
+            : response({
+                ...session,
+                roleAssignments: [{ role: "VERIFIER", businessUnit }],
+              }));
+        }
+        if (path === "/api/v1/vendors/me" || path === "/api/v1/clients/me") {
+          return Promise.resolve(response({}, 404));
+        }
+        return Promise.resolve(response({}, 500));
+      });
+
+      render(<LoginForm navigate={navigate} />);
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+        "/api/auth/session",
+        { cache: "no-store" },
+      ));
+      await submitEmail();
+      await submitCode();
+
+      await waitFor(() => expect(navigate).toHaveBeenCalledWith("/company-reviews"));
+    },
+  );
+
+  it("keeps company ownership ahead of an internal-surface role", async () => {
+    const navigate = vi.fn();
+    let sessionReads = 0;
+    fetchMock.mockImplementation((path) => {
+      if (String(path).endsWith("/api/v1/auth/otp/request")) {
+        return Promise.resolve(response({ status: "accepted" }, 202));
+      }
+      if (path === "/api/auth/otp/verify") {
+        return Promise.resolve(response({ status: "authenticated" }));
+      }
+      if (path === "/api/auth/session") {
+        sessionReads += 1;
+        return Promise.resolve(sessionReads === 1
+          ? response({}, 401)
+          : response({
+              ...session,
+              roleAssignments: [{ role: "VERIFIER", businessUnit: "EQOURSE" }],
+            }));
+      }
+      if (path === "/api/v1/vendors/me") return Promise.resolve(response({}));
+      if (path === "/api/v1/clients/me") return Promise.resolve(response({}, 404));
+      return Promise.resolve(response({}, 500));
+    });
+
+    render(<LoginForm navigate={navigate} />);
+    await submitEmail();
+    await submitCode();
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/register/vendor"));
+  });
+
+  it.each([
+    ["role", { role: "NEW_INTERNAL_ROLE", businessUnit: "EQOURSE" }, "NEW_INTERNAL_ROLE"],
+    ["business unit", { role: "VERIFIER", businessUnit: "NEW_UNIT" }, "NEW_UNIT"],
+  ])(
+    "drops an assignment with an unknown %s, warns Sentry, and routes to registration",
+    async (_, unknownAssignment, unknownValue) => {
+      const navigate = vi.fn();
+      fetchMock.mockImplementation((path) => {
+        if (path === "/api/auth/session") {
+          return Promise.resolve(response({
+            ...session,
+            roleAssignments: [unknownAssignment],
+          }));
+        }
+        if (path === "/api/v1/vendors/me" || path === "/api/v1/clients/me") {
+          return Promise.resolve(response({}, 404));
+        }
+        return Promise.resolve(response({}, 500));
+      });
+
+      render(<LoginForm navigate={navigate} />);
+
+      await waitFor(() => expect(navigate).toHaveBeenCalledWith("/register"));
+      expect(captureMessage).toHaveBeenCalledWith(
+        expect.stringContaining(unknownValue),
+        "warning",
+      );
+    },
+  );
+
+  it.each([
+    ["a missing userId", { email: session.email, roleAssignments: [], profileState: "DRAFT" }],
+    ["a malformed email", { ...session, email: "not-an-email" }],
+    ["an unknown top-level key", { ...session, unexpected: true }],
+  ])("keeps rejecting a session with %s", async (_, malformedSession) => {
+    const navigate = vi.fn();
+    fetchMock.mockResolvedValue(response(malformedSession));
+
+    render(<LoginForm navigate={navigate} />);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/auth/session",
+      { cache: "no-store" },
+    ));
+    expect(navigate).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it.each([400, 401])("uses one wrong-or-expired message when verification returns %s", async (status) => {
