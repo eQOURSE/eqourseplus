@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { PersonaSwitcher } from "./home-interactions";
 import styles from "./home-redesign.module.css";
 
 
@@ -9,7 +8,7 @@ export function HeroSection() {
     <section id="hero" className={styles.hero} data-home-region aria-labelledby="hero-title">
       <div className={styles.heroRibbon} aria-hidden="true" />
       <div className={styles.heroContent}>
-        <p className={styles.badge}><span aria-hidden="true" />The Transparent Talent &amp; Delivery Ecosystem by eQOURSE · Singapore &amp; India · ⚠ VERIFY ISO 9001 and ISO/IEC 27001 certification</p>
+        <p className={styles.badge}><span aria-hidden="true" />The Transparent Talent &amp; Delivery Ecosystem by eQOURSE · Singapore &amp; India · ISO 9001:2015 and ISO/IEC 27001 certified</p>
         <h1 id="hero-title" className={styles.heroTitle}>
           Join the expert network powering AI and world-class content.
         </h1>
@@ -18,7 +17,7 @@ export function HeroSection() {
         </p>
         <div className={styles.heroActions}>
           <Link className="eq-glass-button eq-glass-button--primary eq-glass-surface eq-glass-tier-regular home-cta" href="/register/freelancer">
-            <span className="eq-glass-button__label">Apply as an Expert (Work Remotely)</span><span aria-hidden="true">→</span>
+            <span className="eq-glass-button__label">Apply as an Expert</span><span aria-hidden="true">→</span>
           </Link>
           <Link className="eq-glass-button eq-glass-button--secondary eq-glass-surface eq-glass-tier-regular home-cta" href="/register/vendor">
             <span className="eq-glass-button__label">Join as an Agency Partner</span>

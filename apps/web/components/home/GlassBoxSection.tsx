@@ -34,8 +34,8 @@ export function GlassBoxSection() {
                   <th scope="row">
                     <span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>{area}
                   </th>
-                  <td>{legacy}</td>
-                  <td>{standard}</td>
+                  <td data-label="Legacy platforms">{legacy}</td>
+                  <td data-label="eQOURSE+ standard">{standard}</td>
                 </tr>)}
               </tbody>
             </table>

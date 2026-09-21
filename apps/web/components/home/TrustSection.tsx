@@ -1,9 +1,9 @@
 import styles from "./home-redesign.module.css";
 
 const standards = [
-  ["Dual-jurisdiction structure", "Entities in Singapore and India supporting contract enforcement, IP protection and cross-border payment. ⚠ VERIFY — Singapore entity"],
-  ["ISO 9001:2015", "Standardised quality management across data ingestion, annotation and content pipelines. ⚠ VERIFY — ISO"],
-  ["ISO/IEC 27001", "Information security protocols safeguarding client IP, confidential training data and corporate intelligence. ⚠ VERIFY — ISO"],
+  ["Dual-jurisdiction structure", "Entities in Singapore and India supporting contract enforcement, IP protection and cross-border payment."],
+  ["ISO 9001:2015", "Standardised quality management across data ingestion, annotation and content pipelines."],
+  ["ISO/IEC 27001", "Information security protocols safeguarding client IP, confidential training data and corporate intelligence."],
   ["Proctored talent testing", "Contributors prove capability inside monitored, domain-specific assessment environments rather than self-declared résumés."],
 ] as const;
 
