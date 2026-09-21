@@ -24,10 +24,12 @@ import { RegistrationService } from "./registration.service";
 import { DeviceFingerprintService } from "./device-fingerprint.service";
 import { RolesGuard } from "./roles.guard";
 import { createMailerAdapter } from "./resend-mailer.adapter";
+import { ProfilesModule } from "../profiles/profiles.module";
 
 @Module({
   imports: [
     JwtModule.register({}),
+    ProfilesModule,
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 5 }]),
   ],
   controllers: [AuthController, RegistrationController],

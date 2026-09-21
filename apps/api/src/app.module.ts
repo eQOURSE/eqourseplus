@@ -13,6 +13,7 @@ import { CompanyReviewsModule } from "./company-reviews/company-reviews.module";
 import { DatabaseModule } from "./database/database.module";
 import { HealthController } from "./health.controller";
 import { RequestIdMiddleware } from "./observability/request-id.middleware";
+import { ProfilesModule } from "./profiles/profiles.module";
 import { SkillTaxonomyModule } from "./skill-taxonomy/skill-taxonomy.module";
 import { VendorsModule } from "./vendors/vendors.module";
 
@@ -20,6 +21,7 @@ import { VendorsModule } from "./vendors/vendors.module";
   imports: [
     SentryModule.forRoot(),
     DatabaseModule,
+    ProfilesModule,
     AuthModule,
     ClientsModule,
     CompanyReviewsModule,

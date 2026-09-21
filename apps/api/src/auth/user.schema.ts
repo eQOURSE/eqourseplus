@@ -1,4 +1,4 @@
-import { BusinessUnit, ProfileState, Role } from "@eqourse/shared";
+import { BusinessUnit, Role } from "@eqourse/shared";
 import { Schema, type HydratedDocument, type Model, model, models } from "mongoose";
 
 export interface UserRecord {
@@ -16,7 +16,6 @@ export interface UserRecord {
     expiresAt: Date;
     wrongAttempts: number;
   };
-  profileState?: ProfileState;
   deviceFingerprints: Array<{
     hash: string;
     firstSeenAt: Date;
@@ -136,13 +135,6 @@ const userSchema = new Schema<UserRecord>(
       default: [],
     },
     otpChallenge: { type: otpChallengeSchema },
-    profileState: {
-      type: String,
-      enum: Object.values(ProfileState),
-      required: true,
-      default: ProfileState.DRAFT,
-      index: true,
-    },
     deviceFingerprints: {
       type: [deviceFingerprintSchema],
       required: true,

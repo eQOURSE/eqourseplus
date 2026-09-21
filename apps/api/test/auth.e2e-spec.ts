@@ -24,6 +24,7 @@ import type {
 import { InMemoryAuthRateLimitStore } from "../src/auth/auth-rate-limit.store";
 import { JwtTokenService } from "../src/auth/jwt-token.service";
 import { activeRefreshSessionPredicate } from "../src/auth/refresh-session";
+import { PROFILE_STORE } from "../src/profiles/profile.constants";
 import { configureTrustProxy } from "../src/trust-proxy.config";
 
 class MutableClock {
@@ -41,7 +42,6 @@ class InMemoryAuthStore implements AuthStore {
     users: Array<{
       id: string;
       email: string;
-      profileState: ProfileState;
       roleAssignments: RoleAssignment[];
     }>,
   ) {
@@ -138,6 +138,15 @@ class InMemoryAuthStore implements AuthStore {
   }
 }
 
+class InMemoryProfileStore {
+  readonly states = new Map<string, ProfileState>();
+
+  async findByUserId(userId: string) {
+    const state = this.states.get(userId);
+    return state ? { state } : null;
+  }
+}
+
 @Controller("test")
 class ProtectedTestController {
   @Get("pm-eqourse")
@@ -150,6 +159,7 @@ class ProtectedTestController {
 describe("FR-FND-02 auth core", () => {
   let app: INestApplication;
   let store: InMemoryAuthStore;
+  let profileStore: InMemoryProfileStore;
   let mailer: SandboxMailerAdapter;
   let clock: MutableClock;
   let tokens: JwtTokenService;
@@ -191,7 +201,17 @@ describe("FR-FND-02 auth core", () => {
 
   beforeEach(async () => {
     process.env.JWT_SECRET = "test-only-jwt-secret-at-least-32-characters";
-    store = new InMemoryAuthStore(users);
+    store = new InMemoryAuthStore(
+      users.map((user) => ({
+        id: user.id,
+        email: user.email,
+        roleAssignments: user.roleAssignments,
+      })),
+    );
+    profileStore = new InMemoryProfileStore();
+    for (const user of users) {
+      profileStore.states.set(user.id, user.profileState);
+    }
     mailer = new SandboxMailerAdapter();
     clock = new MutableClock();
 
@@ -201,6 +221,8 @@ describe("FR-FND-02 auth core", () => {
     })
       .overrideProvider(AUTH_STORE)
       .useValue(store)
+      .overrideProvider(PROFILE_STORE)
+      .useValue(profileStore)
       .overrideProvider(MAILER_ADAPTER)
       .useValue(mailer)
       .overrideProvider(AUTH_CLOCK)
@@ -247,10 +269,10 @@ describe("FR-FND-02 auth core", () => {
     store.users.set(id, {
       id,
       email: `${id}@example.com`,
-      profileState: ProfileState.DRAFT,
       roleAssignments: [],
       refreshSessions: [],
     });
+    profileStore.states.set(id, ProfileState.DRAFT);
   }
 
   function refresh(refreshToken: string, ip = "203.0.113.200") {

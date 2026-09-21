@@ -1,4 +1,4 @@
-import type { ProfileState, RoleAssignment } from "@eqourse/shared";
+import type { RoleAssignment } from "@eqourse/shared";
 
 export interface OtpChallenge {
   digest: string;
@@ -16,7 +16,6 @@ export interface RefreshSession {
 export interface StoredUser {
   id: string;
   email: string;
-  profileState: ProfileState;
   roleAssignments: RoleAssignment[];
   otpChallenge?: OtpChallenge;
   refreshSessions: RefreshSession[];
