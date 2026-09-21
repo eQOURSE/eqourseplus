@@ -46,7 +46,7 @@ describe("FR-FND-02 Resend mailer adapter", () => {
     ).toThrow(/RESEND_API_KEY/);
   });
 
-  it("sends exactly one authorized request containing the recipient, code and expiry", async () => {
+  it("sends a self-contained plain-text message by default", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(null, { status: 200 }),
     );
@@ -73,18 +73,56 @@ describe("FR-FND-02 Resend mailer adapter", () => {
       subject: "Your eQOURSE+ verification code",
     });
     expect(JSON.parse(String(init?.body))).toMatchObject({
+      text: expect.stringContaining(delivery.code),
+    });
+    expect(JSON.parse(String(init?.body)).text).toContain(delivery.expiresAt.toISOString());
+    expect(RESEND_REQUEST_TIMEOUT_MILLISECONDS).toBe(5_000);
+  });
+
+  it("uses the configured template when it succeeds", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(null, { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const adapter = new ResendMailerAdapter(
+      "resend-test-key",
+      "eQOURSE+ <otp@example.com>",
+      undefined,
+      "email-verification",
+    );
+
+    await adapter.sendOtp(delivery);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
       template: {
         id: "email-verification",
         variables: {
           otp: delivery.code,
-          expiry: delivery.expiresAt.toLocaleString("en-IN", {
-            dateStyle: "medium",
-            timeStyle: "short",
-          }),
+          expiry: delivery.expiresAt.toISOString(),
         },
       },
     });
-    expect(RESEND_REQUEST_TIMEOUT_MILLISECONDS).toBe(5_000);
+  });
+
+  it("falls back to plain text when the configured template is rejected", async () => {
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response("template missing", { status: 404 }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const adapter = new ResendMailerAdapter(
+      "resend-test-key",
+      "eQOURSE+ <otp@example.com>",
+      undefined,
+      "email-verification",
+    );
+
+    await adapter.sendOtp(delivery);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toMatchObject({
+      text: expect.stringContaining(delivery.expiresAt.toISOString()),
+    });
   });
 
   it.each([400, 429, 500, 503])(

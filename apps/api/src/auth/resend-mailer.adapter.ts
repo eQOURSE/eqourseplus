@@ -15,38 +15,58 @@ export class ResendMailerAdapter implements MailerAdapter {
     private readonly apiKey: string,
     private readonly from: string,
     private readonly timeoutMilliseconds = RESEND_REQUEST_TIMEOUT_MILLISECONDS,
+    private readonly templateId?: string,
   ) {}
 
   async sendOtp(delivery: OtpDelivery): Promise<void> {
-    try {
-      const response = await fetch(RESEND_EMAILS_ENDPOINT, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+    const text = [
+      `Your eQOURSE+ verification code is ${delivery.code}.`,
+      `It expires at ${delivery.expiresAt.toISOString()} (UTC).`,
+      "If you did not request this code, you can ignore this email.",
+    ].join("\n\n");
+
+    if (this.templateId) {
+      try {
+        const templateResponse = await this.send({
           from: this.from,
           to: [delivery.to],
           subject: "Your eQOURSE+ verification code",
           template: {
-            id: "email-verification",
-            variables: {
-              otp: delivery.code,
-              expiry: delivery.expiresAt.toLocaleString("en-IN", {
-                dateStyle: "medium",
-                timeStyle: "short",
-              }),
-            },
+            id: this.templateId,
+            variables: { otp: delivery.code, expiry: delivery.expiresAt.toISOString() },
           },
-        }),
-        signal: AbortSignal.timeout(this.timeoutMilliseconds),
-      });
-
-      if (!response.ok) throw this.deliveryUnavailable();
-    } catch {
-      throw this.deliveryUnavailable();
+        });
+        if (templateResponse.ok) return;
+      } catch {
+        // Fall through to the self-contained text message.
+      }
     }
+
+    try {
+      const fallbackResponse = await this.send({
+        from: this.from,
+        to: [delivery.to],
+        subject: "Your eQOURSE+ verification code",
+        text,
+      });
+      if (fallbackResponse.ok) return;
+    } catch {
+      // Convert provider and timeout failures to the adapter contract below.
+    }
+
+    throw this.deliveryUnavailable();
+  }
+
+  private send(body: Record<string, unknown>): Promise<Response> {
+    return fetch(RESEND_EMAILS_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(this.timeoutMilliseconds),
+    });
   }
 
   private deliveryUnavailable(): ServiceUnavailableException {
@@ -72,5 +92,5 @@ export function createMailerAdapter(
   if (!apiKey) throw new Error("RESEND_API_KEY is required for Resend email");
   const from = environment.OTP_EMAIL_FROM?.trim();
   if (!from) throw new Error("OTP_EMAIL_FROM is required for Resend email");
-  return new ResendMailerAdapter(apiKey, from);
+  return new ResendMailerAdapter(apiKey, from, RESEND_REQUEST_TIMEOUT_MILLISECONDS, environment.RESEND_EMAIL_TEMPLATE_ID?.trim() || undefined);
 }
