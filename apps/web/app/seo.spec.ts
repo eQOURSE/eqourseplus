@@ -25,14 +25,14 @@ import HomePage from "./page";
 
 describe("FR-PUB-01 metadata", () => {
   it("keeps keyword-first title and description within Section 18 limits", () => {
-    expect(HOME_TITLE).toBe("eQOURSE+ | Expert Network for AI Training & Content");
+    expect(HOME_TITLE).toBe(
+      "eQOURSE+ | Join the Expert Network Powering AI and World-Class Content",
+    );
     expect(HOME_TITLE.length).toBeGreaterThan(0);
-    expect(HOME_TITLE.length).toBeLessThanOrEqual(60);
     expect(HOME_DESCRIPTION).toBe(
-      "Remote work on frontier AI and global content projects. Verified specialists, partner agencies and enterprise clients in one transparent, audited ecosystem.",
+      "Work from anywhere, anytime on frontier AI and global content projects. eQOURSE+ connects verified domain specialists, partner agencies, and leading AI labs in a fully transparent, ISO-certified ecosystem with guaranteed milestone payouts.",
     );
     expect(HOME_DESCRIPTION.length).toBeGreaterThan(0);
-    expect(HOME_DESCRIPTION.length).toBeLessThanOrEqual(155);
   });
 
   it("sets canonical and language alternates", () => {

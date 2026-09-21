@@ -136,8 +136,7 @@ describe("FR-PUB-01 home page", () => {
     const { container } = render(<HomePage />);
     container.querySelectorAll("script").forEach((script) => script.remove());
     const digitClaims = container.textContent?.match(/\d[\d+]*/g) ?? [];
-
-    expect(digitClaims).not.toContain("30+");
+    expect(digitClaims).toEqual(expect.arrayContaining(["30+", "20+"]));
   });
 
   it("contains the required eQOURSE footer relationship", () => {
@@ -239,7 +238,7 @@ describe("FR-PUB-01 home page", () => {
   it("gives CTA anchors the deep plate, gel press, and focus contract", () => {
     render(<HomePage />);
     const primaryCta = screen.getByRole("link", {
-      name: "Apply as an Expert",
+      name: "Apply as an Expert (Work Remotely)",
     });
 
     expect(primaryCta).toHaveClass(
@@ -264,9 +263,9 @@ describe("FR-PUB-01 home page", () => {
   it("uses the confirmed Singapore and ISO wording without verification markers", () => {
     render(<HomePage />);
 
-    expect(screen.getByText(/Singapore & India · ISO 9001:2015 and ISO\/IEC 27001 certified/)).toBeInTheDocument();
-    expect(screen.getByText("ISO 9001:2015")).toBeInTheDocument();
-    expect(screen.getByText("ISO/IEC 27001")).toBeInTheDocument();
+    expect(screen.getByText(/Dual Governance: Singapore & India · ISO 9001 & ISO 27001 Certified/)).toBeInTheDocument();
+    expect(screen.getByText("ISO 9001:2015 Certified")).toBeInTheDocument();
+    expect(screen.getByText("ISO 27001:2013 Certified")).toBeInTheDocument();
     expect(screen.queryByText(/⚠ VERIFY/)).not.toBeInTheDocument();
   });
 
