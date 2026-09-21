@@ -40,11 +40,11 @@ export function HeroSection() {
 function CockpitPreview() {
   const bars = [42, 66, 82, 94, 78, 48, 56];
   return (
-    <div className={`cockpit ${styles.cockpit} eq-glass-stage`} aria-label="Live cockpit interface preview">
+    <div className={`cockpit ${styles.cockpit} eq-glass-stage`} aria-label="Workspace interface preview">
       <div aria-hidden="true" className="eq-glass-substrate" />
       <div className={`${styles.browserBar} eq-glass-surface eq-glass-tier-regular`}>
         <div className={styles.windowDots} aria-hidden="true"><span /><span /><span /></div>
-        <code>app.eqourse.plus/live-cockpit/project-orion</code>
+        <code>plus.eqourse.com/live-cockpit/project-orion</code>
         <span className={styles.cockpitTools}>⌕ &nbsp; ⌘K &nbsp; ● &nbsp; Workspace preview</span>
       </div>
       <div className={`${styles.cockpitHeader} eq-frosted eq-frosted--card`}>

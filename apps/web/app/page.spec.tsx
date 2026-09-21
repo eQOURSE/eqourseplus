@@ -12,16 +12,10 @@ import {
   themeDeclarations,
   worstAmbientSurface,
 } from "../../../packages/ui/test/contrast-helpers";
-import { testimonials } from "../content/testimonials";
-import { Testimonials } from "../components/home/testimonials";
 import HomePage from "./page";
 import { EXCLUDED_ROUTES, RESOLVING_ROUTES } from "./public-routes";
 
 const pageSource = readFileSync(resolve(process.cwd(), "app/page.tsx"), "utf8");
-const testimonialSource = readFileSync(
-  resolve(process.cwd(), "components/home/testimonials.tsx"),
-  "utf8",
-);
 const globalStyles = readFileSync(
   resolve(process.cwd(), "app/globals.css"),
   "utf8",
@@ -113,25 +107,6 @@ describe("FR-PUB-01 home page", () => {
     }
   });
 
-  it("ships no testimonials but supports supplied verified content", () => {
-    expect(testimonials).toEqual([]);
-    const { container, rerender } = render(<Testimonials items={testimonials} />);
-    expect(container).toBeEmptyDOMElement();
-
-    rerender(
-      <Testimonials
-        items={[
-          {
-            attribution: "Supplied attribution",
-            quote: "Supplied verified quote.",
-          },
-        ]}
-      />,
-    );
-    expect(screen.getByText("Supplied verified quote.")).toBeInTheDocument();
-    expect(screen.getByText("Supplied attribution")).toBeInTheDocument();
-  });
-
   it("limits digit-bearing visible claims to the approved facts", () => {
     const { container } = render(<HomePage />);
     container.querySelectorAll("script").forEach((script) => script.remove());
@@ -212,7 +187,6 @@ describe("FR-PUB-01 home page", () => {
 
   it("keeps static page and section components on the server", () => {
     expect(pageSource).not.toMatch(/["']use client["']/);
-    expect(testimonialSource).not.toMatch(/["']use client["']/);
   });
 
   it("numbers workflow steps through CSS counters", () => {

@@ -40,6 +40,13 @@ const footerColumns = [
   ],
 ] as const;
 
+const footerRoutes: Record<string, string> = {
+  "About eQOURSE+": "/about",
+  "Join as a Specialist": "/freelancers",
+  "Join as a Vendor": "/vendors",
+  "Vendor Network": "/vendors",
+};
+
 function Brand() {
   return (
     <span className={styles.brand}>
@@ -118,11 +125,16 @@ export function HomeFooter() {
         {footerColumns.map(([heading, ...items]) => (
           <div className={styles.footerColumn} key={heading}>
             <h3>{heading}</h3>
-            {items.map((item) => (
-              <a key={item} href="#hero">
-                {item}
-              </a>
-            ))}
+            {items.map((item) => {
+              const href = footerRoutes[item];
+              return href ? (
+                <Link key={item} href={href}>
+                  {item}
+                </Link>
+              ) : (
+                <span key={item}>{item}</span>
+              );
+            })}
           </div>
         ))}
       </div>

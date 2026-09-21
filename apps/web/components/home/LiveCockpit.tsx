@@ -32,7 +32,7 @@ export function LiveCockpit() {
   ];
 
   return (
-    <div className={`cockpit ${styles.cockpit} eq-glass-stage`} aria-label="Live cockpit interface">
+    <div className={`cockpit ${styles.cockpit} eq-glass-stage`} aria-label="Workspace interface preview">
       <div aria-hidden="true" className="eq-glass-substrate" />
       
       {/* Browser Bar */}
@@ -42,7 +42,7 @@ export function LiveCockpit() {
           <span />
           <span />
         </div>
-        <code>app.eqourse.plus/live-cockpit/project-orion</code>
+        <code>plus.eqourse.com/live-cockpit/project-orion</code>
         <div className={styles.cockpitTools}>
           <span className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#6b7280]" aria-hidden="true" />
