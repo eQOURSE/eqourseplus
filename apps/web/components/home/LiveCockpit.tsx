@@ -21,9 +21,11 @@ interface ChartPoint {
   value: number;
 }
 
+type CockpitTab = "overview" | "specialists" | "quality";
+
 export function LiveCockpit() {
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
-  const [activeTab, setActiveTab] = useState<"overview" | "specialists" | "quality">("overview");
+  const [activeTab, setActiveTab] = useState<CockpitTab>("overview");
   const [chartData, setChartData] = useState<ChartPoint[]>([
     { day: "Mon", value: 42 },
     { day: "Tue", value: 66 },
@@ -174,7 +176,7 @@ export function LiveCockpit() {
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as CockpitTab)}
               className={`px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 ${
                 activeTab === tab.id
                   ? "bg-[hsl(var(--primary)/0.08)] text-[hsl(var(--primary))] border border-[hsl(var(--primary)/0.22)]"

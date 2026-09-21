@@ -10,19 +10,19 @@ export function HeroSection() {
       <div className={styles.heroContent}>
         <p className={styles.badge}><span aria-hidden="true" />The Transparent Talent &amp; Delivery Ecosystem by eQOURSE · Dual Governance: Singapore &amp; India · ISO 9001 &amp; ISO 27001 Certified</p>
         <h1 id="hero-title" className={styles.heroTitle}>
-          Join the expert network powering AI and content.
+          Join the expert network powering AI and world-class content.
         </h1>
         <p className={styles.heroCopy}>
-         Work from anywhere on projects that shape next generation intelligence. Whether you are a specialist, an agency or an enterprise, eQOURSE+ delivers operational clarity built on more than 20 years of expertise.
+          Work from anywhere, anytime on projects shaping next-generation intelligence. Whether you are an independent specialist seeking fair pay, an agency scaling high-volume pipelines, or an enterprise demanding total workflow observability and quality, eQOURSE+ replaces the industry&apos;s black box with operational clarity, built on more than 20 years of content expertise.
         </p>
         <div className={styles.heroActions}>
-          <Link className=" eq-glass-button--primary eq-glass-surface eq-glass-tier-regular home-cta" href="/register/freelancer">
-            <span className="eq-glass-button__label">Apply as an Expert</span><span aria-hidden="true">→</span>
+          <Link className="eq-glass-button eq-glass-button--primary eq-glass-surface eq-glass-tier-regular home-cta" href="/register/freelancer">
+            <span className="eq-glass-button__label">Apply as an Expert (Work Remotely)</span><span aria-hidden="true">→</span>
           </Link>
-          <Link className=" eq-glass-button--secondary eq-glass-surface eq-glass-tier-regular home-cta" href="/register/vendor">
+          <Link className="eq-glass-button eq-glass-button--secondary eq-glass-surface eq-glass-tier-regular home-cta" href="/register/vendor">
             <span className="eq-glass-button__label">Join as an Agency Partner</span>
           </Link>
-          <Link className=" eq-glass-button--secondary eq-glass-surface eq-glass-tier-regular home-cta" href="/register/client">
+          <Link className="eq-glass-button eq-glass-button--secondary eq-glass-surface eq-glass-tier-regular home-cta" href="/register/client">
             <span className="eq-glass-button__label">Deploy Expert Teams</span>
           </Link>
           {/* <Link className="home-login-link" href="/login">Already registered? Log in</Link> */}

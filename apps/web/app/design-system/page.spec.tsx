@@ -68,7 +68,7 @@ describe("FR-PUB-00 component acceptance", () => {
     render(<ThemeToggle />);
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Toggle color theme" }),
+      screen.getByRole("button", { name: /Switch to (dark|light) mode/ }),
     );
 
     expect(document.documentElement.dataset.theme).toBe("dark");
@@ -79,7 +79,7 @@ describe("FR-PUB-00 component acceptance", () => {
   it("round-trips light and dark five times without losing the persisted theme", () => {
     render(<ThemeToggle />);
     const toggle = screen.getByRole("button", {
-      name: "Toggle color theme",
+      name: /Switch to (dark|light) mode/,
     });
 
     for (let roundTrip = 0; roundTrip < 5; roundTrip += 1) {

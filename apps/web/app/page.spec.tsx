@@ -52,9 +52,9 @@ describe("FR-PUB-01 home page", () => {
 
     expect(screen.getByRole("link", { name: "eQOURSE+" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Solutions" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Specialists" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Experts" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Vendors" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Explore Platform" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Access eQOURSE+" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       "Join the expert network powering AI and world-class content.",
     );
