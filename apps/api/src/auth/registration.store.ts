@@ -1,5 +1,3 @@
-import type { ProfileState } from "@eqourse/shared";
-
 import type { OtpChallenge, RefreshSession } from "./auth.store";
 
 export type RegistrationConflictField = "email" | "phone" | "pan" | "unknown";
@@ -9,7 +7,6 @@ export interface RegistrationValues {
   phone: string;
   countryCode: string;
   pan?: string;
-  profileState: ProfileState;
   emailChallenge: OtpChallenge;
   deviceFingerprint: {
     hash: string;

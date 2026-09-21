@@ -23,13 +23,18 @@ import {
 import { AuthService } from "./auth.service";
 import type { StoredUser } from "./auth.store";
 import type { AuthenticatedRequest, TokenPair } from "./auth.types";
+import { PROFILE_STORE } from "../profiles/profile.constants";
+import type { ProfileStore } from "../profiles/profile.store";
 import { OtpIdentifierRateLimitGuard } from "./otp-identifier-rate-limit.guard";
 import { Public } from "./public.decorator";
 import { ZodBodyPipe } from "./zod-body.pipe";
 
 @Controller("api/v1/auth")
 export class AuthController {
-  constructor(@Inject(AuthService) private readonly authService: AuthService) {}
+  constructor(
+    @Inject(AuthService) private readonly authService: AuthService,
+    @Inject(PROFILE_STORE) private readonly profiles: ProfileStore,
+  ) {}
 
   @Public()
   @Post("otp/request")
@@ -74,21 +79,23 @@ export class AuthController {
 
   @Get("session")
   @Header("Cache-Control", "no-store")
-  session(@Req() request: AuthenticatedRequest): {
+  async session(@Req() request: AuthenticatedRequest): Promise<{
     userId: string;
     email: string;
     roleAssignments: StoredUser["roleAssignments"];
-    profileState: StoredUser["profileState"];
-  } {
+    profileState: import("@eqourse/shared").ProfileState;
+  }> {
     const user = request.authUser;
     if (!user) {
       throw new UnauthorizedException("Invalid or expired access token");
     }
+    const profile = await this.profiles.findByUserId(user.id);
+    if (!profile) throw new Error("Owning profile is required");
     return {
       userId: user.id,
       email: user.email,
       roleAssignments: user.roleAssignments,
-      profileState: user.profileState,
+      profileState: profile.state,
     };
   }
 }

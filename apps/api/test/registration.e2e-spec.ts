@@ -14,7 +14,7 @@ import {
   type OtpDelivery,
 } from "@eqourse/adapters";
 import { BusinessUnit, ProfileState, Role } from "@eqourse/shared";
-import { MongoMemoryServer } from "mongodb-memory-server";
+import { MongoMemoryReplSet } from "mongodb-memory-server";
 import type { mongo } from "mongoose";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -94,7 +94,7 @@ const apiDirectory = path.resolve(testDirectory, "..");
 
 describe("FR-REG-01 freelancer registration API", () => {
   let app: INestApplication;
-  let memoryServer: MongoMemoryServer;
+  let memoryServer: MongoMemoryReplSet;
   let migrationClient: mongo.MongoClient;
   let db: mongo.Db;
   let mailer: ControllableMailerAdapter;
@@ -109,7 +109,7 @@ describe("FR-REG-01 freelancer registration API", () => {
   };
 
   beforeAll(async () => {
-    memoryServer = await MongoMemoryServer.create();
+    memoryServer = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
     process.env.MONGODB_URI = memoryServer.getUri("eqourse_reg_01_test");
     process.env.JWT_SECRET = "test-only-jwt-secret-at-least-32-characters";
     process.env.VENDOR_IDENTIFIER_HMAC_SECRET =
@@ -139,6 +139,7 @@ describe("FR-REG-01 freelancer registration API", () => {
 
   beforeEach(async () => {
     await db.collection("users").deleteMany({});
+    await db.collection("profiles").deleteMany({});
     mailer.deliveries.length = 0;
     mailer.failure = undefined;
     clock.reset();
@@ -287,15 +288,18 @@ describe("FR-REG-01 freelancer registration API", () => {
     expect(JSON.stringify(response.body)).not.toContain(registration.phone);
   });
 
-  it("creates a DRAFT user and issues tokens only after email OTP verifies", async () => {
+  it("creates a DRAFT owning profile and issues tokens only after email OTP verifies", async () => {
     await requestRegistration();
     let stored = await db.collection("users").findOne({ email: baseRegistration.email });
-    expect(stored).toMatchObject({
-      countryCode: "IN",
-      profileState: ProfileState.DRAFT,
-    });
+    expect(stored).toMatchObject({ countryCode: "IN" });
+    expect(stored).not.toHaveProperty("profileState");
     expect(stored).not.toHaveProperty("phoneVerifiedAt");
     expect(stored?.refreshSessions).toEqual([]);
+    const profile = await db.collection("profiles").findOne({
+      userId: stored?._id,
+    });
+    expect(profile).toMatchObject({ state: ProfileState.DRAFT });
+    expect(profile).not.toHaveProperty("resumeSection");
 
     const tokens = await verifyRegistration();
     expect(tokens.accessToken).toEqual(expect.any(String));
@@ -304,6 +308,50 @@ describe("FR-REG-01 freelancer registration API", () => {
     expect(stored).not.toHaveProperty("phoneVerifiedAt");
     expect(stored?.refreshSessions).toHaveLength(1);
     expect(stored).not.toHaveProperty("otpChallenge");
+  });
+
+  it("reads session profileState from profiles and leaks no other profile field", async () => {
+    const now = clock.now;
+    const inserted = await db.collection("users").insertOne({
+      email: "profile-owned-session@example.com",
+      countryCode: "IN",
+      roleAssignments: [],
+      profileState: ProfileState.APPROVED,
+      deviceFingerprints: [],
+      reviewFlags: [],
+      refreshSessions: [],
+      createdAt: now,
+      updatedAt: now,
+    });
+    await db.collection("profiles").insertOne({
+      userId: inserted.insertedId,
+      state: ProfileState.SUBMITTED,
+      resumeSection: "SKILLS",
+      personal: { firstName: "Must not leak" },
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await post("/api/v1/auth/otp/request", {
+      email: "profile-owned-session@example.com",
+    }).expect(202);
+    const login = await post("/api/v1/auth/otp/verify", {
+      email: "profile-owned-session@example.com",
+      otp: codeFor("profile-owned-session@example.com"),
+    }).expect(200);
+    const response = await request(app.getHttpServer())
+      .get("/api/v1/auth/session")
+      .auth(login.body.accessToken as string, { type: "bearer" })
+      .expect(200);
+
+    expect(response.body).toEqual({
+      userId: inserted.insertedId.toHexString(),
+      email: "profile-owned-session@example.com",
+      roleAssignments: [],
+      profileState: ProfileState.SUBMITTED,
+    });
+    expect(JSON.stringify(response.body)).not.toContain("resumeSection");
+    expect(JSON.stringify(response.body)).not.toContain("Must not leak");
   });
 
   it("ignores and preserves legacy phone-verification fields without migration", async () => {
@@ -484,7 +532,6 @@ describe("FR-REG-01 freelancer registration API", () => {
       expect.objectContaining({ key: { phone: 1 }, unique: true, sparse: true }),
       expect.objectContaining({ key: { pan: 1 }, unique: true, sparse: true }),
       expect.objectContaining({ key: { "deviceFingerprints.hash": 1 } }),
-      expect.objectContaining({ key: { profileState: 1 } }),
     ]));
   });
 
@@ -540,7 +587,7 @@ describe("FR-REG-01 freelancer registration API", () => {
     { label: "absent", storedValue: undefined },
     { label: "explicit null", storedValue: null },
   ])(
-    "maps a $label MongoDB profileState to an enum-valued StoredUser",
+    "keeps a $label legacy MongoDB profileState inert in StoredUser",
     async ({ label, storedValue }) => {
       const inserted = await db.collection("users").insertOne({
         email: `profile-state-${label.replace(" ", "-")}@example.com`,
@@ -552,11 +599,9 @@ describe("FR-REG-01 freelancer registration API", () => {
       });
       const authStore = app.get<AuthStore>(AUTH_STORE);
 
-      expect((await authStore.findById(inserted.insertedId.toHexString()))?.profileState).toBe(
-        storedValue === ProfileState.SUBMITTED
-          ? ProfileState.SUBMITTED
-          : ProfileState.DRAFT,
-      );
+      expect(
+        await authStore.findById(inserted.insertedId.toHexString()),
+      ).not.toHaveProperty("profileState");
       const raw = await db.collection("users").findOne({ _id: inserted.insertedId });
       if (storedValue === undefined) {
         expect(raw).not.toHaveProperty("profileState");
@@ -663,11 +708,18 @@ describe("FR-REG-01 freelancer registration API", () => {
   it("reclaims an expired unverified registration but never a verified account", async () => {
     await requestRegistration();
     const originalId = (await db.collection("users").findOne({}))?._id;
+    const originalProfile = await db
+      .collection("profiles")
+      .findOne({ userId: originalId });
     clock.advance(10 * 60 * 1000 + 1);
     const replacement = { ...baseRegistration, email: "owner@example.com" };
     await requestRegistration(replacement);
     expect(await db.collection("users").countDocuments()).toBe(1);
     expect((await db.collection("users").findOne({ email: replacement.email }))?._id).toEqual(originalId);
+    expect(await db.collection("profiles").countDocuments()).toBe(1);
+    expect(
+      await db.collection("profiles").findOne({ userId: originalId }),
+    ).toMatchObject({ _id: originalProfile?._id, state: ProfileState.DRAFT });
 
     await verifyRegistration(replacement);
     clock.advance(10 * 60 * 1000 + 1);

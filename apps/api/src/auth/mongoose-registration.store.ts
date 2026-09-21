@@ -1,7 +1,9 @@
-import { Injectable, Optional } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import { connect, connection } from "mongoose";
 
 import { DatabaseConnectionService } from "../database/database-connection.service";
+import { PROFILE_STORE } from "../profiles/profile.constants";
+import type { ProfileStore } from "../profiles/profile.store";
 import type { OtpChallenge, RefreshSession } from "./auth.store";
 import type {
   PendingRegistration,
@@ -19,6 +21,8 @@ export class MongooseRegistrationStore implements RegistrationStore {
   private connectionPromise?: Promise<void>;
 
   constructor(
+    @Inject(PROFILE_STORE)
+    private readonly profiles: ProfileStore,
     @Optional()
     private readonly databaseConnection?: DatabaseConnectionService,
   ) {}
@@ -39,21 +43,36 @@ export class MongooseRegistrationStore implements RegistrationStore {
   ): Promise<RegistrationWriteResult> {
     await this.ensureConnected();
     try {
-      const user = await UserModel.create({
-        email: values.email,
-        phone: values.phone,
-        countryCode: values.countryCode,
-        ...(values.pan ? { pan: values.pan } : {}),
-        roleAssignments: [],
-        profileState: values.profileState,
-        deviceFingerprints: [values.deviceFingerprint],
-        reviewFlags: duplicateDevice
-          ? [this.duplicateDeviceFlag(values.deviceFingerprint.firstSeenAt)]
-          : [],
-        otpChallenge: values.emailChallenge,
-        refreshSessions: [],
-      });
-      return { status: "WRITTEN", userId: user.id };
+      const session = await connection.startSession();
+      let userId = "";
+      try {
+        await session.withTransaction(async () => {
+          const [user] = await UserModel.create(
+            [
+              {
+                email: values.email,
+                phone: values.phone,
+                countryCode: values.countryCode,
+                ...(values.pan ? { pan: values.pan } : {}),
+                roleAssignments: [],
+                deviceFingerprints: [values.deviceFingerprint],
+                reviewFlags: duplicateDevice
+                  ? [this.duplicateDeviceFlag(values.deviceFingerprint.firstSeenAt)]
+                  : [],
+                otpChallenge: values.emailChallenge,
+                refreshSessions: [],
+              },
+            ],
+            { session },
+          );
+          if (!user) throw new Error("Registration user was not created");
+          userId = user.id;
+          await this.profiles.ensureForUser(userId, session);
+        });
+      } finally {
+        await session.endSession();
+      }
+      return { status: "WRITTEN", userId };
     } catch (error) {
       return this.duplicateResultOrThrow(error);
     }
@@ -90,7 +109,6 @@ export class MongooseRegistrationStore implements RegistrationStore {
       email: values.email,
       phone: values.phone,
       countryCode: values.countryCode,
-      profileState: values.profileState,
       otpChallenge: values.emailChallenge,
     };
     const fieldsToUnset: Record<string, 1> = {};
@@ -111,14 +129,27 @@ export class MongooseRegistrationStore implements RegistrationStore {
     if (Object.keys(fieldsToUnset).length > 0) update.$unset = fieldsToUnset;
 
     try {
-      const result = await UserModel.updateOne(
-        {
-          _id: userId,
-          "otpChallenge.expiresAt": { $lte: now },
-        },
-        update,
-      ).exec();
-      return result.modifiedCount === 1
+      const session = await connection.startSession();
+      let modifiedCount = 0;
+      try {
+        await session.withTransaction(async () => {
+          const result = await UserModel.updateOne(
+            {
+              _id: userId,
+              "otpChallenge.expiresAt": { $lte: now },
+            },
+            update,
+            { session },
+          ).exec();
+          modifiedCount = result.modifiedCount;
+          if (modifiedCount === 1) {
+            await this.profiles.ensureForUser(userId, session);
+          }
+        });
+      } finally {
+        await session.endSession();
+      }
+      return modifiedCount === 1
         ? { status: "WRITTEN", userId }
         : { status: "CONFLICT", field: "unknown" };
     } catch (error) {

@@ -1,5 +1,4 @@
 import { Injectable, Optional } from "@nestjs/common";
-import { ProfileState } from "@eqourse/shared";
 import { connect, connection, Types } from "mongoose";
 
 import { DatabaseConnectionService } from "../database/database-connection.service";
@@ -202,14 +201,9 @@ export class MongooseAuthStore implements AuthStore {
 
   private toStoredUser(user: UserDocument | null): StoredUser | null {
     if (!user) return null;
-    const profileState = user.profileState as ProfileState | null | undefined;
     return {
       id: user.id,
       email: user.email,
-      profileState:
-        profileState === undefined || profileState === null
-          ? ProfileState.DRAFT
-          : profileState,
       roleAssignments: user.roleAssignments.map((assignment) => ({
         role: assignment.role,
         businessUnit: assignment.businessUnit,

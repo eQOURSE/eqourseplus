@@ -7,7 +7,6 @@ import {
 } from "@nestjs/common";
 import type { MailerAdapter } from "@eqourse/adapters";
 import {
-  ProfileState,
   type RegistrationChannels,
   type RegistrationRequest,
 } from "@eqourse/shared";
@@ -54,7 +53,6 @@ export class RegistrationService {
       phone: request.phone,
       countryCode: request.countryCode,
       ...(request.pan ? { pan: request.pan } : {}),
-      profileState: ProfileState.DRAFT,
       emailChallenge: this.challenge("email", request.email, emailCode, expiresAt),
       deviceFingerprint: {
         hash: fingerprintHash,
