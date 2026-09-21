@@ -5,18 +5,53 @@ import styles from "./home-redesign.module.css";
 import Image from "next/image";
 
 const footerColumns = [
-  ["PLATFORM", "Live Cockpit", "Specialist Sandbox", "Telemetry Engine", "Golden Benchmarks", "Data Provenance Logs"],
-  ["SPECIALISTS", "Fellows Roster", "Verification Testing", "Domain Academies", "Payout Guarantees", "Specialist Code of Ethics"],
-  ["VENDORS", "Agency Onboarding", "SLA Commitments", "Team Allocation", "Vendor Dashboard", "Master Services Agreement"],
-  ["LEGAL", "Singapore Operations", "India Operations Hub", "Privacy Policy", "Terms of Service", "Security Disclosures"],
+  [
+    "PLATFORM",
+    "About eQOURSE+",
+    "How It Works",
+    "Glass Box Architecture",
+    "Quality and Rigor",
+    "Trust and Provenance",
+    "FAQ",
+  ],
+  [
+    "SPECIALISTS",
+    "Join as a Specialist",
+    "Specialist Pathways",
+    "Verification and Calibration",
+    "Domains and Expertise",
+    "Earnings and Clarity",
+  ],
+  [
+    "VENDORS",
+    "Join as a Vendor",
+    "Vendor Network",
+    "Onboarding and Capability",
+    "Structured Delivery",
+    "Agency Partnership",
+  ],
+  [
+    "LEGAL",
+    "Privacy Policy",
+    "Terms of Service",
+    "Cookie Policy",
+    "Data Protection",
+    "Acceptable Use Policy",
+  ],
 ] as const;
-
 
 function Brand() {
   return (
     <span className={styles.brand}>
       <span>eQOURSE</span>
-      <Image src="/eQOURSE Plus-04%20(1).svg" alt="eQOURSE Logo" width={24} height={24} className={styles.brandMark} priority />
+      <Image
+        src="/eQOURSE Plus-04%20(1).svg"
+        alt="eQOURSE Logo"
+        width={24}
+        height={24}
+        className={styles.brandMark}
+        priority
+      />
     </span>
   );
 }
@@ -24,23 +59,37 @@ function Brand() {
 export function HomeHeader() {
   return (
     <header className={styles.headerWrap}>
-      <nav id="site-navigation" className={styles.header} data-home-region aria-labelledby="site-navigation-title">
-        <span id="site-navigation-title" className="sr-only">Primary navigation</span>
-        <a className={styles.brandLink} href="#hero" aria-label="eQOURSE+"><Brand /></a>
+      <nav
+        id="site-navigation"
+        className={styles.header}
+        data-home-region
+        aria-labelledby="site-navigation-title"
+      >
+        <span id="site-navigation-title" className="sr-only">
+          Primary navigation
+        </span>
+        <a className={styles.brandLink} href="#hero" aria-label="eQOURSE+">
+          <Brand />
+        </a>
         <div className={styles.primaryLinks}>
           <a href="#categories">Solutions</a>
-          <a href="/freelancers">Specialists</a>
+          <a href="/freelancers">Experts</a>
           <a href="/vendors">Vendors</a>
           <a href="/about">About</a>
         </div>
         <div className={styles.headerActions}>
           <PublicThemeToggle />
           <Link href="/login">Login</Link>
-          <Link className={styles.exploreButton} href="/register/client">Explore Platform</Link>
+          <Link className={styles.exploreButton} href="/register">
+            Access eQOURSE+
+          </Link>
         </div>
         <div className="home-nav-links sr-only" aria-hidden="true">
-          <a href="#how-it-works">How it works</a><a href="#categories">Services</a>
-          <a href="/freelancers">For freelancers</a><a href="/vendors">For vendors</a><a href="/about">About</a>
+          <a href="#how-it-works">How it works</a>
+          <a href="#categories">Services</a>
+          <a href="/freelancers">For freelancers</a>
+          <a href="/vendors">For vendors</a>
+          <a href="/about">About</a>
         </div>
       </nav>
     </header>
@@ -49,25 +98,51 @@ export function HomeHeader() {
 
 export function HomeFooter() {
   return (
-    <footer id="site-footer" className={styles.footer} data-home-region aria-labelledby="footer-title">
-      <h2 id="footer-title" className="sr-only">eQOURSE+ — the talent platform by eQOURSE</h2>
+    <footer
+      id="site-footer"
+      className={styles.footer}
+      data-home-region
+      aria-labelledby="footer-title"
+    >
+      <h2 id="footer-title" className="sr-only">
+        eQOURSE+ — the talent platform by eQOURSE
+      </h2>
       <div className={styles.footerGrid}>
         <div className={styles.footerBrand}>
           <Brand />
-          <p>Connecting verified specialists, partner agencies and enterprise teams for AI training and global content projects.</p>
+          <p>
+            Connecting verified specialists, partner agencies and enterprise
+            teams for AI training and global content projects.
+          </p>
         </div>
         {footerColumns.map(([heading, ...items]) => (
           <div className={styles.footerColumn} key={heading}>
             <h3>{heading}</h3>
-            {items.map((item) => <a key={item} href="#hero">{item}</a>)}
+            {items.map((item) => (
+              <a key={item} href="#hero">
+                {item}
+              </a>
+            ))}
           </div>
         ))}
       </div>
       <div className={styles.footerBottom}>
-        <p>eQOURSE+ is an enterprise division of EQOURSE ONLINE EDUCATIONERS LLP. Operating across Singapore and India.</p>
-        <p><span className={styles.statusDot} />Transparent project delivery</p>
+        <p>
+          eQOURSE+ is an enterprise division of eQOURSE. Certified ISO 9001:2015
+          &amp; ISO 27001:2013. Operating across Singapore &amp; India.
+        </p>
+        <p>
+          <span className={styles.statusDot} />
+          Transparent project delivery
+        </p>
       </div>
-      <a className="home-footer-link sr-only" href="https://www.eqourse.com/" aria-label="Visit eQOURSE">Visit eQOURSE</a>
+      <a
+        className="home-footer-link sr-only"
+        href="https://www.eqourse.com/"
+        aria-label="Visit eQOURSE"
+      >
+        Visit eQOURSE
+      </a>
     </footer>
   );
 }

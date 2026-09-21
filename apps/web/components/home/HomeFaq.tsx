@@ -1,11 +1,13 @@
 import styles from "./home-redesign.module.css";
 
 const faqs = [
-  ["Can I really work from anywhere and choose my own schedule?", "Yes. eQOURSE+ is fully remote and asynchronous. Once verified, you contribute whenever your schedule allows, from any supported country."],
-  ["How does payment work?", "Payment runs on milestone billing. Every approved task is logged to your dashboard ledger and released on a published cycle by global bank transfer or a verified payment partner."],
-  ["How do vendor agencies receive work?", "Accredited agencies sign a master services agreement. When enterprise volume requires it, we issue a formal statement of work with defined quotas, agreed rate cards and milestones."],
-  ["How do enterprise clients maintain control over quality and timelines?", "Clients use the project telemetry portal to inspect quality metrics, review annotations, communicate with a dedicated project manager and adjust delivery pace."],
-  ["How is eQOURSE+ different from anonymous crowdsourcing platforms?", "Most crowdsourcing marketplaces match anonymous contributors to tasks with automated scoring and little recourse. eQOURSE+ is a managed expert network: identities are verified, reviews are human, agencies participate under formal agreements, and every decision leaves an audit trail."],
+  ["What is eQOURSE+?", "eQOURSE+ is the transparent talent and delivery ecosystem connecting verified experts, vendor agencies, and enterprise clients on real projects in AI training, annotation, evaluation, and content, all backed by documented standards and on record payouts."],
+  ["Who can join as an expert?", "Domain specialists, academic fellows, annotators, evaluators, content experts, multilingual specialists, coding experts, and subject matter authorities across STEM, language, and technical fields."],
+  ["What kind of AI work is available?", "Experts work on AI response evaluation, human feedback and preference ranking, data annotation, multilingual AI data, speech and audio datasets, reasoning tasks, and technical evaluation across domains."],
+  ["What kind of projects will I actually work on?", "Model evaluation, preference ranking, annotation across text, audio, and other formats, multilingual data creation, speech datasets, reasoning tasks, and structured content for AI and education use cases."],
+  ["Can vendors join as partners?", "Yes. Vendors complete verification and a capability review before joining the network, then receive structured project opportunities and deliver through clear work orders and milestone based settlements."],
+  ["Does eQOURSE+ support multiple languages?", "Yes. Expert opportunities span 30+ languages, supported by verified linguistic and cultural expertise."],
+  ["Which countries can experts work from?", "eQOURSE+ operates under dual governance from Singapore and India and welcomes experts and vendor agencies from multiple countries for global projects."],
 ] as const;
 
 export function HomeFaq() {

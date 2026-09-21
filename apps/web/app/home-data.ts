@@ -3,9 +3,9 @@ import {
   PLATFORM_ORGANIZATION_ID,
 } from "./site-structured-data";
 
-export const HOME_TITLE = "eQOURSE+ | Expert Network for AI Training & Content";
+export const HOME_TITLE = "eQOURSE+ | Join the Expert Network Powering AI and World-Class Content";
 export const HOME_DESCRIPTION =
-  "Remote work on frontier AI and global content projects. Verified specialists, partner agencies and enterprise clients in one transparent, audited ecosystem.";
+  "Work from anywhere, anytime on frontier AI and global content projects. eQOURSE+ connects verified domain specialists, partner agencies, and leading AI labs in a fully transparent, ISO-certified ecosystem with guaranteed milestone payouts.";
 export const SOCIAL_IMAGE_ALT = "eQOURSE+ brand gradient";
 
 const organization = {

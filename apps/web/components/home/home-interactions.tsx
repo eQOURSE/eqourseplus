@@ -59,14 +59,14 @@ export function CapabilityExplorer() {
 }
 
 const specializationTracks = [
-  "Language, dialects and multilingual AI",
-  "Advanced STEM and scientific reasoning",
-  "Software engineering and code intelligence",
-  "Quantitative finance and legal analysis",
-  "Clinical medicine and healthcare",
-  "Curriculum design and enterprise content",
-  "Robotics, perception and physical AI",
-  "RLHF, preference ranking and red-teaming",
+  ["Language, Dialects & Multilingual AI", "Dialectical nuances, localization, transcription, and cultural safety across 30+ global languages."],
+  ["Advanced STEM & Scientific Reasoning", "Hallucination detection, paper critiques, mathematical proofs, and physical science verification."],
+  ["Software Engineering & Code Intelligence", "LLM code benchmarking, unit test debugging, repository evaluations, and architecture reviews."],
+  ["Quantitative Finance & Legal Analysis", "Statutory compliance interpretation, financial audits, risk logic assessment, and fiscal modeling."],
+  ["Clinical Medicine & Healthcare", "Diagnostic reviews, pharmacology evaluations, literature synthesis, and patient safety guardrails."],
+  ["Curriculum Design & Enterprise Content", "K-12 and higher-ed modules, corporate training, assessments, and technical instructional design."],
+  ["Robotics, Perception & Physical AI", "Sensor annotation (LiDAR, Radar, Video), scenario evaluation, edge-case tagging, and spatial data."],
+  ["RLHF, Preference Ranking & Red-Teaming", "Human feedback ranking, adversarial prompt crafting, bias mitigation, and safety rubric enforcement."],
 ] as const;
 
 export function SpecializationTracks() {
@@ -76,9 +76,9 @@ export function SpecializationTracks() {
   return (
     <div className={styles.specializationExplorer}>
       <div className={styles.specializationList} role="tablist" aria-label="Specialization tracks">
-        {specializationTracks.map((item, index) => (
+        {specializationTracks.map(([title], index) => (
           <button
-            key={item}
+            key={title}
             type="button"
             role="tab"
             aria-selected={active === index}
@@ -87,7 +87,7 @@ export function SpecializationTracks() {
             onClick={() => setActive(index)}
           >
             <span className={styles.specializationNumber}>{String(index + 1).padStart(2, "0")}</span>
-            <span>{item}</span>
+            <span>{title}</span>
             <i aria-hidden="true">→</i>
           </button>
         ))}
@@ -102,8 +102,8 @@ export function SpecializationTracks() {
           <span>SPECIALIZATION TRACK</span>
           <b>VERIFIED NETWORK</b>
         </div>
-        <h3>{track}</h3>
-        <p>Verified contributors and accountable delivery workflows for this track.</p>
+        <h3>{track[0]}</h3>
+        <p>{track[1]}</p>
         <div className={styles.specializationSignals} aria-label="Track delivery qualities">
           <div><span aria-hidden="true">✓</span><strong>Verified expertise</strong><small>Specialist-led delivery</small></div>
           <div><span aria-hidden="true">✓</span><strong>Clear workflows</strong><small>Defined project context</small></div>
