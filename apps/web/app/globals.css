@@ -1604,11 +1604,128 @@ margin: 0;
 }
 
 .authenticated-shell-status,
-.company-onboarding-status {
+.company-onboarding-status,
+.role-home-status {
   width: min(100% - 2rem, 52rem);
   margin: 4rem auto;
   color: hsl(var(--muted-foreground));
   text-align: center;
+}
+
+.role-home {
+  display: grid;
+  gap: 2rem;
+}
+
+.role-home-header {
+  max-width: 48rem;
+}
+
+.role-home-header h1 {
+  margin: 0.5rem 0 0;
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  line-height: 1.08;
+}
+
+.role-home-header > p:last-child {
+  margin: 0.75rem 0 0;
+  color: hsl(var(--muted-foreground));
+}
+
+.role-home-live {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.role-home-panel {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.role-home-panel h2,
+.role-home-empty h2 {
+  margin: 0;
+  font-family: var(--font-heading);
+}
+
+.role-home-panel h3 {
+  margin: 0.25rem 0 0;
+  font-size: 1rem;
+}
+
+.role-home-panel p,
+.role-home-panel ul,
+.role-home-facts {
+  margin: 0;
+}
+
+.role-home-facts {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.role-home-facts > div {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.4fr) 1fr;
+  gap: 1rem;
+}
+
+.role-home-facts dt {
+  color: hsl(var(--muted-foreground));
+}
+
+.role-home-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.role-home-pending {
+  display: grid;
+  gap: 0;
+  border-block: 1px solid hsl(var(--border));
+}
+
+.role-home-empty {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.35fr) 1fr;
+  gap: 1rem;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.role-home-empty:last-child {
+  border-bottom: 0;
+}
+
+.role-home-empty p,
+.role-home-company-action p {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+}
+
+.role-home-company-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.5rem;
+}
+
+@media (max-width: 48rem) {
+  .role-home-live {
+    grid-template-columns: 1fr;
+  }
+
+  .role-home-empty,
+  .role-home-facts > div {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
 }
 
 .company-onboarding-page {

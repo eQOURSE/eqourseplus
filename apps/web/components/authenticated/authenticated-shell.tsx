@@ -2,14 +2,37 @@
 
 import type { AuthSession } from "@eqourse/shared";
 import { GlassButton, GlassNav, ThemeToggle } from "@eqourse/ui";
-import { useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 
 interface AuthenticatedShellProps {
   children: ReactNode;
   initialSession?: AuthSession;
+  navigate?: (href: string) => void;
 }
 
-export function AuthenticatedShell({ children, initialSession }: AuthenticatedShellProps) {
+const AuthenticatedSessionContext = createContext<AuthSession | null>(null);
+
+export function useAuthenticatedSession(): AuthSession {
+  const session = useContext(AuthenticatedSessionContext);
+  if (!session) throw new Error("Authenticated session is unavailable");
+  return session;
+}
+
+function defaultNavigate(href: string): void {
+  window.location.assign(href);
+}
+
+export function AuthenticatedShell({
+  children,
+  initialSession,
+  navigate = defaultNavigate,
+}: AuthenticatedShellProps) {
   const [session, setSession] = useState<AuthSession | null>(initialSession ?? null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">(initialSession ? "ready" : "loading");
   const [signingOut, setSigningOut] = useState(false);
@@ -20,7 +43,7 @@ export function AuthenticatedShell({ children, initialSession }: AuthenticatedSh
     void fetch("/api/auth/session", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) {
-          if (active) window.location.assign("/login");
+          if (active) navigate("/login");
           return;
         }
         const nextSession = (await response.json()) as AuthSession;
@@ -36,14 +59,14 @@ export function AuthenticatedShell({ children, initialSession }: AuthenticatedSh
     return () => {
       active = false;
     };
-  }, [initialSession]);
+  }, [initialSession, navigate]);
 
   async function signOut(): Promise<void> {
     setSigningOut(true);
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } finally {
-      window.location.assign("/login");
+      navigate("/login");
     }
   }
 
@@ -80,7 +103,9 @@ export function AuthenticatedShell({ children, initialSession }: AuthenticatedSh
           </GlassButton>
         </div>
       </GlassNav>
-      <main className="authenticated-shell-content">{children}</main>
+      <AuthenticatedSessionContext.Provider value={session}>
+        <main className="authenticated-shell-content">{children}</main>
+      </AuthenticatedSessionContext.Provider>
     </div>
   );
 }
