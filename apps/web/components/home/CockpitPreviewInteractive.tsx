@@ -69,7 +69,7 @@ export function CockpitPreview() {
           <span />
           <span />
         </div>
-        <code>app.eqourse.plus/cockpit/telemetry-live</code>
+        <code>plus.eqourse.com/cockpit/telementry-live</code>
         <span className={styles.cockpitTools}>Workspace preview</span>
       </div>
 
