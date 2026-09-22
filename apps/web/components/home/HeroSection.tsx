@@ -14,7 +14,7 @@ export function HeroSection() {
           Join the expert network powering AI and world-class content.
         </h1>
         <p className={styles.heroCopy}>
-          Work from anywhere on projects that shape next generation intelligence. Whether you are a specialist, an agency or an enterprise.
+          Work from anywhere on projects that shape next generation intelligence. Whether you are a specialist, an agency or an enterprise, eQOURSE+ delivers operational clarity.
         </p>
         <div className={styles.heroActions}>
           <Link className="eq-glass-button eq-glass-button--primary eq-glass-surface eq-glass-tier-regular home-cta" href="/register/freelancer">

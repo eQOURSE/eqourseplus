@@ -63,6 +63,16 @@ describe("FR-PUB-01 home page", () => {
     expect(screen.getByText(/Transparent project delivery/)).toBeInTheDocument();
   });
 
+  it("keeps the approved hero sentence and cockpit display address", () => {
+    expect(heroSource).toContain(
+      "Whether you are a specialist, an agency or an enterprise, eQOURSE+ delivers operational clarity.",
+    );
+    expect(cockpitSource).toContain(
+      "plus.eqourse.com/cockpit/telemetry-live",
+    );
+    expect(cockpitSource).not.toContain("telementry-live");
+  });
+
   it("uses the exact Figma typography, palette, frame width and section geometry", () => {
     expect(homeStyles).toMatch(/--figma-ink:\s*#18181b/);
     expect(homeStyles).toMatch(/--figma-teal:\s*#0f766e/);
