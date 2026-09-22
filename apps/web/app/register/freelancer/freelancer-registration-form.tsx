@@ -41,7 +41,13 @@ function describedBy(helperId: string, errorId: string, hasError: boolean) {
   return hasError ? `${helperId} ${errorId}` : helperId;
 }
 
-export function FreelancerRegistrationForm() {
+interface FreelancerRegistrationFormProps {
+  navigate?: (path: string) => void;
+}
+
+export function FreelancerRegistrationForm({
+  navigate = (path) => window.location.assign(path),
+}: FreelancerRegistrationFormProps = {}) {
   const [step, setStep] = useState<Step>("details");
   const [countryOptions, setCountryOptions] = useState<CountryOption[]>([]);
   const [countryCode, setCountryCode] = useState("");
@@ -206,6 +212,7 @@ export function FreelancerRegistrationForm() {
       setEmailOtp("");
       setIdentity(null);
       setStep("success");
+      navigate("/profile");
     } catch {
       setFormMessage("We could not verify your code. Try again.");
     } finally {
@@ -234,11 +241,11 @@ export function FreelancerRegistrationForm() {
         <p className="home-eyebrow">Freelancer registration</p>
         <h1 id="freelancer-register-title">Your account is created.</h1>
         <p className="freelancer-hero-copy">
-          Your email address is verified. Your account is under review.
+          Your email address is verified. Continue with your profile details.
         </p>
         <div className="home-hero-actions">
-          <a className="home-freelancer-link" href="/">
-            Return home
+          <a className="home-freelancer-link" href="/profile">
+            Continue to profile
           </a>
         </div>
       </div>

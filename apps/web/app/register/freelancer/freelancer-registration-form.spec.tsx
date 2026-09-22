@@ -31,8 +31,8 @@ function tokenResponse(): Response {
   );
 }
 
-async function renderReadyForm(): Promise<void> {
-  render(<FreelancerRegistrationForm />);
+async function renderReadyForm(navigate?: (path: string) => void): Promise<void> {
+  render(<FreelancerRegistrationForm navigate={navigate} />);
   await waitFor(() => expect(screen.getByLabelText("Country")).toBeEnabled());
 }
 
@@ -66,6 +66,23 @@ afterEach(() => {
 });
 
 describe("FR-REG-01 freelancer registration form", () => {
+  it("enters the DRAFT profile wizard after verification without claiming review", async () => {
+    const navigate = vi.fn();
+    fetchMock
+      .mockResolvedValueOnce(acceptedResponse())
+      .mockResolvedValueOnce(tokenResponse());
+    render(<FreelancerRegistrationForm navigate={navigate} />);
+    await waitFor(() => expect(screen.getByLabelText("Country")).toBeEnabled());
+    await submitValidDetails();
+    fireEvent.change(screen.getByLabelText("Email verification code"), {
+      target: { value: "123456" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Verify and create account" }));
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/profile"));
+    expect(document.body).not.toHaveTextContent(/under review/i);
+  });
+
   it("does not embed token fields or values in the server-rendered payload", () => {
     const serverMarkup = renderToString(<FreelancerRegistrationForm />);
 
@@ -264,7 +281,7 @@ describe("FR-REG-01 freelancer registration form", () => {
     fetchMock
       .mockResolvedValueOnce(acceptedResponse())
       .mockResolvedValueOnce(tokenResponse());
-    await renderReadyForm();
+    await renderReadyForm(vi.fn());
     await submitValidDetails();
     fireEvent.change(screen.getByLabelText("Email verification code"), {
       target: { value: "123456" },
@@ -298,7 +315,7 @@ describe("FR-REG-01 freelancer registration form", () => {
     fetchMock
       .mockResolvedValueOnce(acceptedResponse())
       .mockResolvedValueOnce(tokenResponse());
-    await renderReadyForm();
+    await renderReadyForm(vi.fn());
     await submitValidDetails();
 
     expect(screen.getByLabelText("Email verification code")).toBeVisible();
