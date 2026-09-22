@@ -13,13 +13,13 @@ import AboutPage, { metadata } from "./page";
 describe("FR-PUB-05 metadata", () => {
   it("uses the approved keyword-first title and bounded description", () => {
     expect(ABOUT_TITLE).toBe(
-      "ISO-Certified AI Data & Content Talent | eQOURSE+",
+      "About eQOURSE+ | Verified AI Data & Content Talent Network",
     );
-    expect(ABOUT_TITLE).toHaveLength(49);
+    expect(ABOUT_TITLE).toHaveLength(58);
     expect(ABOUT_DESCRIPTION).toBe(
-      "Meet eQOURSE+, the talent platform by eQOURSE: 500+ specialists, 30+ languages, ISO 9001 and ISO 27001, with operations in India and Singapore.",
+      "eQOURSE+ is the verified talent and vendor network by eQOURSE — KYC-verified specialists and accredited agencies for AI data and multilingual content.",
     );
-    expect(ABOUT_DESCRIPTION).toHaveLength(143);
+    expect(ABOUT_DESCRIPTION).toHaveLength(150);
   });
 
   it("sets canonical, language alternates, and complete social metadata", () => {

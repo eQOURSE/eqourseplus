@@ -63,7 +63,12 @@ function Brand() {
   );
 }
 
-export function HomeHeader() {
+type HomeHeaderProps = {
+  brandHref?: string;
+  activePage?: "about";
+};
+
+export function HomeHeader({ brandHref = "#hero", activePage }: HomeHeaderProps = {}) {
   return (
     <header className={styles.headerWrap}>
       <nav
@@ -75,14 +80,14 @@ export function HomeHeader() {
         <span id="site-navigation-title" className="sr-only">
           Primary navigation
         </span>
-        <a className={styles.brandLink} href="#hero" aria-label="eQOURSE+">
+        <a className={styles.brandLink} href={brandHref} aria-label="eQOURSE+">
           <Brand />
         </a>
         <div className={styles.primaryLinks}>
           <a href="#categories">Solutions</a>
           <a href="/freelancers">Experts</a>
           <a href="/vendors">Vendors</a>
-          <a href="/about">About</a>
+          <a href="/about" aria-current={activePage === "about" ? "page" : undefined}>About</a>
         </div>
         <div className={styles.headerActions}>
           <PublicThemeToggle />
