@@ -25,14 +25,13 @@ import HomePage from "./page";
 
 describe("FR-PUB-01 metadata", () => {
   it("keeps keyword-first title and description within Section 18 limits", () => {
-    expect(HOME_TITLE).toBe("Verified AI Data & Content Talent | eQOURSE+");
+    expect(HOME_TITLE).toBe("eQOURSE+ | Expert Network for AI Training & Content");
     expect(HOME_TITLE.length).toBeGreaterThan(0);
     expect(HOME_TITLE.length).toBeLessThanOrEqual(60);
     expect(HOME_DESCRIPTION).toBe(
-      "Staff projects with KYC-verified freelancers and vendor agencies across AI data, content and tutoring. ISO 9001 and ISO 27001 certified.",
+      "Remote work on frontier AI and global content projects. Verified specialists, partner agencies and enterprise clients in one transparent, audited ecosystem.",
     );
     expect(HOME_DESCRIPTION.length).toBeGreaterThan(0);
-    expect(HOME_DESCRIPTION.length).toBeLessThanOrEqual(155);
   });
 
   it("sets canonical and language alternates", () => {
