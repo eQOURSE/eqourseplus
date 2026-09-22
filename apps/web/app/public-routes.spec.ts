@@ -17,6 +17,7 @@ const ALL_PUBLIC_ROUTES = [
   "/freelancers",
   "/jobs",
   "/login",
+  "/profile",
   "/register",
   "/register/client",
   "/register/freelancer",
@@ -74,6 +75,11 @@ describe("public route registry", () => {
   it("keeps the authenticated verification console excluded and out of the sitemap", () => {
     expect(EXCLUDED_ROUTES).toContain("/company-reviews");
     expect(RESOLVING_ROUTES).not.toContain("/company-reviews");
+  });
+
+  it("keeps the authenticated profile wizard excluded and out of the sitemap", () => {
+    expect(EXCLUDED_ROUTES).toContain("/profile");
+    expect(RESOLVING_ROUTES).not.toContain("/profile");
   });
 
   it("lists a route as resolving only when its page exists", () => {

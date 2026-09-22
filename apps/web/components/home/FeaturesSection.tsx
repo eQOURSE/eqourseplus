@@ -22,13 +22,13 @@ export function FeaturesSection() {
               <span className={styles.cardIndex} aria-hidden="true">✦</span>
               <h3>{pillar.title}</h3>
               <p>{pillar.body}</p>
-              <ul className={styles.pillerList} aria-label={pillar.title}>
+              <ul className={styles.pillerList} style={{"listStyle":"disc"}} aria-label={pillar.title}>
                 {pillar.bullets.map((bullet) => (
                   <li key={bullet}>{bullet}</li>
                 ))}
               </ul>
-              <Link className="eq-glass-button eq-glass-button--secondary eq-glass-surface eq-glass-tier-regular home-cta" href={pillar.href}>{pillar.cta}<span aria-hidden="true">→</span></Link>
-              <Link className="home-inline-link" href={pillar.moreHref}>{pillar.more} →</Link>
+              <Link className=" eq-glass-button--secondary eq-glass-surface eq-glass-tier-regular home-cta" href={pillar.href}>{pillar.cta}<span aria-hidden="true">→</span></Link>
+              {/* <Link className="home-inline-link" href={pillar.moreHref}>{pillar.more} →</Link> */}
             </article>
           ))}
         </div>
