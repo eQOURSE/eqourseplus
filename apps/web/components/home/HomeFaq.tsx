@@ -6,6 +6,8 @@ const faqs = [
   ["How do vendor agencies receive work?", "Accredited agencies sign a master services agreement. When enterprise volume requires it, we issue a formal statement of work with defined quotas, agreed rate cards and milestones."],
   ["How do enterprise clients maintain control over quality and timelines?", "Clients use the project telemetry portal to inspect quality metrics, review annotations, communicate with a dedicated project manager and adjust delivery pace."],
   ["How is eQOURSE+ different from anonymous crowdsourcing platforms?", "Most crowdsourcing marketplaces match anonymous contributors to tasks with automated scoring and little recourse. eQOURSE+ is a managed expert network: identities are verified, reviews are human, agencies participate under formal agreements, and every decision leaves an audit trail."],
+  ["Does eQOURSE+ support multiple languages?", "Yes. Expert opportunities span multiple languages, supported by verified linguistic and cultural expertise."],
+  ["Which countries can experts work from?", "eQOURSE+ operates under dual governance from Singapore and India and welcomes experts and vendor agencies from multiple countries for global projects."],
 ] as const;
 
 export function HomeFaq() {

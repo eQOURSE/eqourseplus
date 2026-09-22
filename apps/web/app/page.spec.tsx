@@ -32,6 +32,10 @@ const heroSource = readFileSync(
   resolve(process.cwd(), "components/home/HeroSection.tsx"),
   "utf8",
 );
+const cockpitSource = readFileSync(
+  resolve(process.cwd(), "components/home/CockpitPreviewInteractive.tsx"),
+  "utf8",
+);
 
 function cssRule(source: string, selector: string) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -159,15 +163,17 @@ describe("FR-PUB-01 home page", () => {
     ]);
   });
 
-  it("contextually links to both public talent models", () => {
+  it("links to both public talent models from the primary navigation", () => {
     render(<HomePage />);
 
-    expect(
-      screen.getByRole("link", { name: "More for freelancers →" }),
-    ).toHaveAttribute("href", "/freelancers");
-    expect(
-      screen.getByRole("link", { name: "More for vendors →" }),
-    ).toHaveAttribute("href", "/vendors");
+    expect(screen.getByRole("link", { name: "Experts" })).toHaveAttribute(
+      "href",
+      "/freelancers",
+    );
+    expect(screen.getByRole("link", { name: "Vendors" })).toHaveAttribute(
+      "href",
+      "/vendors",
+    );
     expect(screen.getByRole("link", { name: "About" })).toHaveAttribute(
       "href",
       "/about",
@@ -215,7 +221,7 @@ describe("FR-PUB-01 home page", () => {
   it("gives CTA anchors the deep plate, gel press, and focus contract", () => {
     render(<HomePage />);
     const primaryCta = screen.getByRole("link", {
-      name: "Apply as an Expert (Work Remotely)",
+      name: "Apply as an Expert",
     });
 
     expect(primaryCta).toHaveClass(
@@ -252,7 +258,7 @@ describe("FR-PUB-01 home page", () => {
     expect(container.querySelector(".eq-glass-stage > .eq-glass-substrate")).not.toBeNull();
     expect(container.querySelectorAll(".eq-glass-button").length).toBeGreaterThanOrEqual(7);
     expect(container.querySelector(".cockpit")).toHaveClass("eq-glass-stage");
-    expect(heroSource).toContain("eq-glass-substrate");
+    expect(cockpitSource).toContain("eq-glass-substrate");
     expect(heroSource).not.toContain("LiquidGlassHomeEffect");
   });
 
