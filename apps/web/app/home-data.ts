@@ -3,9 +3,9 @@ import {
   PLATFORM_ORGANIZATION_ID,
 } from "./site-structured-data";
 
-export const HOME_TITLE = "Verified AI Data & Content Talent | eQOURSE+";
+export const HOME_TITLE = "eQOURSE+ | Expert Network for AI Training & Content";
 export const HOME_DESCRIPTION =
-  "Staff projects with KYC-verified freelancers and vendor agencies across AI data, content and tutoring. ISO 9001 and ISO 27001 certified.";
+  "Remote work on frontier AI and global content projects. Verified specialists, partner agencies and enterprise clients in one transparent, audited ecosystem.";
 export const SOCIAL_IMAGE_ALT = "eQOURSE+ brand gradient";
 
 const organization = {
