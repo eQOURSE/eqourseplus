@@ -17,7 +17,7 @@ export function TrustSection() {
           <span>Quality, security and accountability across the delivery lifecycle.</span>
         </div>
         <div className={styles.standardsGrid}>{standards.map(([title, body], index) =>
-          <article key={title}><span aria-hidden="true">{["◎", "⌁", "◇", "⌂" , "💼"][index]}
+          <article key={title}><span aria-hidden="true">{["◎", "⌁", "◇", "⌂" , "◎"][index]}
           </span>
             <div>
               <h3>{title}</h3>
