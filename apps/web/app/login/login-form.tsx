@@ -1,9 +1,12 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import {
   authSessionSchema,
+  BusinessUnit,
   otpRequestSchema,
   otpVerifySchema,
+  Role,
   type AuthSession,
 } from "@eqourse/shared";
 import { GlassButton } from "@eqourse/ui";
@@ -17,11 +20,18 @@ interface LoginFormProps {
   navigate?: (href: string) => void;
 }
 
+const INTERNAL_SURFACE_BY_ROLE: Readonly<Partial<Record<Role, string>>> = {
+  [Role.VERIFIER]: "/company-reviews",
+};
+
+const knownRoles = new Set<string>(Object.values(Role));
+const knownBusinessUnits = new Set<string>(Object.values(BusinessUnit));
+
 function defaultNavigate(href: string): void {
   window.location.assign(href);
 }
 
-async function destinationFor(): Promise<string> {
+async function destinationFor(session: AuthSession): Promise<string> {
   const [vendor, client] = await Promise.all([
     fetch("/api/v1/vendors/me", { cache: "no-store" }).catch(() => null),
     fetch("/api/v1/clients/me", { cache: "no-store" }).catch(() => null),
@@ -29,14 +39,57 @@ async function destinationFor(): Promise<string> {
 
   if (vendor?.ok) return "/register/vendor";
   if (client?.ok) return "/register/client";
+  for (const assignment of session.roleAssignments) {
+    const internalSurface = INTERNAL_SURFACE_BY_ROLE[assignment.role];
+    if (internalSurface) return internalSurface;
+  }
   return "/register";
 }
 
 async function readSession(): Promise<AuthSession | null> {
   const response = await fetch("/api/auth/session", { cache: "no-store" });
   if (!response.ok) return null;
-  const parsed = authSessionSchema.safeParse(await response.json());
+  const parsed = authSessionSchema.safeParse(
+    withoutUnrecognisedRoleAssignments(await response.json()),
+  );
   return parsed.success ? parsed.data : null;
+}
+
+function withoutUnrecognisedRoleAssignments(value: unknown): unknown {
+  if (!isRecord(value) || !Array.isArray(value.roleAssignments)) return value;
+
+  return {
+    ...value,
+    roleAssignments: value.roleAssignments.filter((assignment) => {
+      const role = isRecord(assignment) ? assignment.role : undefined;
+      const businessUnit = isRecord(assignment) ? assignment.businessUnit : undefined;
+      const unrecognised = [
+        isKnownValue(knownRoles, role) ? null : `role=${displayValue(role)}`,
+        isKnownValue(knownBusinessUnits, businessUnit)
+          ? null
+          : `businessUnit=${displayValue(businessUnit)}`,
+      ].filter((item): item is string => item !== null);
+
+      if (unrecognised.length === 0) return true;
+      Sentry.captureMessage(
+        `Dropped unrecognised session role assignment: ${unrecognised.join(", ")}`,
+        "warning",
+      );
+      return false;
+    }),
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isKnownValue(knownValues: ReadonlySet<string>, value: unknown): value is string {
+  return typeof value === "string" && knownValues.has(value);
+}
+
+function displayValue(value: unknown): string {
+  return typeof value === "string" ? value : String(value);
 }
 
 export function LoginForm({ navigate = defaultNavigate }: LoginFormProps) {
@@ -56,7 +109,7 @@ export function LoginForm({ navigate = defaultNavigate }: LoginFormProps) {
     void readSession()
       .then(async (session) => {
         if (!session) return;
-        const destination = await destinationFor();
+        const destination = await destinationFor(session);
         if (active) navigate(destination);
       })
       .catch(() => undefined);
@@ -131,7 +184,7 @@ export function LoginForm({ navigate = defaultNavigate }: LoginFormProps) {
 
       const session = await readSession();
       if (!session) throw new Error("Session load failed");
-      navigate(await destinationFor());
+      navigate(await destinationFor(session));
     } catch {
       setMessage("We couldn’t complete sign-in. Please try again.");
     } finally {

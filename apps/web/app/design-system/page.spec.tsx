@@ -67,26 +67,26 @@ describe("FR-PUB-00 component acceptance", () => {
   it("persists the user's theme toggle and updates the root before reload", () => {
     render(<ThemeToggle />);
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Toggle color theme" }),
-    );
+    const toggle = screen.getByRole("button", { name: "Switch to dark mode" });
+    fireEvent.click(toggle);
 
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(document.documentElement.classList).toContain("dark");
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
+    expect(screen.getByRole("button", { name: "Switch to light mode" })).toBeInTheDocument();
   });
 
   it("round-trips light and dark five times without losing the persisted theme", () => {
     render(<ThemeToggle />);
-    const toggle = screen.getByRole("button", {
-      name: "Toggle color theme",
-    });
+    const toggle = screen.getByRole("button", { name: "Switch to dark mode" });
 
     for (let roundTrip = 0; roundTrip < 5; roundTrip += 1) {
       fireEvent.click(toggle);
       expect(document.documentElement.dataset.theme).toBe("dark");
+      expect(screen.getByRole("button", { name: "Switch to light mode" })).toBeInTheDocument();
       fireEvent.click(toggle);
       expect(document.documentElement.dataset.theme).toBe("light");
+      expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeInTheDocument();
     }
 
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");

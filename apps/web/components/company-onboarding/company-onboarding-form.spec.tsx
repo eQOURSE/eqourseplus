@@ -33,6 +33,75 @@ const clientDraft = {
   documents: [],
 };
 
+const completedVendorDraft = {
+  ...draft,
+  legalName: "Complete Vendor",
+  countryCode: "SG",
+  registeredAddress: {
+    line1: "1 Market Street",
+    city: "Singapore",
+    postalCode: "048948",
+    countryCode: "SG",
+  },
+  contactPerson: {
+    name: "Vendor Owner",
+    email: "vendor@example.com",
+    phone: "+6591234567",
+  },
+  bankDetails: {
+    accountHolderName: "Complete Vendor",
+    bankCountryCode: "SG",
+    currencyCode: "SGD",
+    accountIdentifier: { scheme: "ACCOUNT", value: "1234567890" },
+  },
+  countryIdentifiers: [{ scheme: "UEN", value: "2019123456A" }],
+  documents: [
+    {
+      kind: "ACRA_RECORD",
+      objectKey: "vendors/vendor-1/ACRA_RECORD/acra.pdf",
+      uploadedAt: "2026-09-21T12:00:00.000Z",
+    },
+    {
+      kind: "BANK_PROOF",
+      objectKey: "vendors/vendor-1/BANK_PROOF/bank.pdf",
+      uploadedAt: "2026-09-21T12:00:00.000Z",
+    },
+  ],
+  capabilities: [{ taxonomySlug: "eqourse-ai-data-services-annotation-polygon" }],
+};
+
+const completedClientDraft = {
+  ...clientDraft,
+  legalName: "Complete Client",
+  countryCode: "SG",
+  registeredAddress: {
+    line1: "1 Market Street",
+    city: "Singapore",
+    postalCode: "048948",
+    countryCode: "SG",
+  },
+  contactPerson: {
+    name: "Client Owner",
+    email: "client@example.com",
+    phone: "+6591234567",
+  },
+  website: "https://client.example",
+  authorisedPerson: {
+    name: "Client Owner",
+    governmentIdentityDocument: {
+      kind: "PASSPORT",
+      objectKey: "clients/client-1/authorised-person/government-identity-document/PASSPORT/id.pdf",
+      uploadedAt: "2026-09-21T12:00:00.000Z",
+    },
+  },
+  countryIdentifiers: [{ scheme: "UEN", value: "2019123456A" }],
+  documents: [{
+    kind: "ACRA_RECORD",
+    objectKey: "clients/client-1/ACRA_RECORD/acra.pdf",
+    uploadedAt: "2026-09-21T12:00:00.000Z",
+  }],
+};
+
 const taxonomy = [
   {
     businessUnit: "EQOURSE",
@@ -756,6 +825,65 @@ describe("generic company onboarding", () => {
     render(<CompanyOnboardingForm actor="vendor" />);
     expect(await screen.findByLabelText("Legal name")).toHaveValue("Saved company");
     expect(screen.getByRole("heading", { name: "Company" })).toBeVisible();
+  });
+
+  it.each([
+    ["vendor", draft],
+    ["client", clientDraft],
+  ] as const)("opens a blank %s draft on the first step", async (actor, emptyDraft) => {
+    fetchMock.mockImplementation((path) => String(path).endsWith("/api/v1/skill-taxonomy")
+      ? Promise.resolve(response(taxonomy))
+      : Promise.resolve(response(emptyDraft)));
+
+    render(<CompanyOnboardingForm actor={actor} />);
+
+    expect(await screen.findByRole("heading", { name: "Company" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Review" })).toBeNull();
+  });
+
+  it.each([
+    ["vendor", { ...completedVendorDraft, contactPerson: undefined }],
+    ["client", { ...completedClientDraft, contactPerson: undefined }],
+  ] as const)("opens a partly filled %s draft on its first incomplete step", async (actor, partialDraft) => {
+    fetchMock.mockImplementation((path) => String(path).endsWith("/api/v1/skill-taxonomy")
+      ? Promise.resolve(response(taxonomy))
+      : Promise.resolve(response(partialDraft)));
+
+    render(<CompanyOnboardingForm actor={actor} />);
+
+    expect(await screen.findByRole("heading", { name: "Contact" })).toBeVisible();
+  });
+
+  it.each([
+    ["vendor", completedVendorDraft],
+    ["client", completedClientDraft],
+  ] as const)("opens a complete %s draft on Review", async (actor, completeDraft) => {
+    fetchMock.mockImplementation((path) => String(path).endsWith("/api/v1/skill-taxonomy")
+      ? Promise.resolve(response(taxonomy))
+      : Promise.resolve(response(completeDraft)));
+
+    render(<CompanyOnboardingForm actor={actor} />);
+
+    expect(await screen.findByRole("heading", { name: "Review" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Edit Company" })).toBeEnabled();
+  });
+
+  it.each([
+    ["vendor", draft, "/api/v1/vendors/me"],
+    ["client", clientDraft, "/api/v1/clients/me"],
+  ] as const)("still saves a wholly empty %s draft", async (actor, emptyDraft, endpoint) => {
+    fetchMock.mockImplementation((path) => String(path).endsWith("/api/v1/skill-taxonomy")
+      ? Promise.resolve(response(taxonomy))
+      : Promise.resolve(response(emptyDraft)));
+    render(<CompanyOnboardingForm actor={actor} />);
+    await screen.findByRole("heading", { name: "Company" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      endpoint,
+      expect.objectContaining({ method: "PATCH", body: "{}" }),
+    ));
   });
 
   it("announces shared-schema validation and focuses the invalid field", async () => {

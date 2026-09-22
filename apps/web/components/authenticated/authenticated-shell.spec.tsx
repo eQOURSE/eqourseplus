@@ -60,9 +60,30 @@ describe("authenticated application shell", () => {
 
     expect(await screen.findByText("owner@example.com")).toBeVisible();
     expect(screen.getByRole("link", { name: /eQOURSE/i })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Toggle color theme" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Sign out" })).toBeVisible();
     expect(screen.getByText("Private content")).toBeVisible();
+  });
+
+  it("keeps a signed-in Verifier on the authenticated surface instead of redirecting to login", async () => {
+    fetchMock.mockResolvedValueOnce(
+      response({
+        userId: "verifier-1",
+        email: "verifier@example.com",
+        roleAssignments: [{ role: "VERIFIER", businessUnit: "TUTRAIN" }],
+        profileState: "DRAFT",
+      }),
+    );
+
+    render(
+      <AuthenticatedShell>
+        <p>Company verification console</p>
+      </AuthenticatedShell>,
+    );
+
+    expect(await screen.findByText("Company verification console")).toBeVisible();
+    expect(screen.getByText("verifier@example.com")).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("calls the existing same-origin logout handler", async () => {
