@@ -5,6 +5,7 @@ const standards = [
   ["ISO 9001:2015", "Standardised quality management across data ingestion, annotation and content pipelines."],
   ["ISO/IEC 27001", "Information security protocols safeguarding client IP, confidential training data and corporate intelligence."],
   ["Proctored talent testing", "Contributors prove capability inside monitored, domain-specific assessment environments rather than self-declared résumés."],
+  ["Content services experience", "Established content and academic delivery experience underpins every workflow on the platform."],
 ] as const;
 
 export function TrustSection() {
@@ -16,7 +17,7 @@ export function TrustSection() {
           <span>Quality, security and accountability across the delivery lifecycle.</span>
         </div>
         <div className={styles.standardsGrid}>{standards.map(([title, body], index) =>
-          <article key={title}><span aria-hidden="true">{["◎", "⌁", "◇", "⌂"][index]}
+          <article key={title}><span aria-hidden="true">{["◎", "⌁", "◇", "⌂" , "◎"][index]}
           </span>
             <div>
               <h3>{title}</h3>
