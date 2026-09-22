@@ -37,13 +37,13 @@ async function destinationFor(session: AuthSession): Promise<string> {
     fetch("/api/v1/clients/me", { cache: "no-store" }).catch(() => null),
   ]);
 
-  if (vendor?.ok) return "/register/vendor";
-  if (client?.ok) return "/register/client";
+  if (vendor?.ok) return "/dashboard";
+  if (client?.ok) return "/dashboard";
   for (const assignment of session.roleAssignments) {
     const internalSurface = INTERNAL_SURFACE_BY_ROLE[assignment.role];
     if (internalSurface) return internalSurface;
   }
-  return "/register";
+  return "/dashboard";
 }
 
 async function readSession(): Promise<AuthSession | null> {
