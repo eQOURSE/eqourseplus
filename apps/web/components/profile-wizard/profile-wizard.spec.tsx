@@ -71,6 +71,15 @@ function patches(): Array<Record<string, unknown>> {
 }
 
 describe("FR-REG-02B profile wizard", () => {
+  it("does not write when an incomplete wizard is opened and abandoned", async () => {
+    const view = render(<ProfileWizard />);
+    await screen.findByRole("heading", { name: "Personal" });
+
+    view.unmount();
+
+    expect(patches()).toEqual([]);
+  });
+
   it("saves a wholly empty draft as an empty PATCH body", async () => {
     await renderReady();
 
