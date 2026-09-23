@@ -2,6 +2,8 @@
 
 import {
   ProfileSection,
+  profileSampleUploadRequestSchema,
+  profileSampleUploadResponseSchema,
   profileDraftSchema,
   type ProfileDraftInput,
 } from "@eqourse/shared";
@@ -11,6 +13,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ChangeEvent,
   type FormEvent,
   type ReactNode,
 } from "react";
@@ -34,6 +37,7 @@ type ExperienceEntryForm = {
   endDate: string;
   summary: string;
 };
+type SampleForm = { title: string; objectKey: string; uploadedAt: string; fileName: string };
 
 interface ProfileFormState {
   personal: { firstName: string; lastName: string; headline: string; city: string };
@@ -41,6 +45,7 @@ interface ProfileFormState {
   skills: SkillForm[];
   languages: LanguageForm[];
   experience: { totalMonths: string; entries: ExperienceEntryForm[] };
+  samples: SampleForm[];
   availability: { availableFrom: string; weeklyHours: string; timeZone: string };
   rate: { amountMinor: string; currencyCode: string; unit: string };
 }
@@ -75,19 +80,19 @@ const EMPTY_EXPERIENCE: ExperienceEntryForm = {
   endDate: "",
   summary: "",
 };
+const EMPTY_SAMPLE: SampleForm = { title: "", objectKey: "", uploadedAt: "", fileName: "" };
 const EMPTY_FORM: ProfileFormState = {
   personal: { firstName: "", lastName: "", headline: "", city: "" },
   education: [{ ...EMPTY_EDUCATION }],
   skills: [{ ...EMPTY_SKILL }],
   languages: [{ ...EMPTY_LANGUAGE }],
   experience: { totalMonths: "", entries: [{ ...EMPTY_EXPERIENCE }] },
+  samples: [{ ...EMPTY_SAMPLE }],
   availability: { availableFrom: "", weeklyHours: "", timeZone: "" },
   rate: { amountMinor: "", currencyCode: "", unit: "" },
 };
 
-const WIZARD_SECTIONS: readonly ProfileSection[] = Object.values(ProfileSection).filter(
-  (section) => section !== ProfileSection.SAMPLES,
-);
+const WIZARD_SECTIONS: readonly ProfileSection[] = Object.values(ProfileSection);
 const SECTION_LABELS: Readonly<Record<ProfileSection, string>> = {
   [ProfileSection.PERSONAL]: "Personal",
   [ProfileSection.EDUCATION]: "Education",
@@ -154,6 +159,14 @@ function formFromProfile(profile: ProfileResponse): ProfileFormState {
           }))
         : [{ ...EMPTY_EXPERIENCE }],
     },
+    samples: profile.samples?.length
+      ? profile.samples.map((entry) => ({
+          title: text(entry.title),
+          objectKey: text(entry.objectKey),
+          uploadedAt: dateInput(entry.uploadedAt),
+          fileName: "",
+        }))
+      : [{ ...EMPTY_SAMPLE }],
     availability: {
       availableFrom: dateInput(profile.availability?.availableFrom),
       weeklyHours: numberInput(profile.availability?.weeklyHours),
@@ -236,6 +249,13 @@ function sectionPatch(
       entries: entries.length ? entries : undefined,
     }) } as ProfileDraftInput;
   }
+  if (section === ProfileSection.SAMPLES) {
+    return { samples: nonEmptyRecords(form.samples.map((entry) => ({
+      title: nonEmpty(entry.title),
+      objectKey: nonEmpty(entry.objectKey),
+      uploadedAt: entry.uploadedAt ? new Date(entry.uploadedAt) : undefined,
+    }))) };
+  }
   if (section === ProfileSection.AVAILABILITY) {
     return { availability: compact({
       availableFrom: optionalDate(form.availability.availableFrom),
@@ -275,6 +295,10 @@ function complete(section: ProfileSection, form: ProfileFormState): boolean {
     return Boolean(form.experience.totalMonths && first && nonEmpty(first.organization)
       && nonEmpty(first.title) && first.startDate);
   }
+  if (section === ProfileSection.SAMPLES) {
+    const first = form.samples[0];
+    return Boolean(first && nonEmpty(first.title) && nonEmpty(first.objectKey));
+  }
   if (section === ProfileSection.AVAILABILITY) {
     return Boolean(form.availability.availableFrom && form.availability.weeklyHours
       && nonEmpty(form.availability.timeZone));
@@ -300,6 +324,7 @@ function fieldId(path: readonly PropertyKey[]): string {
   if (section === "experience" && index === "entries") {
     return `profile-experience-${field ?? "0"}-${parts[3] ?? "organization"}`;
   }
+  if (section === "samples") return `profile-sample-${index ?? "0"}-${field ?? "title"}`;
   return `profile-${section ?? "form"}-${field ?? index ?? "field"}`;
 }
 
@@ -498,6 +523,64 @@ export function ProfileWizard() {
     markChanged({ ...form, experience: { ...form.experience, entries } }, ProfileSection.EXPERIENCE);
   }
 
+  function updateSample(index: number, field: keyof SampleForm, value: string): void {
+    const entries = form.samples.map((entry, item) => item === index ? { ...entry, [field]: value } : entry);
+    markChanged({ ...form, samples: entries }, ProfileSection.SAMPLES);
+  }
+
+  async function uploadSample(index: number, event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    clearDebounce();
+    const request = profileSampleUploadRequestSchema.safeParse({
+      contentType: file.type,
+      size: file.size,
+    });
+    const errorId = `profile-sample-${index}-file`;
+    if (!request.success) {
+      setErrors((current) => ({ ...current, [errorId]: file.size > 10 * 1024 * 1024
+        ? "This file is larger than 10 MiB."
+        : "Choose a PDF, JPEG, PNG or WebP file." }));
+      return;
+    }
+
+    setErrors((current) => { const next = { ...current }; delete next[errorId]; return next; });
+    setSaving(true);
+    setMessageError(false);
+    try {
+      const credentialResponse = await fetch("/api/v1/profiles/me/samples/upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request.data),
+      });
+      if (!credentialResponse.ok) throw new Error(await responseMessage(credentialResponse));
+      const credential = profileSampleUploadResponseSchema.safeParse(await credentialResponse.json());
+      if (!credential.success) throw new Error("The upload authorization response was invalid.");
+
+      const uploadResponse = await fetch(credential.data.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!uploadResponse.ok) throw new Error("The sample upload failed.");
+
+      const nextForm = {
+        ...form,
+        samples: form.samples.map((entry, item) => item === index
+          ? { ...entry, objectKey: credential.data.objectKey, uploadedAt: new Date().toISOString(), fileName: file.name }
+          : entry),
+      };
+      dirty.current.add(ProfileSection.SAMPLES);
+      setForm(nextForm);
+      await save(nextForm, ProfileSection.SAMPLES, undefined, true);
+    } catch (error) {
+      setMessageError(true);
+      setMessage(error instanceof Error ? error.message : "The sample upload failed.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function input(
     label: string,
     id: string,
@@ -549,11 +632,12 @@ export function ProfileWizard() {
     );
   }
 
-  function addRow(target: "education" | "skills" | "languages" | "experience"): void {
+  function addRow(target: "education" | "skills" | "languages" | "experience" | "samples"): void {
     if (target === "education") markChanged({ ...form, education: [...form.education, { ...EMPTY_EDUCATION }] }, ProfileSection.EDUCATION);
     if (target === "skills") markChanged({ ...form, skills: [...form.skills, { ...EMPTY_SKILL }] }, ProfileSection.SKILLS);
     if (target === "languages") markChanged({ ...form, languages: [...form.languages, { ...EMPTY_LANGUAGE }] }, ProfileSection.LANGUAGES);
     if (target === "experience") markChanged({ ...form, experience: { ...form.experience, entries: [...form.experience.entries, { ...EMPTY_EXPERIENCE }] } }, ProfileSection.EXPERIENCE);
+    if (target === "samples") markChanged({ ...form, samples: [...form.samples, { ...EMPTY_SAMPLE }] }, ProfileSection.SAMPLES);
   }
 
   function sectionContent(): ReactNode {
@@ -621,6 +705,20 @@ export function ProfileWizard() {
         {input(`Summary ${index + 1} (optional)`, `profile-experience-${index}-summary`, entry.summary, (value) => updateExperience(index, "summary", value))}
       </fieldset>)}
       <GlassButton type="button" variant="secondary" onClick={() => addRow("experience")}>Add experience</GlassButton>
+    </>;
+    if (section === ProfileSection.SAMPLES) return <>
+      <p className="company-onboarding-help">Add references to work samples stored through the profile storage flow.</p>
+      {form.samples.map((entry, index) => <fieldset className="company-onboarding-subsection" key={index}>
+        <legend>Sample {index + 1}</legend>
+        {input(`Sample title ${index + 1}`, `profile-sample-${index}-title`, entry.title, (value) => updateSample(index, "title", value))}
+        <div className="company-onboarding-field">
+          <label htmlFor={`profile-sample-${index}-file`}>Upload sample file {index + 1}</label>
+          <input id={`profile-sample-${index}-file`} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" disabled={saving} onChange={(event) => void uploadSample(index, event)} aria-invalid={errors[`profile-sample-${index}-file`] ? true : undefined} />
+          {entry.objectKey ? <p className="company-onboarding-help">{entry.fileName || "Sample file uploaded."}</p> : null}
+          {errors[`profile-sample-${index}-file`] ? <p className="company-onboarding-error" role="alert">{errors[`profile-sample-${index}-file`]}</p> : null}
+        </div>
+      </fieldset>)}
+      <GlassButton type="button" variant="secondary" onClick={() => addRow("samples")}>Add sample</GlassButton>
     </>;
     if (section === ProfileSection.AVAILABILITY) return <>
       {input("Available from", "profile-availability-availableFrom", form.availability.availableFrom, (value) => markChanged({ ...form, availability: { ...form.availability, availableFrom: value } }, ProfileSection.AVAILABILITY), { type: "date" })}

@@ -89,6 +89,10 @@ describe("FR-REG-02B authenticated profile draft API", () => {
       .patch("/api/v1/profiles/me")
       .send({})
       .expect(401);
+    await request(app.getHttpServer())
+      .post("/api/v1/profiles/me/samples/upload-url")
+      .send({ contentType: "application/pdf", size: 128 })
+      .expect(401);
   });
 
   it("reads a fresh empty draft without inventing a resume section", async () => {
@@ -339,7 +343,7 @@ describe("FR-REG-02B authenticated profile draft API", () => {
     ]);
   });
 
-  it("does not accept state, completion, samples, or another account's profile", async () => {
+  it("issues owner-scoped sample keys and rejects client-chosen foreign keys", async () => {
     const owner = await account("owner-profile@example.com");
     const other = await account("other-profile@example.com");
 
@@ -347,7 +351,26 @@ describe("FR-REG-02B authenticated profile draft API", () => {
     await saveProfile(owner.accessToken, { completionPercentage: 100 }).expect(
       400,
     );
-    await saveProfile(owner.accessToken, { samples: [] }).expect(400);
+    const upload = await request(app.getHttpServer())
+      .post("/api/v1/profiles/me/samples/upload-url")
+      .set("authorization", `Bearer ${owner.accessToken}`)
+      .send({ contentType: "application/pdf", size: 128 })
+      .expect(201);
+
+    expect(upload.body.objectKey).toMatch(/^profiles\/[a-f0-9]{24}\/samples\//);
+    expect(upload.body.uploadUrl).toBe("https://storage.invalid/" + encodeURIComponent(upload.body.objectKey));
+
+    await saveProfile(owner.accessToken, {
+      samples: [{ title: "Portfolio", objectKey: upload.body.objectKey }],
+    }).expect(200);
+
+    await saveProfile(owner.accessToken, {
+      samples: [{ title: "Foreign", objectKey: "profiles/another-user/samples/foreign.pdf" }],
+    }).expect(400);
+
+    expect((await readProfile(owner.accessToken).expect(200)).body.samples).toEqual([
+      { title: "Portfolio", objectKey: upload.body.objectKey },
+    ]);
 
     const otherRead = await readProfile(other.accessToken).expect(200);
     expect(otherRead.body.userId).toBe(other.userId.toHexString());

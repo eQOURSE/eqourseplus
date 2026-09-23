@@ -37,6 +37,16 @@ function installFetch(initialProfile = profile()) {
     if (path.endsWith("/api/v1/skill-taxonomy")) {
       return Promise.resolve(response(taxonomy));
     }
+    if (path === "/api/v1/profiles/me/samples/upload-url" && init?.method === "POST") {
+      return Promise.resolve(response({
+        uploadUrl: "https://storage.invalid/profiles/profile-1/samples/sample.pdf",
+        objectKey: "profiles/profile-1/samples/sample.pdf",
+        expiresAt: "2026-09-23T12:00:00.000Z",
+      }));
+    }
+    if (path.startsWith("https://storage.invalid/") && init?.method === "PUT") {
+      return Promise.resolve(response({}, 200));
+    }
     if (path === "/api/v1/profiles/me" && init?.method === "PATCH") {
       return Promise.resolve(response({
         ...initialProfile,
@@ -148,6 +158,64 @@ describe("FR-REG-02B profile wizard", () => {
         expect.objectContaining({ rate: { amountMinor: 1250 } }),
       ]));
     });
+  });
+
+  it("supports adding another sample row without writing a storage path", async () => {
+    installFetch(profile({ resumeSection: "SAMPLES" }));
+    render(<ProfileWizard />);
+    await screen.findByRole("heading", { name: "Samples" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Add sample" }));
+
+    expect(screen.getByLabelText("Sample title 2")).toBeVisible();
+    expect(screen.getByLabelText("Upload sample file 2")).toBeVisible();
+    expect(screen.queryByLabelText("Storage object key 1")).not.toBeInTheDocument();
+  });
+
+  it("rejects an unsupported sample file before requesting upload authorization", async () => {
+    installFetch(profile({ resumeSection: "SAMPLES" }));
+    render(<ProfileWizard />);
+    await screen.findByRole("heading", { name: "Samples" });
+
+    const file = new File(["not a supported sample"], "sample.txt", { type: "text/plain" });
+    fireEvent.change(screen.getByLabelText("Upload sample file 1"), { target: { files: [file] } });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/PDF, JPEG, PNG or WebP/i);
+    expect(fetchMock.mock.calls.some(([input, init]) => String(input).includes("samples/upload-url") && init?.method === "POST")).toBe(false);
+  });
+
+  it("uses the server-issued sample key and patches it after upload", async () => {
+    installFetch(profile({ resumeSection: "SAMPLES" }));
+    render(<ProfileWizard />);
+    await screen.findByRole("heading", { name: "Samples" });
+    fireEvent.change(screen.getByLabelText("Sample title 1"), { target: { value: "Portfolio" } });
+
+    const file = new File(["pdf bytes"], "portfolio.pdf", { type: "application/pdf" });
+    fireEvent.change(screen.getByLabelText("Upload sample file 1"), { target: { files: [file] } });
+
+    await waitFor(() => expect(patches()).toContainEqual({
+      samples: [{
+        title: "Portfolio",
+        objectKey: "profiles/profile-1/samples/sample.pdf",
+        uploadedAt: expect.any(String),
+      }],
+    }));
+    expect(screen.queryByLabelText("Storage object key 1")).not.toBeInTheDocument();
+  });
+
+  it("resumes at Samples when every other section is complete", async () => {
+    installFetch(profile({
+      personal: { firstName: "Ada", lastName: "Lovelace" },
+      education: [{ institution: "University", qualification: "Certificate", fieldOfStudy: "Math", startYear: 2020 }],
+      skills: [{ taxonomySlug: taxonomy[0]!.slug, level: "EXPERT" }],
+      languages: [{ languageCode: "en-GB", proficiency: "NATIVE" }],
+      experience: { totalMonths: 24, entries: [{ organization: "Example", title: "Annotator", startDate: "2024-01-01" }] },
+      availability: { availableFrom: "2026-10-01", weeklyHours: 40, timeZone: "Asia/Kolkata" },
+      rate: { amountMinor: 1250, currencyCode: "INR", unit: "HOUR" },
+    }));
+    render(<ProfileWizard />);
+
+    expect(await screen.findByRole("heading", { name: "Samples" })).toBeVisible();
   });
 
   it("waits for the serialized save before changing sections", async () => {

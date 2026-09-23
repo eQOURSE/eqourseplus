@@ -1,5 +1,10 @@
-import { Body, Controller, Get, Header, HttpCode, Inject, Patch, Req } from "@nestjs/common";
-import { profileDraftSchema, type ProfileDraftInput } from "@eqourse/shared";
+import { Body, Controller, Get, Header, HttpCode, Inject, Patch, Post, Req } from "@nestjs/common";
+import {
+  profileDraftSchema,
+  profileSampleUploadRequestSchema,
+  type ProfileDraftInput,
+  type ProfileSampleUploadRequest,
+} from "@eqourse/shared";
 
 import type { AuthenticatedRequest } from "../auth/auth.types";
 import { ZodBodyPipe } from "../auth/zod-body.pipe";
@@ -23,6 +28,15 @@ export class ProfileController {
     @Body(new ZodBodyPipe(profileDraftSchema)) body: ProfileDraftInput,
   ) {
     return this.profiles.save(this.userId(request), body);
+  }
+
+  @Post("me/samples/upload-url")
+  @Header("Cache-Control", "no-store")
+  createSampleUpload(
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodBodyPipe(profileSampleUploadRequestSchema)) body: ProfileSampleUploadRequest,
+  ) {
+    return this.profiles.createSampleUpload(this.userId(request), body);
   }
 
   private userId(request: AuthenticatedRequest): string {
