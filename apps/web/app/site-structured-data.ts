@@ -18,6 +18,6 @@ export const certifications = [
   },
   {
     "@type": "Certification",
-    name: "ISO 27001",
+    name: "ISO/IEC 27001",
   },
 ] as const;
