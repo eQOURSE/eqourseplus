@@ -189,6 +189,103 @@ describe("generic company onboarding", () => {
     expect(fetchMock.mock.calls.every(([path]) => String(path).endsWith("/api/v1/skill-taxonomy"))).toBe(true);
   });
 
+  it.each([
+    ["vendor", "/api/v1/vendors", "/api/v1/vendors/me"],
+    ["client", "/api/v1/clients", "/api/v1/clients/me"],
+  ] as const)("leaves no %s record after an authenticated wizard visit", async (actor, endpoint, ownEndpoint) => {
+    fetchMock.mockImplementation((path) => {
+      if (String(path).endsWith("/api/v1/skill-taxonomy")) {
+        return Promise.resolve(response(taxonomy));
+      }
+      if (path === ownEndpoint) return Promise.resolve(response({}, 404));
+      return Promise.resolve(response({}, 500));
+    });
+
+    const { unmount } = render(<CompanyOnboardingForm actor={actor} />);
+    expect(await screen.findByRole("heading", { name: "Register your company." })).toBeVisible();
+    unmount();
+
+    expect(fetchMock).toHaveBeenCalledWith(ownEndpoint, { cache: "no-store" });
+    expect(fetchMock.mock.calls.some(([path, init]) => (
+      path === endpoint && init?.method === "POST"
+    ))).toBe(false);
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH")).toBe(false);
+  });
+
+  it.each([
+    ["vendor", "/api/v1/vendors", "/api/v1/vendors/me"],
+    ["client", "/api/v1/clients", "/api/v1/clients/me"],
+  ] as const)("explains why an empty new %s draft was not saved", async (actor, endpoint, ownEndpoint) => {
+    fetchMock.mockImplementation((path) => {
+      if (String(path).endsWith("/api/v1/skill-taxonomy")) {
+        return Promise.resolve(response(taxonomy));
+      }
+      if (path === ownEndpoint) return Promise.resolve(response({}, 404));
+      return Promise.resolve(response({}, 500));
+    });
+
+    render(<CompanyOnboardingForm actor={actor} />);
+    expect(await screen.findByRole("heading", { name: "Register your company." })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Enter at least one company detail before saving.",
+    );
+    expect(fetchMock.mock.calls.some(([path, init]) => (
+      path === endpoint && init?.method === "POST"
+    ))).toBe(false);
+  });
+
+  it.each([
+    ["vendor", draft, "/api/v1/vendors", "/api/v1/vendors/me"],
+    ["client", clientDraft, "/api/v1/clients", "/api/v1/clients/me"],
+  ] as const)("creates a %s record on its first partial save and patches later saves", async (
+    actor,
+    emptyDraft,
+    endpoint,
+    ownEndpoint,
+  ) => {
+    fetchMock.mockImplementation((path, init) => {
+      if (String(path).endsWith("/api/v1/skill-taxonomy")) {
+        return Promise.resolve(response(taxonomy));
+      }
+      if (path === ownEndpoint && !init?.method) return Promise.resolve(response({}, 404));
+      if (path === endpoint && init?.method === "POST") {
+        return Promise.resolve(response({ ...emptyDraft, legalName: "First field company" }, 201));
+      }
+      if (path === ownEndpoint && init?.method === "PATCH") {
+        return Promise.resolve(response({ ...emptyDraft, legalName: "First field company" }));
+      }
+      return Promise.resolve(response({}, 500));
+    });
+
+    render(<CompanyOnboardingForm actor={actor} />);
+    expect(await screen.findByRole("heading", { name: "Register your company." })).toBeVisible();
+    fireEvent.change(screen.getByLabelText("Legal name"), {
+      target: { value: "First field company" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      endpoint,
+      expect.objectContaining({ method: "POST" }),
+    ));
+    const create = fetchMock.mock.calls.find(
+      ([path, init]) => path === endpoint && init?.method === "POST",
+    );
+    expect(JSON.parse(String(create?.[1]?.body))).toEqual({ legalName: "First field company" });
+
+    fireEvent.change(screen.getByLabelText("Trading name (optional)"), {
+      target: { value: "Second save" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      ownEndpoint,
+      expect.objectContaining({ method: "PATCH" }),
+    ));
+  });
+
   it("creates an account and persists the filled guest draft before entering the authenticated flow", async () => {
     const onAuthenticated = vi.fn();
     const session = {
