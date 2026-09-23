@@ -129,6 +129,10 @@ describe("FR-REG-02B profile wizard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Experience" }));
     await screen.findByRole("heading", { name: "Experience" });
     fireEvent.change(screen.getByLabelText("Total experience in months"), { target: { value: "24" } });
+    fireEvent.click(screen.getByRole("button", { name: "Samples" }));
+    await screen.findByRole("heading", { name: "Samples" });
+    fireEvent.change(screen.getByLabelText("Sample title 1"), { target: { value: "Portfolio" } });
+    fireEvent.change(screen.getByLabelText("Storage object key 1"), { target: { value: "profiles/user-1/portfolio.pdf" } });
     fireEvent.click(screen.getByRole("button", { name: "Availability" }));
     await screen.findByRole("heading", { name: "Availability" });
     fireEvent.change(screen.getByLabelText("Weekly hours"), { target: { value: "40" } });
@@ -143,7 +147,8 @@ describe("FR-REG-02B profile wizard", () => {
         expect.objectContaining({ education: [{ institution: "Example University" }], resumeSection: "SKILLS" }),
         expect.objectContaining({ skills: [{ taxonomySlug: taxonomy[0]!.slug }], resumeSection: "LANGUAGES" }),
         expect.objectContaining({ languages: [{ languageCode: "en-GB" }], resumeSection: "EXPERIENCE" }),
-        expect.objectContaining({ experience: { totalMonths: 24 }, resumeSection: "AVAILABILITY" }),
+        expect.objectContaining({ experience: { totalMonths: 24 }, resumeSection: "SAMPLES" }),
+        expect.objectContaining({ samples: [{ title: "Portfolio", objectKey: "profiles/user-1/portfolio.pdf" }], resumeSection: "AVAILABILITY" }),
         expect.objectContaining({ availability: { weeklyHours: 40 }, resumeSection: "RATE" }),
         expect.objectContaining({ rate: { amountMinor: 1250 } }),
       ]));

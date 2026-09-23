@@ -339,7 +339,7 @@ describe("FR-REG-02B authenticated profile draft API", () => {
     ]);
   });
 
-  it("does not accept state, completion, samples, or another account's profile", async () => {
+  it("accepts sample metadata while rejecting server-owned fields and another account's profile", async () => {
     const owner = await account("owner-profile@example.com");
     const other = await account("other-profile@example.com");
 
@@ -347,7 +347,13 @@ describe("FR-REG-02B authenticated profile draft API", () => {
     await saveProfile(owner.accessToken, { completionPercentage: 100 }).expect(
       400,
     );
-    await saveProfile(owner.accessToken, { samples: [] }).expect(400);
+    await saveProfile(owner.accessToken, {
+      samples: [{ title: "Portfolio", objectKey: "profiles/owner/portfolio.pdf" }],
+    }).expect(200);
+
+    expect((await readProfile(owner.accessToken).expect(200)).body.samples).toEqual([
+      { title: "Portfolio", objectKey: "profiles/owner/portfolio.pdf" },
+    ]);
 
     const otherRead = await readProfile(other.accessToken).expect(200);
     expect(otherRead.body.userId).toBe(other.userId.toHexString());

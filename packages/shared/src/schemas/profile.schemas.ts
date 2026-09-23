@@ -92,6 +92,12 @@ const experienceDraftSchema = z.strictObject({
   entries: z.array(experienceEntryDraftSchema).optional(),
 });
 
+const sampleEntryDraftSchema = z.strictObject({
+  title: nonEmptyString.optional(),
+  objectKey: nonEmptyString.optional(),
+  uploadedAt: z.coerce.date().optional(),
+});
+
 const availabilityDraftSchema = z.strictObject({
   availableFrom: z.coerce.date().optional(),
   weeklyHours: z.number().int().min(1).max(168).optional(),
@@ -111,6 +117,7 @@ export const profileDraftSchema = z.strictObject({
   skills: z.array(skillEntryDraftSchema).optional(),
   languages: z.array(languageEntryDraftSchema).optional(),
   experience: experienceDraftSchema.optional(),
+  samples: z.array(sampleEntryDraftSchema).optional(),
   availability: availabilityDraftSchema.optional(),
   rate: rateDraftSchema.optional(),
 });
@@ -166,6 +173,7 @@ export const profileSubmissionSchema = z.strictObject({
     totalMonths: z.number().int().min(0).max(960),
     entries: z.tuple([experienceEntrySubmissionSchema]).rest(experienceEntryDraftSchema),
   }),
+  samples: z.array(sampleEntryDraftSchema).optional(),
   availability: z.strictObject({
     availableFrom: z.coerce.date(),
     weeklyHours: z.number().int().min(1).max(168),

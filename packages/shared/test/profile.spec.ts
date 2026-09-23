@@ -75,14 +75,16 @@ describe("FR-REG-02B profile draft contracts", () => {
     expect(profileSubmissionSchema.safeParse(completeDraft()).success).toBe(true);
   });
 
-  it("rejects server-owned and unknown fields from draft input", () => {
+  it("rejects server-owned and unknown fields while accepting sample metadata", () => {
     expect(profileDraftSchema.safeParse({ state: "APPROVED" }).success).toBe(
       false,
     );
     expect(
       profileDraftSchema.safeParse({ completionPercentage: 100 }).success,
     ).toBe(false);
-    expect(profileDraftSchema.safeParse({ samples: [] }).success).toBe(false);
+    expect(profileDraftSchema.safeParse({
+      samples: [{ title: "Portfolio", objectKey: "profiles/user-1/portfolio.pdf" }],
+    }).success).toBe(true);
   });
 
   it.each([
