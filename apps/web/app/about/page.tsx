@@ -37,6 +37,7 @@ export default function AboutPage() {
               width={958}
               height={446}
               sizes="(max-width: 768px) calc(100vw - 2rem), 958px"
+              priority
             />
             <div className="about-showcase-grid" aria-hidden="true" />
             <span className="about-showcase-label about-showcase-label--left">VERIFIED TALENT GRID</span>

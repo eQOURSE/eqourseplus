@@ -41,6 +41,8 @@ describe("FR-PUB-05 /about", () => {
     expect(image).toHaveAttribute("src", expect.stringContaining("about-showcase-display.jpg"));
     expect(image).toHaveAttribute("width", "958");
     expect(image).toHaveAttribute("height", "446");
+    expect(image).toHaveAttribute("fetchpriority", "high");
+    expect(image).not.toHaveAttribute("loading", "lazy");
   });
 
   it("keeps FAQ answers in the SSR DOM and exposes native disclosures", () => {
