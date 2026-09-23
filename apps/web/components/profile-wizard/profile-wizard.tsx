@@ -2,6 +2,8 @@
 
 import {
   ProfileSection,
+  profileSampleUploadRequestSchema,
+  profileSampleUploadResponseSchema,
   profileDraftSchema,
   type ProfileDraftInput,
 } from "@eqourse/shared";
@@ -11,6 +13,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ChangeEvent,
   type FormEvent,
   type ReactNode,
 } from "react";
@@ -34,7 +37,7 @@ type ExperienceEntryForm = {
   endDate: string;
   summary: string;
 };
-type SampleForm = { title: string; objectKey: string };
+type SampleForm = { title: string; objectKey: string; uploadedAt: string; fileName: string };
 
 interface ProfileFormState {
   personal: { firstName: string; lastName: string; headline: string; city: string };
@@ -77,7 +80,7 @@ const EMPTY_EXPERIENCE: ExperienceEntryForm = {
   endDate: "",
   summary: "",
 };
-const EMPTY_SAMPLE: SampleForm = { title: "", objectKey: "" };
+const EMPTY_SAMPLE: SampleForm = { title: "", objectKey: "", uploadedAt: "", fileName: "" };
 const EMPTY_FORM: ProfileFormState = {
   personal: { firstName: "", lastName: "", headline: "", city: "" },
   education: [{ ...EMPTY_EDUCATION }],
@@ -160,6 +163,8 @@ function formFromProfile(profile: ProfileResponse): ProfileFormState {
       ? profile.samples.map((entry) => ({
           title: text(entry.title),
           objectKey: text(entry.objectKey),
+          uploadedAt: dateInput(entry.uploadedAt),
+          fileName: "",
         }))
       : [{ ...EMPTY_SAMPLE }],
     availability: {
@@ -248,6 +253,7 @@ function sectionPatch(
     return { samples: nonEmptyRecords(form.samples.map((entry) => ({
       title: nonEmpty(entry.title),
       objectKey: nonEmpty(entry.objectKey),
+      uploadedAt: entry.uploadedAt ? new Date(entry.uploadedAt) : undefined,
     }))) };
   }
   if (section === ProfileSection.AVAILABILITY) {
@@ -522,6 +528,59 @@ export function ProfileWizard() {
     markChanged({ ...form, samples: entries }, ProfileSection.SAMPLES);
   }
 
+  async function uploadSample(index: number, event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    clearDebounce();
+    const request = profileSampleUploadRequestSchema.safeParse({
+      contentType: file.type,
+      size: file.size,
+    });
+    const errorId = `profile-sample-${index}-file`;
+    if (!request.success) {
+      setErrors((current) => ({ ...current, [errorId]: file.size > 10 * 1024 * 1024
+        ? "This file is larger than 10 MiB."
+        : "Choose a PDF, JPEG, PNG or WebP file." }));
+      return;
+    }
+
+    setErrors((current) => { const next = { ...current }; delete next[errorId]; return next; });
+    setSaving(true);
+    setMessageError(false);
+    try {
+      const credentialResponse = await fetch("/api/v1/profiles/me/samples/upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request.data),
+      });
+      if (!credentialResponse.ok) throw new Error(await responseMessage(credentialResponse));
+      const credential = profileSampleUploadResponseSchema.safeParse(await credentialResponse.json());
+      if (!credential.success) throw new Error("The upload authorization response was invalid.");
+
+      const uploadResponse = await fetch(credential.data.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!uploadResponse.ok) throw new Error("The sample upload failed.");
+
+      const nextForm = {
+        ...form,
+        samples: form.samples.map((entry, item) => item === index
+          ? { ...entry, objectKey: credential.data.objectKey, uploadedAt: new Date().toISOString(), fileName: file.name }
+          : entry),
+      };
+      dirty.current.add(ProfileSection.SAMPLES);
+      setForm(nextForm);
+      await save(nextForm, ProfileSection.SAMPLES, undefined, true);
+    } catch (error) {
+      setMessageError(true);
+      setMessage(error instanceof Error ? error.message : "The sample upload failed.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function input(
     label: string,
     id: string,
@@ -652,7 +711,12 @@ export function ProfileWizard() {
       {form.samples.map((entry, index) => <fieldset className="company-onboarding-subsection" key={index}>
         <legend>Sample {index + 1}</legend>
         {input(`Sample title ${index + 1}`, `profile-sample-${index}-title`, entry.title, (value) => updateSample(index, "title", value))}
-        {input(`Storage object key ${index + 1}`, `profile-sample-${index}-objectKey`, entry.objectKey, (value) => updateSample(index, "objectKey", value), { help: "Use the object key returned by the private storage upload flow." })}
+        <div className="company-onboarding-field">
+          <label htmlFor={`profile-sample-${index}-file`}>Upload sample file {index + 1}</label>
+          <input id={`profile-sample-${index}-file`} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" disabled={saving} onChange={(event) => void uploadSample(index, event)} aria-invalid={errors[`profile-sample-${index}-file`] ? true : undefined} />
+          {entry.objectKey ? <p className="company-onboarding-help">{entry.fileName || "Sample file uploaded."}</p> : null}
+          {errors[`profile-sample-${index}-file`] ? <p className="company-onboarding-error" role="alert">{errors[`profile-sample-${index}-file`]}</p> : null}
+        </div>
       </fieldset>)}
       <GlassButton type="button" variant="secondary" onClick={() => addRow("samples")}>Add sample</GlassButton>
     </>;

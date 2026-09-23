@@ -2,6 +2,14 @@ import { z } from "zod";
 
 import { ProfileSection } from "../states/profile-section";
 
+export const PROFILE_SAMPLE_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
+export const PROFILE_SAMPLE_UPLOAD_CONTENT_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+] as const;
+
 const nonEmptyString = z.string().trim().min(1);
 const currentYear = new Date().getUTCFullYear();
 const educationYear = z.number().int().min(1900).max(currentYear + 10);
@@ -188,6 +196,20 @@ export const profileSubmissionSchema = z.strictObject({
 
 export type ProfileDraftInput = z.infer<typeof profileDraftSchema>;
 export type ProfileSubmissionInput = z.infer<typeof profileSubmissionSchema>;
+
+export const profileSampleUploadRequestSchema = z.strictObject({
+  contentType: z.enum(PROFILE_SAMPLE_UPLOAD_CONTENT_TYPES),
+  size: z.number().int().positive().max(PROFILE_SAMPLE_UPLOAD_MAX_BYTES),
+});
+
+export const profileSampleUploadResponseSchema = z.strictObject({
+  uploadUrl: z.url(),
+  objectKey: z.string().min(1),
+  expiresAt: z.string().datetime(),
+});
+
+export type ProfileSampleUploadRequest = z.infer<typeof profileSampleUploadRequestSchema>;
+export type ProfileSampleUploadResponse = z.infer<typeof profileSampleUploadResponseSchema>;
 
 const present = (value: unknown): boolean =>
   value !== undefined && (typeof value !== "string" || value.length > 0);
