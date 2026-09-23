@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PublicThemeToggle } from "../public/public-client-islands";
 import styles from "./home-redesign.module.css";
 import Image from "next/image";
+import { HomeMobileNavigation } from "./HomeMobileNavigation";
 
 const footerColumns = [
   [
@@ -52,10 +53,10 @@ function Brand() {
     <span className={styles.brand}>
       <span>eQOURSE</span>
       <Image
-        src="/eQOURSE Plus-04%20(1).svg"
+        src="/eQOURSE Plus-03.svg"
         alt="eQOURSE Logo"
-        width={24}
-        height={24}
+        width={50}
+        height={50}
         className={styles.brandMark}
         priority
       />
@@ -96,6 +97,18 @@ export function HomeHeader({ brandHref = "#hero", activePage }: HomeHeaderProps 
             Access eQOURSE+
           </Link>
         </div>
+        <HomeMobileNavigation>
+          <a href="#categories">Solutions</a>
+          <a href="/freelancers">Experts</a>
+          <a href="/vendors">Vendors</a>
+          <a href="/about" aria-current={activePage === "about" ? "page" : undefined}>
+            About
+          </a>
+          <a href="/login">Login</a>
+          <Link className={styles.exploreButton} href="/register">
+            Access eQOURSE+
+          </Link>
+        </HomeMobileNavigation>
         <div className="home-nav-links sr-only" aria-hidden="true">
           <a href="#how-it-works">How it works</a>
           <a href="#categories">Services</a>

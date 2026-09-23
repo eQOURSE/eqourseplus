@@ -118,11 +118,20 @@ describe("FR-PUB-02 public navigation placement", () => {
   });
 
   it("defines responsive grid and card radius rules for small screen sizes", () => {
-    expect(globalStyles).toMatch(/@media\s*\(max-width:\s*47\.999rem\)/);
+    expect(globalStyles).toMatch(/@media\s*\(max-width:\s*48rem\)/);
     expect(globalStyles).toMatch(/\.home-nav-links\s*>\s*:last-child:nth-child\(odd\)/);
-    expect(globalStyles).toMatch(/@media\s*\(max-width:\s*25rem\)/);
+    expect(globalStyles).toMatch(/@media\s*\(max-width:\s*30rem\)/);
     expect(globalStyles).toMatch(/\.home-nav-links\s*\{[\s\S]*max-height:\s*0/);
     expect(globalStyles).toMatch(/\.home-nav-links\.is-open\s*\{/);
+  });
+
+  it("shows the collapsible header at the 768px breakpoint and compacts it at 480px", () => {
+    expect(globalStyles).toMatch(
+      /@media\s*\(max-width:\s*48rem\)\s*\{[\s\S]*\.home-menu-toggle\s*\{[\s\S]*display:\s*inline-flex/,
+    );
+    expect(globalStyles).toMatch(
+      /@media\s*\(max-width:\s*30rem\)\s*\{[\s\S]*\.home-nav-wrap\s*\{[\s\S]*width:\s*calc\(100%\s*-\s*1rem\)/,
+    );
   });
 
   it("animates the mobile navigation when opening and closing", () => {

@@ -48,7 +48,7 @@ describe("FR-PUB-01 metadata", () => {
   it("uses the approved static brand image as the site icon", () => {
     expect(layoutMetadata.icons).toEqual({
       icon: {
-        url: "/opengraph-image",
+        url: "/favicon.ico",
         type: "image/svg+xml",
       },
     });

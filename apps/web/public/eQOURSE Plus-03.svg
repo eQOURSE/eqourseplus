@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 82.3 76.6">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #180842;
+      }
+
+      .cls-2 {
+        fill: #0e9a95;
+      }
+
+      .cls-3 {
+        fill: #d72735;
+      }
+
+      .cls-4 {
+        fill: #fbca2e;
+      }
+    </style>
+  </defs>
+  <circle class="cls-3" cx="15.9" cy="32.4" r="3.5" transform="translate(-16.6 16.7) rotate(-38.1)"/>
+  <circle class="cls-3" cx="25.5" cy="32.4" r="3.5" transform="translate(-14.6 22.6) rotate(-38.1)"/>
+  <circle class="cls-2" cx="34.2" cy="32.4" r="3.5" transform="translate(-12.7 28) rotate(-38.1)"/>
+  <circle class="cls-4" cx="43.5" cy="32.4" r="3.5" transform="translate(-10.7 33.7) rotate(-38.1)"/>
+  <circle class="cls-4" cx="52.3" cy="32.4" r="3.5" transform="translate(-8.9 39.1) rotate(-38.1)"/>
+  <circle class="cls-4" cx="61.8" cy="32.4" r="3.5" transform="translate(-6.8 45) rotate(-38.1)"/>
+  <circle class="cls-3" cx="15.7" cy="41.5" r="3.5" transform="translate(-22.3 18.5) rotate(-38.1)"/>
+  <circle class="cls-3" cx="25.2" cy="41.5" r="3.5" transform="translate(-20.2 24.4) rotate(-38.1)"/>
+  <circle class="cls-3" cx="34.2" cy="41.5" r="3.5" transform="translate(-18.3 29.9) rotate(-38.1)"/>
+  <circle class="cls-1" cx="43.5" cy="41.5" r="3.5" transform="translate(-16.4 35.6) rotate(-38.1)"/>
+  <circle class="cls-2" cx="34.2" cy="11.9" r="3.5" transform="translate(0 23.6) rotate(-38.1)"/>
+  <circle class="cls-2" cx="43.5" cy="11.9" r="3.5" transform="translate(1.9 29.3) rotate(-38.1)"/>
+  <circle class="cls-2" cx="34.2" cy="21.9" r="3.5" transform="translate(-6.3 25.8) rotate(-38.1)"/>
+  <circle class="cls-2" cx="43.5" cy="21.9" r="3.5" transform="translate(-4.3 31.5) rotate(-38.1)"/>
+  <circle class="cls-1" cx="34.4" cy="50.6" r="3.5" transform="translate(-23.8 31.9) rotate(-38.1)"/>
+  <circle class="cls-1" cx="43.7" cy="50.6" r="3.5" transform="translate(-21.9 37.7) rotate(-38.1)"/>
+  <circle class="cls-1" cx="34.4" cy="60.6" r="3.5" transform="translate(-30 34.1) rotate(-38.1)"/>
+  <circle class="cls-1" cx="43.7" cy="60.6" r="3.5" transform="translate(-28 39.8) rotate(-38.1)"/>
+  <circle class="cls-4" cx="52" cy="41.5" r="3.5" transform="translate(-14.5 40.9) rotate(-38.1)"/>
+  <circle class="cls-4" cx="61.6" cy="41.5" r="3.5" transform="translate(-12.5 46.8) rotate(-38.1)"/>
+</svg>

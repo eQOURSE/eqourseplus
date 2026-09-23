@@ -708,7 +708,7 @@ body {
   outline-offset: 2px;
 }
 
-@media (min-width: 48rem) and (max-width: 63.999rem) {
+@media (min-width: 48.0625rem) and (max-width: 63.999rem) {
   .home-nav-wrap .eq-glass-nav {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -3386,7 +3386,7 @@ body {
   }
 }
 
-@media (max-width: 47.999rem) {
+@media (max-width: 48rem) {
   .home-nav-links {
     display: flex;
     flex-direction: column;
@@ -3427,6 +3427,27 @@ body {
 
   .home-menu-toggle {
     display: inline-flex;
+  }
+}
+
+@media (max-width: 30rem) {
+  .home-nav-wrap {
+    width: calc(100% - 1rem);
+  }
+
+  .home-nav-wrap .eq-glass-nav {
+    min-height: 4rem;
+    padding: 0.375rem;
+  }
+
+  .home-wordmark {
+    padding-inline: 0.75rem;
+    font-size: 1rem;
+  }
+
+  .home-nav-link {
+    min-height: 2.75rem;
+    padding-inline: 0.75rem;
   }
 }
 
