@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { PublicAmbientCanvas } from "../../components/public/public-client-islands";
 import { ArrowMark } from "../../components/public/site-chrome";
 import { HomeFooter, HomeHeader } from "../../components/home/HomeChrome";
@@ -29,11 +30,15 @@ export default function AboutPage() {
             <a className={buttonClass} href="/freelancers"><span className="eq-glass-button__label">Explore Our Network</span><ArrowMark /></a>
             <a className="eq-glass-button eq-glass-button--secondary eq-glass-surface eq-glass-tier-regular home-cta" href="#how-it-works"><span className="eq-glass-button__label">How eQOURSE+ Works</span><ArrowMark /></a>
           </div>
-          <div className="about-showcase" aria-hidden="true">
-            {/* Reference-only showcase artwork supplied with the design. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBaeXHS35bLld5RkqxK_DyHm9SVY1KtrVr5_M0MHNQ0nxI10zpDj8smtJlMbIVN1JTo445KbEZ61kUPgeyP8B-Vn-fJvnS2pOQvxU31nyXwCVgt9iq39MI7y7K51lH6wd4R_vJcsnBvlfAuEJSqllz0wU2EZ9IL4wvLh3mmBCkCqOM13zLSXwYnK9qd3OlHbR4aDmEFYfmS2AeRbHl3oeDMC6N4XLWcPg_01Kovq2fTbykB1RFMdAcOQ" alt="" />
-            <div className="about-showcase-grid" />
+          <div className="about-showcase">
+            <Image
+              src="/about-showcase-display.jpg"
+              alt="eQOURSE+ verified talent and quality-led delivery showcase"
+              width={958}
+              height={446}
+              sizes="(max-width: 768px) calc(100vw - 2rem), 958px"
+            />
+            <div className="about-showcase-grid" aria-hidden="true" />
             <span className="about-showcase-label about-showcase-label--left">VERIFIED TALENT GRID</span>
             <span className="about-showcase-label about-showcase-label--right">QUALITY-LED DELIVERY</span>
             {/* <div className="about-showcase-core"></div> */}

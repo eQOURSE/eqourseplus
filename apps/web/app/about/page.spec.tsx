@@ -31,6 +31,18 @@ describe("FR-PUB-05 /about", () => {
     expect(screen.getAllByRole("link", { name: /Join as a Vendor/ }).some((link) => link.getAttribute("href") === "/register/vendor")).toBe(true);
   });
 
+  it("self-hosts the showcase image at its displayed dimensions with meaningful alt text", () => {
+    render(<AboutPage />);
+
+    const image = screen.getByRole("img", {
+      name: "eQOURSE+ verified talent and quality-led delivery showcase",
+    });
+
+    expect(image).toHaveAttribute("src", expect.stringContaining("about-showcase-display.jpg"));
+    expect(image).toHaveAttribute("width", "958");
+    expect(image).toHaveAttribute("height", "446");
+  });
+
   it("keeps FAQ answers in the SSR DOM and exposes native disclosures", () => {
     const { container } = render(<AboutPage />);
     expect(container.querySelectorAll("details")).toHaveLength(faqs.length);
@@ -47,6 +59,10 @@ describe("FR-PUB-05 /about", () => {
     expect(organizations[0].name).toBe(homeStructuredData[0].name);
     expect(organizations[0].url).toBe(homeStructuredData[0].url);
     expect(organizations[0].parentOrganization).toEqual(homeStructuredData[0].parentOrganization);
+    expect(organizations[0].hasCertification).toContainEqual({
+      "@type": "Certification",
+      name: "ISO/IEC 27001",
+    });
   });
 
   it("publishes FAQPage and keeps every structured-data block safe", () => {
