@@ -226,6 +226,9 @@ describe("generic company onboarding", () => {
 
     render(<CompanyOnboardingForm actor={actor} />);
     expect(await screen.findByRole("heading", { name: "Register your company." })).toBeVisible();
+    fireEvent.change(screen.getByLabelText("Legal name"), {
+      target: { value: "   " },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -763,6 +766,57 @@ describe("generic company onboarding", () => {
       },
     });
     expect(JSON.parse(String(save?.[1]?.body))).not.toHaveProperty("documents.0");
+  });
+
+  it("creates the client draft before a first-screen government identity upload", async () => {
+    const credential = {
+      uploadUrl: "https://r2.example.test/identity?X-Amz-Signature=secret",
+      objectKey: "clients/client-1/authorised-person/government-identity-document/PASSPORT/id.pdf",
+      expiresAt: "2026-09-23T12:05:00.000Z",
+    };
+    let draftCreated = false;
+    fetchMock.mockImplementation((path, init) => {
+      if (path === "/api/v1/clients/me" && !init?.method) {
+        return Promise.resolve(response({}, 404));
+      }
+      if (path === "/api/v1/clients" && init?.method === "POST") {
+        draftCreated = true;
+        return Promise.resolve(response({
+          ...clientDraft,
+          authorisedPerson: { name: "A. Person" },
+        }, 201));
+      }
+      if (path === "/api/v1/clients/me/authorised-person/government-identity-document/upload-url") {
+        return Promise.resolve(draftCreated ? response(credential) : response({}, 404));
+      }
+      if (String(path).startsWith("https://r2.example.test/")) {
+        return Promise.resolve(new Response(null, { status: 200 }));
+      }
+      if (path === "/api/v1/clients/me" && init?.method === "PATCH") {
+        return Promise.resolve(response(clientDraft));
+      }
+      return Promise.resolve(response({}, 404));
+    });
+
+    render(<CompanyOnboardingForm actor="client" />);
+    expect(await screen.findByRole("heading", { name: "Register your company." })).toBeVisible();
+    fireEvent.change(screen.getByLabelText("Authorised person name"), {
+      target: { value: "A. Person" },
+    });
+    fireEvent.change(screen.getByLabelText("Government identity document"), {
+      target: { files: [new File(["identity"], "id.pdf", { type: "application/pdf" })] },
+    });
+
+    expect(await screen.findByText("id.pdf uploaded. Choose another file to replace it.")).toBeVisible();
+    const createIndex = fetchMock.mock.calls.findIndex(
+      ([path, init]) => path === "/api/v1/clients" && init?.method === "POST",
+    );
+    const uploadRequestIndex = fetchMock.mock.calls.findIndex(
+      ([path]) => path === "/api/v1/clients/me/authorised-person/government-identity-document/upload-url",
+    );
+    expect(createIndex).toBeGreaterThan(-1);
+    expect(uploadRequestIndex).toBeGreaterThan(createIndex);
+    expect(screen.queryByText("Upload failed for id.pdf. Choose the file and try again.")).toBeNull();
   });
 
   it("renders only registry-required identifiers for the selected country", async () => {

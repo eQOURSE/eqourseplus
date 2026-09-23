@@ -238,6 +238,20 @@ function nonEmpty(value: string): string | undefined {
 
 type CompanyDraftInput = VendorDraftInput | ClientDraftInput;
 
+function hasMeaningfulDraftValue(value: unknown): boolean {
+  if (typeof value === "string") return value.trim().length > 0;
+  if (value instanceof Date) return true;
+  if (Array.isArray(value)) return value.some(hasMeaningfulDraftValue);
+  if (value && typeof value === "object") {
+    return Object.values(value).some(hasMeaningfulDraftValue);
+  }
+  return value !== null && value !== undefined;
+}
+
+function hasCompanyDraftData(draft: CompanyDraftInput): boolean {
+  return Object.values(draft).some(hasMeaningfulDraftValue);
+}
+
 function toCompanyPayload(form: CompanyFormState, actor: CompanyActor): CompanyDraftInput {
   const config = companyActorConfig[actor];
   const capabilities = form.capabilitySlugs
@@ -663,6 +677,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
       } }));
       return;
     }
+    if (!(await persistDraft())) return;
 
     const request = uploadRequestSchema.safeParse({
       kind,
@@ -745,6 +760,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
       });
       return;
     }
+    if (!(await persistDraft())) return;
 
     const request = clientUploadRequestSchema.safeParse({
       kind: form.governmentIdentityDocumentKind,
@@ -851,7 +867,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
       setAccessStep("details");
       return false;
     }
-    if (!draftExists && Object.keys(parsed.data).length === 0) {
+    if (!draftExists && !hasCompanyDraftData(parsed.data)) {
       setFieldErrors({});
       setMessageError(true);
       setMessage("Enter at least one company detail before saving.");
