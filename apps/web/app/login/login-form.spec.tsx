@@ -112,9 +112,9 @@ describe("FR-REG-02C login form", () => {
   });
 
   it.each([
-    ["vendor", true, false, "/register/vendor"],
-    ["client", false, true, "/register/client"],
-    ["account with no company", false, false, "/register"],
+    ["vendor", true, false, "/dashboard"],
+    ["client", false, true, "/dashboard"],
+    ["account with no company", false, false, "/dashboard"],
   ])("completes OTP sign-in for a %s owner and routes by ownership", async (_, ownsVendor, ownsClient, destination) => {
     const navigate = vi.fn();
     let sessionReads = 0;
@@ -218,14 +218,14 @@ describe("FR-REG-02C login form", () => {
     await submitEmail();
     await submitCode();
 
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/register/vendor"));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/dashboard"));
   });
 
   it.each([
     ["role", { role: "NEW_INTERNAL_ROLE", businessUnit: "EQOURSE" }, "NEW_INTERNAL_ROLE"],
     ["business unit", { role: "VERIFIER", businessUnit: "NEW_UNIT" }, "NEW_UNIT"],
   ])(
-    "drops an assignment with an unknown %s, warns Sentry, and routes to registration",
+    "drops an assignment with an unknown %s, warns Sentry, and routes to the specialist dashboard",
     async (_, unknownAssignment, unknownValue) => {
       const navigate = vi.fn();
       fetchMock.mockImplementation((path) => {
@@ -243,7 +243,7 @@ describe("FR-REG-02C login form", () => {
 
       render(<LoginForm navigate={navigate} />);
 
-      await waitFor(() => expect(navigate).toHaveBeenCalledWith("/register"));
+      await waitFor(() => expect(navigate).toHaveBeenCalledWith("/dashboard"));
       expect(captureMessage).toHaveBeenCalledWith(
         expect.stringContaining(unknownValue),
         "warning",

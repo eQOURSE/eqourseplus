@@ -87,6 +87,7 @@ describe("authenticated application shell", () => {
   });
 
   it("calls the existing same-origin logout handler", async () => {
+    const navigate = vi.fn();
     fetchMock
       .mockResolvedValueOnce(
         response({
@@ -98,7 +99,7 @@ describe("authenticated application shell", () => {
       )
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
 
-    render(<AuthenticatedShell><p>Private content</p></AuthenticatedShell>);
+    render(<AuthenticatedShell navigate={navigate}><p>Private content</p></AuthenticatedShell>);
     fireEvent.click(await screen.findByRole("button", { name: "Sign out" }));
 
     await waitFor(() => {
@@ -107,5 +108,6 @@ describe("authenticated application shell", () => {
         expect.objectContaining({ method: "POST" }),
       );
     });
+    expect(navigate).toHaveBeenCalledWith("/login");
   });
 });

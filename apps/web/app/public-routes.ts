@@ -7,6 +7,7 @@ export const RESOLVING_ROUTES = [
 
 export const EXCLUDED_ROUTES = [
   "/company-reviews",
+  "/dashboard",
   "/design-system",
   "/jobs",
   "/login",

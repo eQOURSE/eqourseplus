@@ -13,6 +13,7 @@ const ALL_PUBLIC_ROUTES = [
   "/",
   "/about",
   "/company-reviews",
+  "/dashboard",
   "/design-system",
   "/freelancers",
   "/jobs",
@@ -75,6 +76,11 @@ describe("public route registry", () => {
   it("keeps the authenticated verification console excluded and out of the sitemap", () => {
     expect(EXCLUDED_ROUTES).toContain("/company-reviews");
     expect(RESOLVING_ROUTES).not.toContain("/company-reviews");
+  });
+
+  it("keeps the authenticated role home excluded and out of the sitemap", () => {
+    expect(EXCLUDED_ROUTES).toContain("/dashboard");
+    expect(RESOLVING_ROUTES).not.toContain("/dashboard");
   });
 
   it("keeps the authenticated profile wizard excluded and out of the sitemap", () => {
