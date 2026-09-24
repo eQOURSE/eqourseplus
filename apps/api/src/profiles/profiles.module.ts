@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { CompanyReviewsModule } from "../company-reviews/company-reviews.module";
 import { createStorageAdapter } from "../company-registration/r2-storage.adapter";
 import { PROFILE_STORE } from "./profile.constants";
 import { PROFILE_STORAGE_ADAPTER } from "./profile.constants";
@@ -7,6 +8,7 @@ import { ProfileService } from "./profile.service";
 import { MongooseProfileStore } from "./profile.store";
 
 @Module({
+  imports: [CompanyReviewsModule],
   controllers: [ProfileController],
   providers: [
     ProfileService,

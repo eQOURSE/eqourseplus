@@ -2,6 +2,7 @@
 
 import {
   ProfileSection,
+  ProfileState,
   profileSampleUploadRequestSchema,
   profileSampleUploadResponseSchema,
   profileDraftSchema,
@@ -35,6 +36,7 @@ type ExperienceEntryForm = {
   title: string;
   startDate: string;
   endDate: string;
+  currentlyWorks: boolean;
   summary: string;
 };
 type SampleForm = { title: string; objectKey: string; uploadedAt: string; fileName: string };
@@ -60,7 +62,7 @@ interface TaxonomyOption {
 
 interface ProfileResponse extends ProfileDraftInput {
   completionPercentage: number;
-  state: string;
+  state: ProfileState;
   userId: string;
 }
 
@@ -78,6 +80,7 @@ const EMPTY_EXPERIENCE: ExperienceEntryForm = {
   title: "",
   startDate: "",
   endDate: "",
+  currentlyWorks: true,
   summary: "",
 };
 const EMPTY_SAMPLE: SampleForm = { title: "", objectKey: "", uploadedAt: "", fileName: "" };
@@ -89,7 +92,7 @@ const EMPTY_FORM: ProfileFormState = {
   experience: { totalMonths: "", entries: [{ ...EMPTY_EXPERIENCE }] },
   samples: [{ ...EMPTY_SAMPLE }],
   availability: { availableFrom: "", weeklyHours: "", timeZone: "" },
-  rate: { amountMinor: "", currencyCode: "", unit: "" },
+  rate: { amountMinor: "", currencyCode: "INR", unit: "" },
 };
 
 const WIZARD_SECTIONS: readonly ProfileSection[] = Object.values(ProfileSection);
@@ -116,6 +119,19 @@ function dateInput(value: unknown): string {
 
 function numberInput(value: unknown): string {
   return typeof value === "number" ? String(value) : "";
+}
+
+function rateInput(value: unknown, currencyCode: string): string {
+  if (typeof value !== "number") return "";
+  return (value / (currencyCode === "JPY" ? 1 : 100)).toFixed(currencyCode === "JPY" ? 0 : 2);
+}
+
+function rateMinor(value: string, currencyCode: string): number | undefined {
+  const normalized = value.trim();
+  if (!normalized || !/^\d+(?:\.\d{1,2})?$/.test(normalized)) return undefined;
+  const [whole, fraction = ""] = normalized.split(".");
+  const digits = currencyCode === "JPY" ? 0 : 2;
+  return Number(whole) * (10 ** digits) + Number((fraction + "00").slice(0, digits));
 }
 
 function formFromProfile(profile: ProfileResponse): ProfileFormState {
@@ -155,6 +171,7 @@ function formFromProfile(profile: ProfileResponse): ProfileFormState {
             title: text(entry.title),
             startDate: dateInput(entry.startDate),
             endDate: dateInput(entry.endDate),
+            currentlyWorks: !entry.endDate,
             summary: text(entry.summary),
           }))
         : [{ ...EMPTY_EXPERIENCE }],
@@ -173,7 +190,7 @@ function formFromProfile(profile: ProfileResponse): ProfileFormState {
       timeZone: text(profile.availability?.timeZone),
     },
     rate: {
-      amountMinor: numberInput(profile.rate?.amountMinor),
+      amountMinor: rateInput(profile.rate?.amountMinor, text(profile.rate?.currencyCode)),
       currencyCode: text(profile.rate?.currencyCode),
       unit: text(profile.rate?.unit),
     },
@@ -264,9 +281,10 @@ function sectionPatch(
     }) };
   }
   if (section === ProfileSection.RATE) {
+    const currencyCode = nonEmpty(form.rate.currencyCode)?.toUpperCase() ?? "";
     return { rate: compact({
-      amountMinor: optionalInteger(form.rate.amountMinor),
-      currencyCode: nonEmpty(form.rate.currencyCode)?.toUpperCase(),
+      amountMinor: rateMinor(form.rate.amountMinor, currencyCode),
+      currencyCode: currencyCode || undefined,
       unit: nonEmpty(form.rate.unit) as "HOUR" | undefined,
     }) };
   }
@@ -293,7 +311,7 @@ function complete(section: ProfileSection, form: ProfileFormState): boolean {
   if (section === ProfileSection.EXPERIENCE) {
     const first = form.experience.entries[0];
     return Boolean(form.experience.totalMonths && first && nonEmpty(first.organization)
-      && nonEmpty(first.title) && first.startDate);
+      && nonEmpty(first.title) && first.startDate && (first.currentlyWorks || first.endDate));
   }
   if (section === ProfileSection.SAMPLES) {
     const first = form.samples[0];
@@ -365,6 +383,7 @@ export function ProfileWizard() {
   const [form, setForm] = useState<ProfileFormState>(EMPTY_FORM);
   const [section, setSection] = useState<ProfileSection>(ProfileSection.PERSONAL);
   const [completionPercentage, setCompletionPercentage] = useState(0);
+  const [profileState, setProfileState] = useState<ProfileState>(ProfileState.DRAFT);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [message, setMessage] = useState("");
@@ -395,6 +414,7 @@ export function ProfileWizard() {
       const nextForm = formFromProfile(profile);
       setForm(nextForm);
       setCompletionPercentage(profile.completionPercentage);
+      setProfileState(profile.state);
       setTaxonomy(options);
       setTaxonomyStatus("ready");
       const resume = profile.resumeSection;
@@ -470,6 +490,7 @@ export function ProfileWizard() {
         throw new Error("The saved profile response did not include progress.");
       }
       setCompletionPercentage(saved.completionPercentage);
+      setProfileState(saved.state);
     });
     saveQueue.current = task.catch(() => undefined);
     try {
@@ -488,6 +509,45 @@ export function ProfileWizard() {
   async function saveCurrent(): Promise<void> {
     clearDebounce();
     await save(form, section, undefined, true);
+  }
+
+  async function submitProfile(): Promise<void> {
+    clearDebounce();
+    setSaving(true);
+    setMessageError(false);
+    try {
+      const response = await fetch("/api/v1/profiles/me/submit", { method: "POST" });
+      if (!response.ok) throw new Error(await responseMessage(response));
+      const submitted = await response.json() as ProfileResponse;
+      setProfileState(submitted.state);
+      setCompletionPercentage(submitted.completionPercentage);
+      setMessage("Profile submitted for review.");
+    } catch (error) {
+      setMessageError(true);
+      setMessage(error instanceof Error ? error.message : "We could not submit your profile. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function previousSection(): ProfileSection | undefined {
+    const index = WIZARD_SECTIONS.indexOf(section);
+    return index > 0 ? WIZARD_SECTIONS[index - 1] : undefined;
+  }
+
+  function nextIncompleteSection(): ProfileSection | undefined {
+    const currentIndex = WIZARD_SECTIONS.indexOf(section);
+    return WIZARD_SECTIONS.slice(currentIndex + 1).find((item) => !complete(item, form));
+  }
+
+  async function saveAndContinue(): Promise<void> {
+    clearDebounce();
+    const nextSection = nextIncompleteSection();
+    if (!nextSection) {
+      await saveCurrent();
+      return;
+    }
+    if (await save(form, section, nextSection, false)) setSection(nextSection);
   }
 
   async function navigate(nextSection: ProfileSection): Promise<void> {
@@ -518,7 +578,7 @@ export function ProfileWizard() {
     markChanged({ ...form, languages: entries }, ProfileSection.LANGUAGES);
   }
 
-  function updateExperience(index: number, field: keyof ExperienceEntryForm, value: string): void {
+  function updateExperience(index: number, field: keyof ExperienceEntryForm, value: string | boolean): void {
     const entries = form.experience.entries.map((entry, item) => item === index ? { ...entry, [field]: value } : entry);
     markChanged({ ...form, experience: { ...form.experience, entries } }, ProfileSection.EXPERIENCE);
   }
@@ -599,7 +659,7 @@ export function ProfileWizard() {
           min={options.min}
           max={options.max}
           value={value}
-          disabled={saving}
+          disabled={saving || profileState === ProfileState.SUBMITTED || profileState === ProfileState.UNDER_REVIEW || profileState === ProfileState.TEST_PENDING || profileState === ProfileState.TEST_PASSED || profileState === ProfileState.APPROVED || profileState === ProfileState.REJECTED}
           aria-invalid={error ? true : undefined}
           aria-describedby={[options.help ? `${id}-help` : "", error ? `${id}-error` : ""].filter(Boolean).join(" ") || undefined}
           onChange={(event) => onChange(event.target.value)}
@@ -621,7 +681,7 @@ export function ProfileWizard() {
     return (
       <div className="company-onboarding-field">
         <label htmlFor={id}>{label}</label>
-        <select id={id} value={value} disabled={saving} aria-invalid={error ? true : undefined}
+        <select id={id} value={value} disabled={saving || profileState !== ProfileState.DRAFT && profileState !== ProfileState.MORE_INFO_NEEDED} aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${id}-error` : undefined}
           onChange={(event) => onChange(event.target.value)}>
           <option value="">Choose an option</option>
@@ -650,11 +710,11 @@ export function ProfileWizard() {
     if (section === ProfileSection.EDUCATION) return <>
       {form.education.map((entry, index) => <fieldset className="company-onboarding-subsection" key={index}>
         <legend>Education {index + 1}</legend>
-        {input(`Institution ${index + 1}`, `profile-education-${index}-institution`, entry.institution, (value) => updateEducation(index, "institution", value))}
-        {input(`Qualification ${index + 1}`, `profile-education-${index}-qualification`, entry.qualification, (value) => updateEducation(index, "qualification", value))}
-        {input(`Field of study ${index + 1}`, `profile-education-${index}-fieldOfStudy`, entry.fieldOfStudy, (value) => updateEducation(index, "fieldOfStudy", value))}
-        {input(`Start year ${index + 1}`, `profile-education-${index}-startYear`, entry.startYear, (value) => updateEducation(index, "startYear", value), { type: "number", inputMode: "numeric", min: 1900, max: new Date().getUTCFullYear() + 10 })}
-        {input(`End year ${index + 1} (optional)`, `profile-education-${index}-endYear`, entry.endYear, (value) => updateEducation(index, "endYear", value), { type: "number", inputMode: "numeric", min: 1900, max: new Date().getUTCFullYear() + 10 })}
+        {input("School or university", `profile-education-${index}-institution`, entry.institution, (value) => updateEducation(index, "institution", value))}
+        {input("Qualification", `profile-education-${index}-qualification`, entry.qualification, (value) => updateEducation(index, "qualification", value))}
+        {input("Area of study", `profile-education-${index}-fieldOfStudy`, entry.fieldOfStudy, (value) => updateEducation(index, "fieldOfStudy", value))}
+        {input("Start year", `profile-education-${index}-startYear`, entry.startYear, (value) => updateEducation(index, "startYear", value), { type: "number", inputMode: "numeric", min: 1900, max: new Date().getUTCFullYear() + 10 })}
+        {input("End year (optional)", `profile-education-${index}-endYear`, entry.endYear, (value) => updateEducation(index, "endYear", value), { type: "number", inputMode: "numeric", min: 1900, max: new Date().getUTCFullYear() + 10 })}
       </fieldset>)}
       <GlassButton type="button" variant="secondary" onClick={() => addRow("education")}>Add education</GlassButton>
     </>;
@@ -698,11 +758,12 @@ export function ProfileWizard() {
       {input("Total experience in months", "profile-experience-totalMonths", form.experience.totalMonths, (value) => markChanged({ ...form, experience: { ...form.experience, totalMonths: value } }, ProfileSection.EXPERIENCE), { type: "number", inputMode: "numeric", min: 0, max: 960 })}
       {form.experience.entries.map((entry, index) => <fieldset className="company-onboarding-subsection" key={index}>
         <legend>Experience {index + 1}</legend>
-        {input(`Organization ${index + 1}`, `profile-experience-${index}-organization`, entry.organization, (value) => updateExperience(index, "organization", value))}
-        {input(`Title ${index + 1}`, `profile-experience-${index}-title`, entry.title, (value) => updateExperience(index, "title", value))}
-        {input(`Start date ${index + 1}`, `profile-experience-${index}-startDate`, entry.startDate, (value) => updateExperience(index, "startDate", value), { type: "date" })}
-        {input(`End date ${index + 1} (optional)`, `profile-experience-${index}-endDate`, entry.endDate, (value) => updateExperience(index, "endDate", value), { type: "date" })}
-        {input(`Summary ${index + 1} (optional)`, `profile-experience-${index}-summary`, entry.summary, (value) => updateExperience(index, "summary", value))}
+        {input("Company", `profile-experience-${index}-organization`, entry.organization, (value) => updateExperience(index, "organization", value))}
+        {input("Job title", `profile-experience-${index}-title`, entry.title, (value) => updateExperience(index, "title", value))}
+        {input("Start month", `profile-experience-${index}-startDate`, entry.startDate.slice(0, 7), (value) => updateExperience(index, "startDate", value ? `${value}-01` : ""), { type: "month" })}
+        {!entry.currentlyWorks ? input("End month", `profile-experience-${index}-endDate`, entry.endDate.slice(0, 7), (value) => updateExperience(index, "endDate", value ? `${value}-01` : ""), { type: "month" }) : null}
+        <label className="profile-current-work"><input type="checkbox" checked={entry.currentlyWorks} disabled={saving || !editable} onChange={(event) => { const currentlyWorks = event.target.checked; const entries = form.experience.entries.map((item, itemIndex) => itemIndex === index ? { ...item, currentlyWorks, endDate: currentlyWorks ? "" : item.endDate } : item); markChanged({ ...form, experience: { ...form.experience, entries } }, ProfileSection.EXPERIENCE); }} /> I currently work here</label>
+        {input("What you did (optional)", `profile-experience-${index}-summary`, entry.summary, (value) => updateExperience(index, "summary", value))}
       </fieldset>)}
       <GlassButton type="button" variant="secondary" onClick={() => addRow("experience")}>Add experience</GlassButton>
     </>;
@@ -713,7 +774,7 @@ export function ProfileWizard() {
         {input(`Sample title ${index + 1}`, `profile-sample-${index}-title`, entry.title, (value) => updateSample(index, "title", value))}
         <div className="company-onboarding-field">
           <label htmlFor={`profile-sample-${index}-file`}>Upload sample file {index + 1}</label>
-          <input id={`profile-sample-${index}-file`} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" disabled={saving} onChange={(event) => void uploadSample(index, event)} aria-invalid={errors[`profile-sample-${index}-file`] ? true : undefined} />
+          <input id={`profile-sample-${index}-file`} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" disabled={saving || profileState !== ProfileState.DRAFT && profileState !== ProfileState.MORE_INFO_NEEDED} onChange={(event) => void uploadSample(index, event)} aria-invalid={errors[`profile-sample-${index}-file`] ? true : undefined} />
           {entry.objectKey ? <p className="company-onboarding-help">{entry.fileName || "Sample file uploaded."}</p> : null}
           {errors[`profile-sample-${index}-file`] ? <p className="company-onboarding-error" role="alert">{errors[`profile-sample-${index}-file`]}</p> : null}
         </div>
@@ -726,9 +787,9 @@ export function ProfileWizard() {
       {input("IANA time zone", "profile-availability-timeZone", form.availability.timeZone, (value) => markChanged({ ...form, availability: { ...form.availability, timeZone: value } }, ProfileSection.AVAILABILITY), { help: "Example: Asia/Kolkata or Europe/London." })}
     </>;
     return <>
-      {input("Amount in minor units", "profile-rate-amountMinor", form.rate.amountMinor, (value) => markChanged({ ...form, rate: { ...form.rate, amountMinor: value } }, ProfileSection.RATE), { type: "number", inputMode: "numeric", min: 1, help: "Enter an integer in the currency's minor unit; for example, 1250 means 12.50." })}
-      {input("ISO 4217 currency code", "profile-rate-currencyCode", form.rate.currencyCode, (value) => markChanged({ ...form, rate: { ...form.rate, currencyCode: value.toUpperCase() } }, ProfileSection.RATE), { help: "Three uppercase letters, such as INR, USD, or GBP." })}
-      {select("Rate unit", "profile-rate-unit", form.rate.unit, (value) => markChanged({ ...form, rate: { ...form.rate, unit: value } }, ProfileSection.RATE), [{ value: "HOUR", label: "Per hour" }])}
+      <div className="profile-rate-input"><span aria-hidden="true">{({ INR: "₹", USD: "$", EUR: "€", GBP: "£", SGD: "S$" } as Record<string, string>)[form.rate.currencyCode] ?? "¤"}</span>{input("Your rate", "profile-rate-amountMinor", form.rate.amountMinor, (value) => markChanged({ ...form, rate: { ...form.rate, amountMinor: value } }, ProfileSection.RATE), { type: "number", inputMode: "numeric", min: 0.01, help: "Enter what you want to earn before platform fees." })}</div>
+      {select("Currency", "profile-rate-currencyCode", form.rate.currencyCode, (value) => markChanged({ ...form, rate: { ...form.rate, currencyCode: value, amountMinor: rateInput(Number(form.rate.amountMinor) * (form.rate.currencyCode === "JPY" ? 1 : 100), value) } }, ProfileSection.RATE), ["INR", "USD", "EUR", "GBP", "SGD"].map((value) => ({ value, label: value })))}
+      {select("Per", "profile-rate-unit", form.rate.unit, (value) => markChanged({ ...form, rate: { ...form.rate, unit: value } }, ProfileSection.RATE), [{ value: "HOUR", label: "Hour" }])}
     </>;
   }
 
@@ -740,15 +801,18 @@ export function ProfileWizard() {
     void saveCurrent();
   }
 
+  const editable = profileState === ProfileState.DRAFT || profileState === ProfileState.MORE_INFO_NEEDED;
+
   return (
     <FrostedSurface className="company-onboarding-shell" variant="panel" aria-labelledby="profile-wizard-title">
       <p className="home-eyebrow">Freelancer profile</p>
       <h1 id="profile-wizard-title">Build your profile</h1>
       <p className="company-onboarding-copy">Save each section as you go. You can return and continue later.</p>
       <p className="company-onboarding-help" role="status" aria-live="polite">{completionPercentage}% complete</p>
+      <p className="company-onboarding-help" role="status" aria-live="polite">State: {profileState.replaceAll("_", " ")}</p>
       <nav className="company-onboarding-stepper" aria-label="Profile sections">
         <ol>{WIZARD_SECTIONS.map((item) => <li key={item}>
-          <button type="button" disabled={saving} data-current={section === item} aria-current={section === item ? "step" : undefined} onClick={() => void navigate(item)}>
+            <button type="button" disabled={saving || !editable} data-current={section === item} aria-current={section === item ? "step" : undefined} onClick={() => void navigate(item)}>
             {SECTION_LABELS[item]}
           </button>
         </li>)}</ol>
@@ -757,12 +821,15 @@ export function ProfileWizard() {
         <section aria-labelledby="profile-section-title">
           <h2 id="profile-section-title" className="home-section-title">{SECTION_LABELS[section]}</h2>
           {sectionContent()}
-          <div className="company-onboarding-actions">
-            <GlassButton type="submit" variant="primary" disabled={saving}>{saving ? "Saving…" : "Save draft"}</GlassButton>
-          </div>
+          {editable ? <div className="company-onboarding-actions">
+            {previousSection() ? <GlassButton type="button" variant="secondary" disabled={saving} onClick={() => void navigate(previousSection()!)}>Back</GlassButton> : null}
+            <GlassButton type="button" variant="secondary" disabled={saving} onClick={() => void saveCurrent()}>{saving ? "Saving…" : "Save draft"}</GlassButton>
+            <GlassButton type="button" variant="primary" disabled={saving} onClick={() => void saveAndContinue()}>{saving ? "Saving…" : "Save and continue"}</GlassButton>
+            {completionPercentage === 100 ? <GlassButton type="button" variant="primary" disabled={saving} onClick={() => void submitProfile()}>Submit profile for review</GlassButton> : null}
+          </div> : null}
         </section>
         <p
-          className={messageError ? "company-onboarding-error" : "registration-form-message"}
+          className={messageError ? "company-onboarding-error" : "profile-wizard-success"}
           role={messageError && Object.keys(errors).length === 0 ? "alert" : "status"}
           aria-live="polite"
         >

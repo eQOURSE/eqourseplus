@@ -66,10 +66,10 @@ function Brand() {
 
 type HomeHeaderProps = {
   brandHref?: string;
-  activePage?: "about";
+  activePage?: "about" | "vendors";
 };
 
-export function HomeHeader({ brandHref = "#hero", activePage }: HomeHeaderProps = {}) {
+export function HomeHeader({ brandHref = "/", activePage }: HomeHeaderProps = {}) {
   return (
     <header className={styles.headerWrap}>
       <nav
@@ -87,7 +87,7 @@ export function HomeHeader({ brandHref = "#hero", activePage }: HomeHeaderProps 
         <div className={styles.primaryLinks}>
           <a href="#categories">Solutions</a>
           <a href="/freelancers">Experts</a>
-          <a href="/vendors">Vendors</a>
+          <a href="/vendors" aria-current={activePage === "vendors" ? "page" : undefined}>Vendors</a>
           <a href="/about" aria-current={activePage === "about" ? "page" : undefined}>About</a>
         </div>
         <div className={styles.headerActions}>
@@ -100,7 +100,7 @@ export function HomeHeader({ brandHref = "#hero", activePage }: HomeHeaderProps 
         <HomeMobileNavigation>
           <a href="#categories">Solutions</a>
           <a href="/freelancers">Experts</a>
-          <a href="/vendors">Vendors</a>
+          <a href="/vendors" aria-current={activePage === "vendors" ? "page" : undefined}>Vendors</a>
           <a href="/about" aria-current={activePage === "about" ? "page" : undefined}>
             About
           </a>

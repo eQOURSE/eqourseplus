@@ -6,35 +6,35 @@ export const FREELANCERS_DESCRIPTION =
 export const freelancerJourney = [
   {
     title: "Register",
-    body: "Create your account to begin the freelancer journey.",
+    body: "Create your account.",
   },
   {
-    title: "Build your profile",
-    body: "Add your education, skills, languages, experience, work samples, availability, and preferred rate.",
+    title: "Build profile",
+    body: "Skills, samples, availability, rate.",
   },
   {
     title: "Verify",
-    body: "Complete identity, bank, and agreement checks before project access.",
+    body: "Identity, bank, agreement.",
   },
   {
-    title: "Demonstrate your skills",
-    body: "Take a proctored test for the category in which you want to work.",
+    title: "Prove your skills",
+    body: "Take a proctored category test.",
   },
   {
-    title: "Receive your badge and tier",
-    body: "A passing result adds a category badge and a starting tier to your profile.",
+    title: "Badge and tier",
+    body: "Earn a category badge and starting tier.",
   },
   {
-    title: "Match with projects",
-    body: "Your verified profile helps project teams match skills, quality, and availability to project needs.",
+    title: "Get matched",
+    body: "Skills, quality, availability.",
   },
   {
-    title: "Deliver through the workbench",
-    body: "Complete assigned work against project instructions, then respond to acceptance, rework, or review outcomes.",
+    title: "Deliver",
+    body: "Work in the QA-led workbench.",
   },
   {
-    title: "Move accepted work to payout",
-    body: "Accepted work enters the earnings ledger and the applicable payout cycle.",
+    title: "Get paid",
+    body: "Accepted work enters payout.",
   },
 ] as const;
 
@@ -107,7 +107,7 @@ export const freelancerFaq = [
   {
     question: "Can I create an account today?",
     answer:
-      "Not yet. eQOURSE+ is being built. This page explains how the platform works so you know what to expect — freelancer registration opens when the verification and testing flows go live.",
+      "Yes. Create an account, verify your email, and build your profile to begin the specialist path. Verification and testing are completed before you are matched to project work.",
   },
 ] as const;
 

@@ -355,13 +355,30 @@ describe("generic company onboarding", () => {
       "Capabilities",
       "Review",
       "Save draft",
-      "Continue to Address",
+      "Save and continue",
     ]);
     expect(screen.getByRole("group", { name: "Bank details" })).toBeVisible();
     await goTo("Capabilities");
     expect(screen.getByRole("heading", { name: "Capabilities" })).toBeVisible();
     expect(screen.queryByLabelText("Website")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Authorised person" })).toBeNull();
+  });
+
+  it("uses the shared company action pattern with Back and success feedback", async () => {
+    await renderReady("vendor");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save and continue" }));
+    expect(await screen.findByRole("heading", { name: "Address" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Back" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Save draft" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(await screen.findByRole("heading", { name: "Company" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    const message = await screen.findByText("Draft saved.");
+    expect(message).toHaveClass("onboarding-success");
+    expect(message).not.toHaveClass("company-onboarding-error");
   });
 
   it("loads, groups, searches, selects, and removes endpoint taxonomy options", async () => {
@@ -763,7 +780,7 @@ describe("generic company onboarding", () => {
     fireEvent.change(screen.getByLabelText("Legal name"), {
       target: { value: "Example Company" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Continue to Address" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save and continue" }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(

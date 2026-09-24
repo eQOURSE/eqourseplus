@@ -128,6 +128,8 @@ describe("FR-PUB-04 vendors page", () => {
         "/jobs",
         "/vendors",
         "/about",
+        "/login",
+        "/register",
         "https://www.eqourse.com/",
         "https://www.eqourse.com/casestudy",
       ].includes(href);
@@ -141,7 +143,7 @@ describe("FR-PUB-04 vendors page", () => {
         ),
         (link) => link.getAttribute("href"),
       ),
-    ).toEqual(["/", "/freelancers", "/vendors", "/about"]);
+    ).toEqual(["#how-it-works", "#categories", "/freelancers", "/vendors", "/about"]);
   });
 
   it("uses one FAQ source for visible disclosures and matching schema", () => {
@@ -223,7 +225,7 @@ describe("FR-PUB-04 vendors page", () => {
     for (const svg of container.querySelectorAll("svg")) {
       expect(svg).toHaveAttribute("aria-hidden", "true");
     }
-    expect(screen.getByRole("link", { name: "For vendors" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Vendors" })).toHaveAttribute(
       "aria-current",
       "page",
     );

@@ -2,7 +2,7 @@ import { Schema, Types, type HydratedDocument } from "mongoose";
 
 export interface AuditLogRecord {
   actorUserId: Types.ObjectId;
-  subjectCollection: "vendors" | "clients";
+  subjectCollection: "vendors" | "clients" | "profiles";
   subjectId: Types.ObjectId;
   fromState: string;
   toState: string;
@@ -17,7 +17,7 @@ export const auditLogSchema = new Schema<AuditLogRecord>(
     actorUserId: { type: Schema.Types.ObjectId, required: true },
     subjectCollection: {
       type: String,
-      enum: ["vendors", "clients"],
+      enum: ["vendors", "clients", "profiles"],
       required: true,
     },
     subjectId: { type: Schema.Types.ObjectId, required: true },

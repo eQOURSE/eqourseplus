@@ -4,6 +4,18 @@
 @tailwind components;
 @tailwind utilities;
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 * {
   border-color: hsl(var(--border));
 }
@@ -1766,18 +1778,39 @@ body {
 }
 
 .company-onboarding-stepper {
-  overflow-x: auto;
+  overflow: visible;
   margin-top: 2rem;
   padding-bottom: 0.25rem;
 }
 
 .company-onboarding-stepper ol {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
-  min-width: max-content;
+  min-width: 0;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.profile-wizard-success {
+  margin: 0;
+  color: hsl(var(--primary));
+  font-weight: 700;
+}
+
+.profile-wizard-success:empty {
+  display: none;
+}
+
+.onboarding-success {
+  margin: 0;
+  color: hsl(var(--primary));
+  font-weight: 700;
+}
+
+.onboarding-success:empty {
+  display: none;
 }
 
 .company-onboarding-stepper button {

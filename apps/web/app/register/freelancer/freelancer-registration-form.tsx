@@ -239,7 +239,7 @@ export function FreelancerRegistrationForm({
     return (
       <div className="registration-form-shell registration-confirmation">
         <p className="home-eyebrow">Freelancer registration</p>
-        <h1 id="freelancer-register-title">Your account is created.</h1>
+        <h2 id="freelancer-register-title">Your account is created.</h2>
         <p className="freelancer-hero-copy">
           Your email address is verified. Continue with your profile details.
         </p>
@@ -255,11 +255,11 @@ export function FreelancerRegistrationForm({
   return (
     <div className="registration-form-shell">
       <p className="home-eyebrow">Freelancer registration</p>
-      <h1 id="freelancer-register-title">
+      <h2 id="freelancer-register-title">
         {step === "details"
           ? "Create your freelancer account."
           : "Verify your email address."}
-      </h1>
+        </h2>
       <p className="freelancer-hero-copy">
         {step === "details"
           ? "Enter your details, then verify your email address."

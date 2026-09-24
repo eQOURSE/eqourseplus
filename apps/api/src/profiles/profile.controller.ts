@@ -39,6 +39,13 @@ export class ProfileController {
     return this.profiles.createSampleUpload(this.userId(request), body);
   }
 
+  @Post("me/submit")
+  @Header("Cache-Control", "no-store")
+  @HttpCode(200)
+  submit(@Req() request: AuthenticatedRequest) {
+    return this.profiles.submit(this.userId(request));
+  }
+
   private userId(request: AuthenticatedRequest): string {
     const userId = request.authUser?.id;
     if (!userId) throw new Error("Authenticated user is required");

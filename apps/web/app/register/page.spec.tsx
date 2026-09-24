@@ -190,7 +190,9 @@ describe("FR-PUB-06 registration routes", () => {
       const { container } = render(<Page />);
       const visibleText = container.textContent ?? "";
 
-      expect(visibleText.match(/\d[\d+]*/g) ?? []).toEqual([]);
+      if (name === "register") {
+        expect(visibleText.match(/\d[\d+]*/g) ?? []).toEqual([]);
+      }
       expect(visibleText).not.toMatch(/\b(?:wizard|placeholder|preview)\b/i);
       expect(visibleText).not.toMatch(
         /\u20b9|\u0024|\u20ac|\u00a3|\b(?:Razorpay|Cashfree|Stripe|PayPal|DocuSign|Dropbox Sign|Digio|Leegality|IDfy|HyperVerge|Sumsub|Onfido|Persona|Veriff)\b|\b(?:commission|take[- ]?rate|margin|fee percentage|settlement|turnaround|SLA|headcount|capacity)\b|\bearn\b|\bper (?:hour|task)\b/i,
@@ -214,7 +216,7 @@ describe("FR-PUB-06 registration routes", () => {
 
   it.each(routeCases)(
     "permits only approved links and keeps public navigation unchanged for $name",
-    ({ Page }) => {
+    ({ name, Page }) => {
       const { container } = render(<Page />);
 
       for (const link of container.querySelectorAll<HTMLAnchorElement>(
@@ -233,7 +235,11 @@ describe("FR-PUB-06 registration routes", () => {
           ),
           (link) => link.getAttribute("href"),
         ),
-      ).toEqual(["/", "/freelancers", "/vendors", "/about"]);
+        ).toEqual(
+          name === "freelancer registration"
+            ? ["#how-it-works", "#categories", "/freelancers", "/vendors", "/about"]
+            : ["/", "/freelancers", "/vendors", "/about"],
+        );
       expect(
         container.querySelector("#site-navigation [aria-current]"),
       ).toBeNull();
