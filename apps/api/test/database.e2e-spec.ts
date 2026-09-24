@@ -135,6 +135,20 @@ describe("FR-FND-03A database migration and taxonomy seed", () => {
     ).rejects.toMatchObject({ code: 121 });
   });
 
+  it("creates strict assessment collections and extends the profile validator for badges", async () => {
+    const tests = db.collection("tests");
+    const attempts = db.collection("testAttempts");
+    expect((await tests.indexes())).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: { taxonomySlug: 1 }, unique: true }),
+    ]));
+    expect((await attempts.indexes())).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: { userId: 1, taxonomySlug: 1, attemptNumber: 1 }, unique: true }),
+    ]));
+    await expect(tests.insertOne({ taxonomySlug: "bad", inventedField: true })).rejects.toMatchObject({ code: 121 });
+    const profileInfo = await db.listCollections({ name: "profiles" }).next();
+    expect(profileInfo?.options?.validator?.$jsonSchema?.properties).toHaveProperty("assessmentBadges");
+  });
+
   it("wires the Nest application through MONGODB_URI", async () => {
     let app: INestApplication | undefined;
     process.env.JWT_SECRET = "test-only-jwt-secret-at-least-32-characters";

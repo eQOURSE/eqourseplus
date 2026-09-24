@@ -29,6 +29,7 @@ Last completed FR: FR-REG-02B profile-wizard draft API — 2026-09-21 — Added 
 - [x] FR-REG-02B profile-wizard draft API (2026-09-21) — Added strict `profiles` persistence and indexes, authenticated owner-only draft read/save, fixed-denominator completion, partial-versus-submission schemas, taxonomy slug resolution, transactional registration ownership, profile-authoritative session state, and an abort-before-write legacy-state migration. 543 tests are green; lint and production build are clean.  - [ ] FR-REG-02  - [ ] FR-REG-03  - [ ] FR-REG-04  - [ ] FR-REG-05
 - [ ] FR-REG-06  - [ ] FR-REG-07  - [x] FR-REG-07A company verification API (2026-09-19)  - [ ] FR-REG-11  - [ ] FR-REG-12  - [ ] FR-REG-14
 ## Phase 3 — Test gate (wk 9–11)
+- In progress (2026-09-24): FR-TST-01/02(lite)/05/06 assessment API, reviewed-bank controls, candidate and verifier UI, and offline Gemini draft generator are implemented on `feat/FR-TST-01-assessment-gate`. Bounding box annotation, image annotation quality assurance, and multilingual content quality review are configured in the development database. Completion remains pending: a migration-capable MongoDB credential is needed to extend the existing profile validator, and `GEMINI_API_KEY` is needed to generate 45 DRAFT questions for human review. No generated question is auto-approved.
 - [ ] FR-TST-01  - [ ] FR-TST-02(lite)  - [ ] FR-TST-03  - [ ] FR-TST-04  - [ ] FR-TST-05  - [ ] FR-TST-06
 ## Phase 4 — Talent DB + projects (wk 12–16)
 - [ ] FR-TAL-01..03  - [ ] FR-PRJ-01..07

@@ -7,6 +7,9 @@
     "db:migrate": "migrate-mongo up -f migrate-mongo-config.cjs",
     "db:migrate:status": "migrate-mongo status -f migrate-mongo-config.cjs",
     "db:seed": "node database/seeds/skill-taxonomy.cjs",
+    "db:seed:showcase": "node database/seeds/assessment/showcase-taxonomy.cjs",
+    "db:seed:showcase-tests": "node database/seeds/assessment/showcase-tests.cjs",
+    "db:generate:test-drafts": "node database/seeds/assessment/generate-drafts.cjs",
     "dev": "nest start --watch",
     "lint": "eslint src test --ext .ts",
     "test": "vitest run"
