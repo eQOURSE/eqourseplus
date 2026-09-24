@@ -1,4 +1,5 @@
 const { connect, disconnect } = require("mongoose");
+const { assertAssessmentSeedTarget } = require("./seed-target.cjs");
 
 const ROWS = [
   {
@@ -14,7 +15,7 @@ const ROWS = [
 ];
 
 async function run() {
-  if (!process.env.MONGODB_URI) throw new Error("MONGODB_URI is required");
+  assertAssessmentSeedTarget(process.env.MONGODB_URI);
   const { SkillTaxonomyModel } = require("../../../dist/database/skill-taxonomy.schema.js");
   await connect(process.env.MONGODB_URI);
   try {

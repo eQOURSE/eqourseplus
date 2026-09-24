@@ -1,4 +1,5 @@
 const { connect, disconnect } = require("mongoose");
+const { assertAssessmentSeedTarget } = require("./seed-target.cjs");
 
 const OUTPUT_SCHEMA = {
   type: "object",
@@ -46,7 +47,7 @@ function normalizeQuestions(input, prefix) {
 async function run(slug) {
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug ?? "")) throw new Error("A taxonomy slug is required");
   if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is required");
-  if (!process.env.MONGODB_URI) throw new Error("MONGODB_URI is required");
+  assertAssessmentSeedTarget(process.env.MONGODB_URI);
   const { GeminiFlashLLMAdapter } = require("@eqourse/adapters");
   const { SkillTaxonomyModel } = require("../../../dist/database/skill-taxonomy.schema.js");
   const { TestModel } = require("../../../dist/assessments/test.schema.js");

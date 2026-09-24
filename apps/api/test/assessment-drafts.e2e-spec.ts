@@ -5,6 +5,9 @@ const require = createRequire(import.meta.url);
 const { normalizeQuestions } = require("../database/seeds/assessment/generate-drafts.cjs") as {
   normalizeQuestions: (input: unknown, prefix: string) => Array<{ status: string; correctOptionId: string }>;
 };
+const { assertAssessmentSeedTarget } = require("../database/seeds/assessment/seed-target.cjs") as {
+  assertAssessmentSeedTarget: (uri: string) => void;
+};
 
 describe("FR-TST-01 offline draft normalization", () => {
   const valid = {
@@ -21,5 +24,14 @@ describe("FR-TST-01 offline draft normalization", () => {
 
   it("rejects invalid model answer keys before any database write", () => {
     expect(() => normalizeQuestions({ questions: [{ ...valid, correctIndex: 4 }] }, "demo")).toThrow();
+  });
+});
+
+describe("assessment seed target", () => {
+  it("rejects the production Atlas database even when its host name says dev", () => {
+    expect(() => assertAssessmentSeedTarget("mongodb+srv://user:pass@eqplus-dev.en53czr.mongodb.net/eqplus"))
+      .toThrow(/production/i);
+    expect(() => assertAssessmentSeedTarget("mongodb+srv://user:pass@eqplus-dev.en53czr.mongodb.net/staging"))
+      .not.toThrow();
   });
 });
