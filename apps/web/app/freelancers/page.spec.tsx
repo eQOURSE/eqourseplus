@@ -51,13 +51,13 @@ describe("FR-PUB-03 freelancers page", () => {
 
     expect(journey.map((step) => step.querySelector("h3")?.textContent)).toEqual([
       "Register",
-      "Build your profile",
+      "Build profile",
       "Verify",
-      "Demonstrate your skills",
-      "Receive your badge and tier",
-      "Match with projects",
-      "Deliver through the workbench",
-      "Move accepted work to payout",
+      "Prove your skills",
+      "Badge and tier",
+      "Get matched",
+      "Deliver",
+      "Get paid",
     ]);
   });
 
@@ -67,14 +67,7 @@ describe("FR-PUB-03 freelancers page", () => {
     expect(
       screen.getByRole("heading", { name: "Can I create an account today?" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Not yet. eQOURSE+ is being built. This page explains how the platform works so you know what to expect — freelancer registration opens when the verification and testing flows go live.",
-      ),
-    ).toBeInTheDocument();
-    expect(container.textContent).not.toMatch(
-      /\b(sign up|join now|apply|get started|waitlist)\b/i,
-    );
+    expect(screen.getAllByRole("link", { name: /Create account/ })).toHaveLength(2);
     for (const link of container.querySelectorAll<HTMLAnchorElement>("a[href]")) {
       const href = link.getAttribute("href") ?? "";
       const isChromeLink =
@@ -83,6 +76,9 @@ describe("FR-PUB-03 freelancers page", () => {
         href === "/jobs" ||
         href === "/vendors" ||
         href === "/about" ||
+        href === "/login" ||
+        href === "/register" ||
+        href === "/register/freelancer" ||
         href === "https://www.eqourse.com/";
       expect(href.startsWith("#") || isChromeLink, href).toBe(true);
     }
@@ -94,7 +90,17 @@ describe("FR-PUB-03 freelancers page", () => {
         ),
         (link) => link.getAttribute("href"),
       ),
-    ).toEqual(["/", "/freelancers", "/vendors", "/about"]);
+    ).toEqual(["#how-it-works", "#categories", "/freelancers", "/vendors", "/about"]);
+  });
+
+  it("uses the HomeChrome shell and renders the visual design sections", () => {
+    const { container } = render(<FreelancersPage />);
+
+    expect(screen.getByRole("contentinfo")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Start your verified profile." })).toBeVisible();
+    expect(screen.getAllByTestId("journey-step")).toHaveLength(8);
+    expect(container.querySelectorAll(".freelancer-proof-card")).toHaveLength(4);
+    expect(container.querySelector(".freelancer-ledger")).toBeInTheDocument();
   });
 
   it("uses one FAQ source for visible disclosures and matching schema", () => {
@@ -155,7 +161,8 @@ describe("FR-PUB-03 freelancers page", () => {
     const { container } = render(<FreelancersPage />);
     container.querySelectorAll("script").forEach((script) => script.remove());
 
-    expect(container.textContent?.match(/\d[\d+]*/g) ?? []).toEqual([]);
+    const intentionalStepNumbers = container.textContent?.replace(/[1-8](?=verification|testing|matching|delivery)/gi, "") ?? "";
+    expect(intentionalStepNumbers.match(/\d[\d+]*/g) ?? []).toEqual([]);
     expect(container.textContent).not.toMatch(
       /₹|\$|€|£|\b(?:Razorpay|Cashfree|Stripe|PayPal)\b|\bearn up to\b|\bper (?:hour|task|month)\b/i,
     );

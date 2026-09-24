@@ -1,6 +1,6 @@
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { MongoMemoryServer } from "mongodb-memory-server";
+import { MongoMemoryReplSet } from "mongodb-memory-server";
 import { connection, Types } from "mongoose";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -10,10 +10,10 @@ import { JwtTokenService } from "../src/auth/jwt-token.service";
 
 describe("FR-REG-02B authenticated profile draft API", () => {
   let app: INestApplication;
-  let memoryServer: MongoMemoryServer;
+  let memoryServer: MongoMemoryReplSet;
 
   beforeAll(async () => {
-    memoryServer = await MongoMemoryServer.create();
+    memoryServer = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
     process.env.MONGODB_URI = memoryServer.getUri("profile_draft_api_test");
     process.env.JWT_SECRET = "test-only-jwt-secret-at-least-32-characters";
     process.env.VENDOR_IDENTIFIER_HMAC_SECRET =
@@ -83,6 +83,13 @@ describe("FR-REG-02B authenticated profile draft API", () => {
       .send(body);
   }
 
+  function submitProfile(accessToken: string) {
+    return request(app.getHttpServer())
+      .post("/api/v1/profiles/me/submit")
+      .set("authorization", `Bearer ${accessToken}`)
+      .send({});
+  }
+
   it("requires the authenticated FR-REG-02A transport", async () => {
     await request(app.getHttpServer()).get("/api/v1/profiles/me").expect(401);
     await request(app.getHttpServer())
@@ -131,6 +138,45 @@ describe("FR-REG-02B authenticated profile draft API", () => {
     await saveProfile(owner.accessToken, {
       personal: { firstName: "Ada", lastName: null },
     }).expect(400);
+  });
+
+  it("submits a complete draft through the guarded, audited profile transition", async () => {
+    const owner = await account("submit-profile@example.com");
+    await connection.collection("skillTaxonomy").insertOne({
+      businessUnit: "EQOURSE",
+      serviceLine: "AI Data Services",
+      skill: "Annotation",
+      specialization: "Bounding Box",
+      slug: "eqourse-ai-data-services-annotation-bounding-box",
+      status: "ACTIVE",
+      version: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await saveProfile(owner.accessToken, {
+      personal: { firstName: "Ada", lastName: "Lovelace" },
+      education: [{ institution: "University", qualification: "Certificate", fieldOfStudy: "Math", startYear: 2020 }],
+      skills: [{ taxonomySlug: "eqourse-ai-data-services-annotation-bounding-box", level: "EXPERT" }],
+      languages: [{ languageCode: "en-GB", proficiency: "NATIVE" }],
+      experience: { totalMonths: 24, entries: [{ organization: "Example", title: "Annotator", startDate: "2024-01-01" }] },
+      availability: { availableFrom: "2026-10-01", weeklyHours: 40, timeZone: "Europe/London" },
+      rate: { amountMinor: 12_500, currencyCode: "GBP", unit: "HOUR" },
+    }).expect(200);
+
+    const submitted = await submitProfile(owner.accessToken).expect(200);
+    expect(submitted.body).toMatchObject({ state: "SUBMITTED", completionPercentage: 100 });
+    expect((await saveProfile(owner.accessToken, { personal: { city: "London" } })).status).toBe(400);
+
+    const audit = await connection.collection("auditLogs").findOne({
+      subjectCollection: "profiles",
+      actorUserId: owner.userId,
+    });
+    expect(audit).toMatchObject({
+      actorUserId: owner.userId,
+      fromState: "DRAFT",
+      toState: "SUBMITTED",
+      reason: "Profile submitted by the account holder for review.",
+    });
   });
 
   it("persists and resumes each in-scope section independently", async () => {

@@ -1,0 +1,390 @@
+.page {
+    --primary: 170 82% 32%;
+    --navy: 242 33% 20%;
+    --muted: 242 15% 45%;
+    --line: 170 22% 88%;
+    min-height: 100vh;
+    background: #f4fbf8;
+    color: hsl(var(--navy));
+    font-family: Inter, Arial, sans-serif;
+    overflow-x: hidden;
+}
+
+.page::before {
+    content: "";
+    position: fixed;
+    inset: 64px 0 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: .45;
+    background-image: linear-gradient(hsl(var(--primary) / .09) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--primary) / .09) 1px, transparent 1px), radial-gradient(circle at 65% 20%, hsl(165 75% 71% / .35), transparent 28rem), radial-gradient(circle at 10% 75%, hsl(165 75% 71% / .25), transparent 24rem);
+    background-size: 40px 40px, 40px 40px, auto, auto;
+}
+
+.registrationLayout {
+    /* margin-top: 10px; */
+    position: relative;
+    z-index: 1;
+    width: min(1100px, calc(100% - 48px));
+    min-height: calc(100vh - 144px);
+    margin-inline: auto;
+    padding-block: 66px 90px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+    align-items: start;
+}
+
+.context {
+    margin-top: 100px;
+    padding-top: 8px;
+}
+
+.eyebrow {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 16px;
+    background: hsl(165 75% 71% / .35);
+    border: 1px solid hsl(var(--primary) / .24);
+    color: hsl(var(--primary));
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .08em;
+}
+
+.context h1 {
+    max-width: 580px;
+    margin: 22px 0 16px;
+    font-family: "Plus Jakarta Sans", Inter, sans-serif;
+    font-size: clamp(2.7rem, 5vw, 4rem);
+    line-height: 1.08;
+    letter-spacing: -.055em;
+    font-weight: 600;
+}
+
+.context h1 span {
+    display: block;
+    color: hsl(var(--primary));
+}
+
+.contextCopy {
+    max-width: 560px;
+    color: hsl(var(--muted));
+    font-size: 18px;
+    line-height: 1.55;
+}
+
+.protocol {
+    position: relative;
+    overflow: hidden;
+    min-height: 190px;
+    margin-top: 34px;
+    padding: 28px 24px;
+    background: hsl(0 0% 100% / .86);
+    border: 1px solid hsl(var(--line));
+    border-radius: 16px;
+    box-shadow: 0 12px 30px hsl(var(--navy) / .06);
+    backdrop-filter: blur(18px);
+}
+
+.protocolContent {
+    position: relative;
+    z-index: 1;
+    max-width: 430px;
+}
+
+.protocol h2 {
+    margin: 0 0 20px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.protocol h2:first-letter {
+    color: hsl(var(--primary));
+}
+
+.protocol p {
+    max-width: 390px;
+    margin: 0;
+    color: hsl(var(--muted));
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.protocolContent>div {
+    display: flex;
+    gap: 30px;
+    border-top: 1px solid hsl(var(--line));
+    margin-top: 20px;
+    padding-top: 12px;
+}
+
+.protocolContent>div span {
+    color: hsl(var(--muted));
+    font-family: ui-monospace, monospace;
+    font-size: 9px;
+    letter-spacing: .06em;
+}
+
+.protocolContent strong {
+    display: block;
+    color: hsl(var(--primary));
+    font-size: 11px;
+    margin-top: 5px;
+}
+
+.radar {
+    position: absolute;
+    right: -18px;
+    bottom: -22px;
+    width: 170px;
+    height: 170px;
+    border: 1px solid hsl(var(--primary) / .2);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+}
+
+.radar::before,
+.radar::after,
+.radar i {
+    content: "";
+    position: absolute;
+    border: 1px dashed hsl(var(--primary) / .23);
+    border-radius: 50%;
+}
+
+.radar::before {
+    width: 130px;
+    height: 130px;
+}
+
+.radar::after {
+    width: 72px;
+    height: 72px;
+    border-style: solid;
+}
+
+.radar i {
+    width: 12px;
+    height: 12px;
+    border: 0;
+    background: hsl(var(--primary));
+    box-shadow: 0 0 12px hsl(var(--primary) / .55);
+}
+
+.radar i:not(:first-child) {
+    display: none;
+}
+
+.backLink {
+    display: inline-block;
+    margin-top: 36px;
+    color: hsl(var(--muted));
+    font-size: 14px;
+    text-decoration: none;
+}
+
+.backLink:hover {
+    color: hsl(var(--navy));
+}
+
+.formColumn {
+    min-width: 0;
+    margin-top:20px ;
+}
+
+.formColumn :global(.registration-form-shell) {
+    position: relative;
+    overflow: hidden;
+    padding: 38px 36px;
+    background: hsl(0 0% 100% / .92);
+    border: 1px solid hsl(var(--line));
+    border-radius: 24px;
+    box-shadow: 0 12px 35px hsl(var(--navy) / .08);
+    backdrop-filter: blur(22px);
+}
+
+.formColumn :global(.registration-form-shell)::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 4px;
+    background: linear-gradient(90deg, hsl(165 75% 71%), hsl(var(--primary)), hsl(165 75% 71%));
+}
+
+.formColumn :global(.registration-form-shell > h2),
+.formColumn :global(.registration-form-shell > p.freelancer-hero-copy) {
+    display: none;
+}
+
+.formColumn :global(.registration-form-shell > .home-hero-actions) {
+    display: none;
+}
+
+.formColumn :global(.registration-form-shell > form) {
+    margin-top: 0;
+}
+
+.formColumn :global(.registration-form-shell > form > h2) {
+    padding-bottom: 18px;
+    margin: 0 0 24px;
+    border-bottom: 1px solid hsl(var(--line));
+    font-family: "Plus Jakarta Sans", Inter, sans-serif;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.formColumn :global(.registration-field) {
+    margin-top: 20px;
+}
+
+.formColumn :global(.registration-field label) {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 7px;
+    color: hsl(var(--navy));
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.formColumn :global(.registration-field label)::after {
+    content: "REQUIRED";
+    color: hsl(var(--primary));
+    font-family: ui-monospace, monospace;
+    font-size: 10px;
+}
+
+.formColumn :global(.registration-field:last-of-type label)::after {
+    content: "OPTIONAL";
+    color: hsl(var(--muted));
+}
+
+.formColumn :global(.registration-field input),
+.formColumn :global(.registration-field select) {
+    width: 100%;
+    min-height: 48px;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    border: 1px solid hsl(var(--line));
+    border-radius: 11px;
+    background: #f4fbf8;
+    color: hsl(var(--navy));
+    font-size: 14px;
+}
+
+.formColumn :global(.registration-field input:focus),
+.formColumn :global(.registration-field select:focus) {
+    outline: 2px solid hsl(var(--primary) / .22);
+    border-color: hsl(var(--primary));
+}
+
+.formColumn :global(.registration-field-help) {
+    margin: 7px 0 0;
+    color: hsl(var(--muted));
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.formColumn :global(.registration-form-message:not(:empty)) {
+    margin: 0 0 18px;
+    padding: 14px;
+    border: 1px solid #f1a6a6;
+    border-radius: 11px;
+    background: #fff0f0;
+    color: #b42318;
+    font-size: 13px;
+}
+
+.formColumn :global(.registration-submit) {
+    width: 100%;
+    min-height: 48px;
+    margin-top: 24px;
+    border: 0;
+    border-radius: 11px;
+    background: linear-gradient(90deg, hsl(170 82% 32%), hsl(174 72% 20%));
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 9px 18px hsl(var(--primary) / .2);
+}
+
+.formColumn :global(.registration-form-actions) {
+    display: grid;
+    gap: 10px;
+}
+
+.formColumn :global(.registration-secondary) {
+    width: 100%;
+    min-height: 40px;
+    border: 0;
+    background: transparent;
+    color: hsl(var(--muted));
+    cursor: pointer;
+}
+
+.formColumn :global(.registration-form-shell > form::after) {
+    content: "By continuing, you agree to our Terms of Service & Privacy Policy.";
+    display: block;
+    margin-top: 20px;
+    color: hsl(var(--muted));
+    text-align: center;
+    font-size: 11px;
+}
+
+.formColumn :global(.registration-confirmation) {
+    min-height: 300px;
+}
+
+.formColumn :global(.registration-confirmation h1) {
+    display: block;
+    font-family: "Plus Jakarta Sans", Inter, sans-serif;
+    font-size: 28px;
+    font-weight: 600;
+}
+
+.formColumn :global(.registration-confirmation > p) {
+    display: block;
+    color: hsl(var(--muted));
+    font-size: 15px;
+}
+
+.formColumn :global(.registration-confirmation > .home-hero-actions) {
+    display: block;
+}
+
+.formColumn :global(.registration-confirmation .home-freelancer-link) {
+    color: hsl(var(--primary));
+    font-weight: 700;
+}
+
+@media (max-width: 800px) {
+    .registrationLayout {
+        width: min(100% - 28px, 620px);
+        grid-template-columns: 1fr;
+        gap: 34px;
+        padding-block: 42px 60px;
+    }
+
+    .context h1 {
+        font-size: 2.7rem;
+    }
+
+    .contextCopy {
+        font-size: 16px;
+    }
+
+    .protocol {
+        margin-top: 24px;
+    }
+
+    .backLink {
+        margin-top: 22px;
+    }
+
+    .formColumn :global(.registration-form-shell) {
+        padding: 32px 24px;
+    }
+}

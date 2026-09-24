@@ -21,7 +21,7 @@ export interface AuditLogStore {
     session: ClientSession,
   ): Promise<AuditLogDocument>;
   findBySubject(
-    subjectCollection: "vendors" | "clients",
+    subjectCollection: "vendors" | "clients" | "profiles",
     subjectId: string,
   ): Promise<AuditLogDocument[]>;
 }

@@ -1,5 +1,6 @@
 import type { INestApplication } from "@nestjs/common";
-import { Controller, Get } from "@nestjs/common";
+import { Controller, Get, Global, Module } from "@nestjs/common";
+import { getConnectionToken } from "@nestjs/mongoose";
 import { Test } from "@nestjs/testing";
 import {
   BusinessUnit,
@@ -8,6 +9,7 @@ import {
   Role,
 } from "@eqourse/shared";
 import { SandboxMailerAdapter } from "@eqourse/adapters";
+import { connection } from "mongoose";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -26,6 +28,13 @@ import { JwtTokenService } from "../src/auth/jwt-token.service";
 import { activeRefreshSessionPredicate } from "../src/auth/refresh-session";
 import { PROFILE_STORE } from "../src/profiles/profile.constants";
 import { configureTrustProxy } from "../src/trust-proxy.config";
+
+@Global()
+@Module({
+  providers: [{ provide: getConnectionToken(), useValue: connection }],
+  exports: [getConnectionToken()],
+})
+class InMemoryDatabaseModule {}
 
 class MutableClock {
   now = new Date("2026-07-20T10:00:00.000Z");
@@ -216,7 +225,7 @@ describe("FR-FND-02 auth core", () => {
     clock = new MutableClock();
 
     const moduleRef = await Test.createTestingModule({
-      imports: [AuthModule],
+      imports: [InMemoryDatabaseModule, AuthModule],
       controllers: [ProtectedTestController],
     })
       .overrideProvider(AUTH_STORE)

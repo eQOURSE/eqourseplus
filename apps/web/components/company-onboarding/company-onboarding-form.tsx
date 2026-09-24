@@ -879,6 +879,11 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     if (await persistDraft()) setStep(nextStep);
   }
 
+  function previousStep(): StepId | undefined {
+    const index = steps.findIndex((item) => item.id === step);
+    return index > 0 ? steps[index - 1]?.id : undefined;
+  }
+
   async function submitRegistration(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (guest) {
@@ -1112,10 +1117,15 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   );
 
   function stepActions(nextStep?: StepId): React.ReactNode {
+    const backStep = previousStep();
     return (
       <div className="company-onboarding-actions">
+        {backStep ? <GlassButton type="button" variant="secondary" disabled={saving} onClick={() => {
+          if (guest) setStep(backStep);
+          else void continueTo(backStep);
+        }}>Back</GlassButton> : null}
         <GlassButton type="button" variant="secondary" disabled={saving} onClick={() => { pendingSubmission.current = false; void persistDraft(); }}>{saving ? "Saving…" : "Save draft"}</GlassButton>
-        {nextStep ? <GlassButton type="button" variant="primary" disabled={saving} onClick={() => void continueTo(nextStep)}>Continue to {steps.find((item) => item.id === nextStep)?.label}</GlassButton> : null}
+        {nextStep ? <GlassButton type="button" variant="primary" disabled={saving} onClick={() => void continueTo(nextStep)}>{saving ? "Saving…" : "Save and continue"}</GlassButton> : null}
       </div>
     );
   }
@@ -1383,7 +1393,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
 
   function renderSubmissionMessage(): React.ReactNode {
     if (submissionMissing.length === 0) {
-      return <p className="registration-form-message" role={messageError && Object.keys(fieldErrors).length === 0 ? "alert" : undefined} aria-live="polite">{message}</p>;
+      return <p className={messageError ? "company-onboarding-error" : "onboarding-success"} role={messageError ? (Object.keys(fieldErrors).length ? "status" : "alert") : "status"} aria-live="polite">{message}</p>;
     }
     return (
       <div className="company-onboarding-requirements" role="alert" aria-live="assertive">
@@ -1439,5 +1449,5 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     return <FrostedSurface aria-labelledby="company-access-title" className="company-onboarding-shell" variant="panel"><p className="home-eyebrow">Company registration</p><h1 id="company-access-title">Verify your email</h1><p className="company-onboarding-copy">Enter the six-digit code sent to {accessIdentity?.email}.</p><form className="company-onboarding-form" noValidate onSubmit={verifyAccount}><div className="company-onboarding-field"><label htmlFor="company-access-emailOtp">Email verification code</label><input id="company-access-emailOtp" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={accessOtp} disabled={saving} aria-invalid={Boolean(accessErrors.emailOtp)} onChange={(event) => setAccessOtp(event.target.value)} />{accessErrors.emailOtp ? <p className="company-onboarding-error" role="alert">{accessErrors.emailOtp}</p> : null}</div><p className="registration-form-message" role={messageError ? "alert" : undefined} aria-live="polite">{message}</p><div className="company-onboarding-actions"><GlassButton type="button" variant="secondary" disabled={saving} onClick={() => setAccessStep("details")}>Change details</GlassButton><GlassButton type="submit" variant="primary" disabled={saving}>{saving ? "Verifying…" : "Verify and save draft"}</GlassButton></div></form></FrostedSurface>;
   }
 
-  return <FrostedSurface aria-labelledby="company-onboarding-title" className="company-onboarding-shell" variant="panel"><p className="home-eyebrow">Company registration</p><h1 id="company-onboarding-title">Register your company.</h1><p className="company-onboarding-copy">{guest ? "Fill the company form now. When you save or continue, verify your email once so your draft is protected and available when you return." : "Save your details as you go. Country selection shows only the identifiers and documents that apply to your company."}</p><nav className="company-onboarding-stepper" aria-label="Company registration steps"><ol>{steps.map((item) => <li key={item.id}><button type="button" disabled={saving} data-current={step === item.id} data-state={step === item.id ? "current" : steps.findIndex((part) => part.id === item.id) < steps.findIndex((part) => part.id === step) ? "previous" : "upcoming"} aria-current={step === item.id ? "step" : undefined} onClick={() => guest ? setStep(item.id) : void continueTo(item.id)}>{item.label}</button></li>)}</ol></nav><form className="company-onboarding-form" noValidate onSubmit={submitRegistration}>{step === "company" ? renderCompany() : null}{step === "address" ? renderAddress() : null}{step === "contact" ? renderContact() : null}{step === "identifiers" ? renderIdentifiers() : null}{step === "capabilities" ? renderCapabilities() : null}{step === "review" ? renderReview() : null}{renderSubmissionMessage()}</form></FrostedSurface>;
+  return <FrostedSurface aria-labelledby="company-onboarding-title" className="company-onboarding-shell" variant="panel"><p className="home-eyebrow">Company registration</p><h1 id="company-onboarding-title">Register your company.</h1><p className="company-onboarding-copy">{guest ? "Fill the company form now. When you save or continue, verify your email once so your draft is protected and available when you return." : "Save your details as you go. You can return to any section before submitting for review."}</p><p className="company-onboarding-help" role="status" aria-live="polite">Step {steps.findIndex((item) => item.id === step) + 1} of {steps.length}: {steps.find((item) => item.id === step)?.label}</p><nav className="company-onboarding-stepper" aria-label="Company registration steps"><ol>{steps.map((item) => <li key={item.id}><button type="button" disabled={saving} data-current={step === item.id} data-state={step === item.id ? "current" : steps.findIndex((part) => part.id === item.id) < steps.findIndex((part) => part.id === step) ? "previous" : "upcoming"} aria-current={step === item.id ? "step" : undefined} onClick={() => guest ? setStep(item.id) : void continueTo(item.id)}>{item.label}</button></li>)}</ol></nav><form className="company-onboarding-form" noValidate onSubmit={submitRegistration}>{step === "company" ? renderCompany() : null}{step === "address" ? renderAddress() : null}{step === "contact" ? renderContact() : null}{step === "identifiers" ? renderIdentifiers() : null}{step === "capabilities" ? renderCapabilities() : null}{step === "review" ? renderReview() : null}{renderSubmissionMessage()}</form></FrostedSurface>;
 }

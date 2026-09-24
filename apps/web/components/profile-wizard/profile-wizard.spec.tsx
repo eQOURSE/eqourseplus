@@ -54,6 +54,9 @@ function installFetch(initialProfile = profile()) {
         completionPercentage: 35,
       }));
     }
+    if (path === "/api/v1/profiles/me/submit" && init?.method === "POST") {
+      return Promise.resolve(response({ ...initialProfile, state: "SUBMITTED", completionPercentage: 100 }));
+    }
     return Promise.resolve(response(initialProfile));
   });
 }
@@ -98,6 +101,33 @@ describe("FR-REG-02B profile wizard", () => {
     await waitFor(() => expect(patches()).toContainEqual({}));
   });
 
+  it("styles a successful draft save as success feedback", async () => {
+    await renderReady();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+    const message = await screen.findByText("Draft saved.");
+    expect(message).toHaveClass("profile-wizard-success");
+    expect(message).not.toHaveClass("company-onboarding-error");
+  });
+
+  it("saves and continues to the next incomplete section, with Back navigation", async () => {
+    await renderReady();
+
+    fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Ada" } });
+    fireEvent.change(screen.getByLabelText("Last name"), { target: { value: "Lovelace" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save and continue" }));
+
+    expect(await screen.findByRole("heading", { name: "Education" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Back" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Save draft" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(await screen.findByRole("heading", { name: "Personal" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Back" })).not.toBeInTheDocument();
+  });
+
   it("opens a saved draft without resumeSection on its first incomplete section", async () => {
     installFetch(profile({ personal: { firstName: "Ada", lastName: "Lovelace" } }));
     render(<ProfileWizard />);
@@ -129,7 +159,7 @@ describe("FR-REG-02B profile wizard", () => {
     fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Ada" } });
     fireEvent.click(screen.getByRole("button", { name: "Education" }));
     await screen.findByRole("heading", { name: "Education" });
-    fireEvent.change(screen.getByLabelText("Institution 1"), { target: { value: "Example University" } });
+    fireEvent.change(screen.getByLabelText("School or university"), { target: { value: "Example University" } });
     fireEvent.click(screen.getByRole("button", { name: "Skills" }));
     await screen.findByRole("heading", { name: "Skills" });
     fireEvent.change(screen.getByLabelText("Skill 1"), { target: { value: taxonomy[0]!.slug } });
@@ -144,7 +174,7 @@ describe("FR-REG-02B profile wizard", () => {
     fireEvent.change(screen.getByLabelText("Weekly hours"), { target: { value: "40" } });
     fireEvent.click(screen.getByRole("button", { name: "Rate" }));
     await screen.findByRole("heading", { name: "Rate" });
-    fireEvent.change(screen.getByLabelText("Amount in minor units"), { target: { value: "1250" } });
+    fireEvent.change(screen.getByLabelText("Your rate"), { target: { value: "12.50" } });
     fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
 
     await waitFor(() => {
@@ -158,6 +188,23 @@ describe("FR-REG-02B profile wizard", () => {
         expect.objectContaining({ rate: { amountMinor: 1250 } }),
       ]));
     });
+  });
+
+  it("shows the submit action at 100% and makes the wizard read-only after submission", async () => {
+    installFetch(profile({
+      completionPercentage: 100,
+      personal: { firstName: "Ada", lastName: "Lovelace" },
+      state: "DRAFT",
+    }));
+    render(<ProfileWizard />);
+
+    expect(await screen.findByRole("button", { name: "Submit profile for review" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Submit profile for review" }));
+
+    expect(await screen.findByText(/submitted for review/i)).toBeVisible();
+    expect(screen.getByText(/state: submitted/i)).toBeVisible();
+    expect(screen.getByLabelText("School or university")).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Submit profile for review" })).not.toBeInTheDocument();
   });
 
   it("supports adding another sample row without writing a storage path", async () => {
