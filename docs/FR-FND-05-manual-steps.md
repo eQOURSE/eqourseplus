@@ -8,8 +8,8 @@ the FR-FND-05 API pipeline. They do not deploy to Vercel or Utho.
 **Run every step in Sections 1–6 while the PR is still open, before merging it
 to `main`.** The staging workflow fires on the merge itself, so Artifact
 Registry, all three service accounts, Workload Identity Federation,
-`MONGODB_URI_STAGING`, `MONGODB_URI_PRODUCTION`,
-`JWT_SECRET_STAGING`, `JWT_SECRET_PRODUCTION`, `VENDOR_IDENTIFIER_HMAC_SECRET`, `CLIENT_IDENTIFIER_HMAC_SECRET`, the per-service `CORS_ORIGINS`
+`MONGODB_URI`, `MONGODB_URI_STAGING`, `JWT_SECRET`, `JWT_SECRET_STAGING`,
+`VENDOR_IDENTIFIER_HMAC_SECRET`, `CLIENT_IDENTIFIER_HMAC_SECRET`, the per-service `CORS_ORIGINS`
 values, the GitHub repository variables, and the protected `production`
 environment must already exist. Before enabling real email delivery, also
 complete Section 10 without changing any existing company-mail DNS record.
@@ -133,13 +133,13 @@ For each command below, paste the requested raw value directly into the terminal
 then send end-of-input. In Windows PowerShell, press Enter, then `Ctrl+Z`, then
 Enter. In a Unix-like terminal, press Enter, then `Ctrl+D`.
 
-The two Cloud Run services must never share a database credential. Create an
-explicitly production-named secret and, at the secure prompt, paste the current
-production connection string from the password manager or Atlas. Do not print
-or copy it through chat, a ticket, source control, or shell history:
+The two Cloud Run services must never share a database credential. The
+unsuffixed secret names are reserved for production. At the secure prompt, paste
+the current production connection string from the password manager or Atlas.
+Do not print or copy it through chat, a ticket, source control, or shell history:
 
 ```powershell
-gcloud secrets create MONGODB_URI_PRODUCTION --replication-policy=automatic --data-file=- `
+gcloud secrets create MONGODB_URI --replication-policy=automatic --data-file=- `
   --project=$ProjectId
 ```
 
@@ -156,26 +156,21 @@ gcloud secrets create MONGODB_URI_STAGING --replication-policy=automatic --data-
 Do not reuse the production URI, production database user, or production
 database name in `MONGODB_URI_STAGING`.
 
-Create distinct JWT signing values for staging and production. Generate each
-independently in a password manager with at least 32 random characters; never
-reuse a value across environments. Paste only the raw value at each secure
-prompt, without a `JWT_SECRET=` prefix or surrounding quotes:
+Create distinct JWT signing values for staging and production. Generate the
+staging value independently in a password manager with at least 32 random
+characters; keep the existing production `JWT_SECRET` value unchanged. Paste
+only the raw staging value at the secure prompt, without a `JWT_SECRET=` prefix
+or surrounding quotes:
 
 ```powershell
 gcloud secrets create JWT_SECRET_STAGING --replication-policy=automatic --data-file=- `
   --project=$ProjectId
-
-gcloud secrets create JWT_SECRET_PRODUCTION --replication-policy=automatic --data-file=- `
-  --project=$ProjectId
 ```
 
-Each service receives its matching secret as the runtime `JWT_SECRET`. Existing
-production sessions signed with the old shared value will stop validating if
-`JWT_SECRET_PRODUCTION` contains a different value; plan for users to sign in
-again after rollout. Keep the old generic `JWT_SECRET` temporarily for rollback
-only and retire it after both services have been verified. Once rollback is no
-longer needed, remove both runtime identities' accessor bindings on that old
-secret and disable its versions.
+Each service receives its matching Secret Manager secret as the runtime
+`JWT_SECRET`. Production continues using the existing `JWT_SECRET`, so this
+change does not invalidate live production sessions. Staging uses
+`JWT_SECRET_STAGING`.
 
 Create `VENDOR_IDENTIFIER_HMAC_SECRET` in GCP Secret Manager using a
 password-manager-generated random value of at least 32 characters. The API uses
@@ -215,7 +210,7 @@ gcloud secrets add-iam-policy-binding MONGODB_URI_STAGING `
   --member="serviceAccount:$StagingRuntimeServiceAccount" `
   --role="roles/secretmanager.secretAccessor"
 
-gcloud secrets add-iam-policy-binding MONGODB_URI_PRODUCTION `
+gcloud secrets add-iam-policy-binding MONGODB_URI `
   --project=$ProjectId `
   --member="serviceAccount:$ProductionRuntimeServiceAccount" `
   --role="roles/secretmanager.secretAccessor"
@@ -225,7 +220,7 @@ gcloud secrets add-iam-policy-binding JWT_SECRET_STAGING `
   --member="serviceAccount:$StagingRuntimeServiceAccount" `
   --role="roles/secretmanager.secretAccessor"
 
-gcloud secrets add-iam-policy-binding JWT_SECRET_PRODUCTION `
+gcloud secrets add-iam-policy-binding JWT_SECRET `
   --project=$ProjectId `
   --member="serviceAccount:$ProductionRuntimeServiceAccount" `
   --role="roles/secretmanager.secretAccessor"
@@ -284,10 +279,11 @@ Only an Atlas administrator can complete these steps. Do them before creating
    company documents, bank details, users, or OTP/session records into staging.
 
 The workflow maps each Secret Manager secret to the same runtime environment
-variable name: staging receives `MONGODB_URI_STAGING` and `JWT_SECRET_STAGING`;
-production receives `MONGODB_URI_PRODUCTION` and `JWT_SECRET_PRODUCTION`. The old
-generic `MONGODB_URI` is retained temporarily for rollback only and may be
-disabled after both services have been verified.
+variable name. Unsuffixed names are PRODUCTION: production receives `MONGODB_URI`
+and `JWT_SECRET`; every non-production environment must use an explicitly
+suffixed secret, so staging receives `MONGODB_URI_STAGING` and
+`JWT_SECRET_STAGING`. The runtime service accounts remain separate and each is
+granted access only to the database and JWT secrets used by its environment.
 
 ### 4.2 Create and verify the staging schema and index parity
 
@@ -308,7 +304,7 @@ Run `db:migrate:status` against production as a read-only comparison. Do not run
 a production migration from this setup task:
 
 ```powershell
-$env:MONGODB_URI = gcloud secrets versions access latest --secret=MONGODB_URI_PRODUCTION --project=$ProjectId
+$env:MONGODB_URI = gcloud secrets versions access latest --secret=MONGODB_URI --project=$ProjectId
 pnpm --filter @eqourse/api db:migrate:status
 Remove-Item Env:MONGODB_URI
 ```
@@ -412,13 +408,13 @@ gcloud iam workload-identity-pools providers describe $ProviderId `
   --format="yaml(name,attributeMapping,attributeCondition)"
 
 gcloud secrets describe MONGODB_URI_STAGING --project=$ProjectId
-gcloud secrets describe MONGODB_URI_PRODUCTION --project=$ProjectId
+gcloud secrets describe MONGODB_URI --project=$ProjectId
 gcloud secrets describe JWT_SECRET_STAGING --project=$ProjectId
-gcloud secrets describe JWT_SECRET_PRODUCTION --project=$ProjectId
+gcloud secrets describe JWT_SECRET --project=$ProjectId
 gcloud secrets describe VENDOR_IDENTIFIER_HMAC_SECRET --project=$ProjectId
 gcloud secrets describe CLIENT_IDENTIFIER_HMAC_SECRET --project=$ProjectId
 
-foreach ($SecretName in @("MONGODB_URI_STAGING", "MONGODB_URI_PRODUCTION", "JWT_SECRET_STAGING", "JWT_SECRET_PRODUCTION")) {
+foreach ($SecretName in @("MONGODB_URI_STAGING", "MONGODB_URI", "JWT_SECRET_STAGING", "JWT_SECRET")) {
   gcloud secrets get-iam-policy $SecretName --project=$ProjectId
 }
 
@@ -426,9 +422,9 @@ gh variable list --repo $GitHubRepository
 ```
 
 Confirm each of the four secret policies grants `roles/secretmanager.secretAccessor`
-only to its matching runtime identity. Confirm both JWT values are present as
-enabled versions without displaying either value. Do not grant the deployment
-identity access to any runtime secret.
+only to its matching runtime identity. Confirm the existing production JWT and
+the staging JWT are present as enabled versions without displaying either value.
+Do not grant the deployment identity access to any runtime secret.
 
 Confirm in GitHub that the `production` environment shows at least one required
 reviewer. Only then merge the PR.
@@ -444,8 +440,8 @@ into the corresponding runtime variables, and shared
 startup/liveness probes. It then
 calls `/health` and fails if the endpoint does not return a successful response.
 Production receives
-`CORS_ORIGINS=https://plus.eqourse.com` and the secrets
-`MONGODB_URI_PRODUCTION` and `JWT_SECRET_PRODUCTION` only after manual approval.
+`CORS_ORIGINS=https://plus.eqourse.com` and the unsuffixed production secrets
+`MONGODB_URI` and `JWT_SECRET` only after manual approval.
 
 After that succeeds, the `Deploy production API` job must be visibly waiting
 for approval. Approve it only when you intend to promote that exact commit image.
