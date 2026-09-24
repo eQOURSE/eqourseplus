@@ -159,7 +159,7 @@ describe("FR-FND-05 API deployment", () => {
     expect(workflow).toContain("--min-instances=0");
     expect(workflow).toContain("--allow-unauthenticated");
     expect(workflow).toContain(
-      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
+      "--set-secrets=MONGODB_URI=MONGODB_URI_STAGING:latest,JWT_SECRET=JWT_SECRET_STAGING:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
     );
     expect(workflow).toContain("--startup-probe=httpGet.path=/health");
     expect(workflow).toContain("--liveness-probe=httpGet.path=/health");
@@ -187,16 +187,71 @@ describe("FR-FND-05 API deployment", () => {
       workflow.match(/--allow-unauthenticated/g)?.length,
     ).toBeGreaterThanOrEqual(2);
     expect(
-      workflow.match(
-        /--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest(?:,RESEND_API_KEY=RESEND_API_KEY:latest)?/g,
-      )?.length,
-    ).toBeGreaterThanOrEqual(2);
+      workflow.match(/--set-secrets=MONGODB_URI=[^,]+:latest/g)?.length,
+    ).toBe(2);
     expect(
       workflow.match(/--startup-probe=httpGet\.path=\/health/g)?.length,
     ).toBeGreaterThanOrEqual(2);
     expect(
       workflow.match(/--liveness-probe=httpGet\.path=\/health/g)?.length,
     ).toBeGreaterThanOrEqual(2);
+  });
+
+  it("binds staging and production to separate MongoDB secrets", () => {
+    const workflow = readFileSync(workflowPath, "utf8");
+    const stagingJob = workflow.slice(
+      workflow.indexOf("  staging-deploy:"),
+      workflow.indexOf("  production-deploy:"),
+    );
+    const productionJob = workflow.slice(workflow.indexOf("  production-deploy:"));
+
+    expect(stagingJob).toContain(
+      '--service-account="${STAGING_RUNTIME_SERVICE_ACCOUNT}"',
+    );
+    expect(productionJob).toContain(
+      '--service-account="${PRODUCTION_RUNTIME_SERVICE_ACCOUNT}"',
+    );
+    expect(workflow).not.toMatch(/^\s+RUNTIME_SERVICE_ACCOUNT:/m);
+    expect(stagingJob).toContain(
+      "MONGODB_URI=MONGODB_URI_STAGING:latest",
+    );
+    expect(stagingJob).not.toContain(
+      "MONGODB_URI=MONGODB_URI_PRODUCTION:latest",
+    );
+    expect(productionJob).toContain("MONGODB_URI=MONGODB_URI:latest");
+    expect(productionJob).not.toContain(
+      "MONGODB_URI=MONGODB_URI_PRODUCTION:latest",
+    );
+    expect(productionJob).not.toContain(
+      "MONGODB_URI=MONGODB_URI_STAGING:latest",
+    );
+    expect(stagingJob).not.toContain("MONGODB_URI=MONGODB_URI:latest");
+  });
+
+  it("binds each runtime identity to its own JWT signing secret", () => {
+    const workflow = readFileSync(workflowPath, "utf8");
+    const stagingJob = workflow.slice(
+      workflow.indexOf("  staging-deploy:"),
+      workflow.indexOf("  production-deploy:"),
+    );
+    const productionJob = workflow.slice(workflow.indexOf("  production-deploy:"));
+    const runbook = readFileSync(deploymentRunbookPath, "utf8");
+
+    expect(stagingJob).toContain("JWT_SECRET=JWT_SECRET_STAGING:latest");
+    expect(stagingJob).not.toContain("JWT_SECRET=JWT_SECRET_PRODUCTION:latest");
+    expect(productionJob).toContain("JWT_SECRET=JWT_SECRET:latest");
+    expect(productionJob).not.toContain("JWT_SECRET=JWT_SECRET_PRODUCTION:latest");
+    expect(productionJob).not.toContain("JWT_SECRET=JWT_SECRET_STAGING:latest");
+    expect(stagingJob).not.toContain("JWT_SECRET=JWT_SECRET:latest");
+
+    expect(runbook).toContain("gcloud secrets create JWT_SECRET_STAGING");
+    expect(runbook).not.toContain("gcloud secrets create JWT_SECRET_PRODUCTION");
+    expect(runbook).toContain("gcloud secrets add-iam-policy-binding JWT_SECRET_STAGING");
+    expect(runbook).toContain("gcloud secrets add-iam-policy-binding JWT_SECRET");
+    expect(runbook).toContain("gcloud secrets describe JWT_SECRET_STAGING");
+    expect(runbook).toContain("gcloud secrets describe JWT_SECRET");
+    expect(runbook).toContain("distinct JWT signing values");
+    expect(runbook).toMatch(/Unsuffixed names are PRODUCTION/i);
   });
 
   it("fails fast and deploys each service with its explicit CORS origin", () => {
@@ -232,7 +287,7 @@ describe("FR-FND-05 API deployment", () => {
       '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}"',
     );
     expect(stagingJob).toContain(
-      "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
+      "--set-secrets=MONGODB_URI=MONGODB_URI_STAGING:latest,JWT_SECRET=JWT_SECRET_STAGING:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
     );
     expect(productionJob).toContain(
       "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
@@ -318,12 +373,13 @@ describe("FR-FND-05 API deployment", () => {
     );
     expect(runbook).toContain("assertion.ref=='refs/heads/main'");
     expect(runbook).toContain("roles/iam.workloadIdentityUser");
+    expect(runbook).toContain("gcloud secrets create MONGODB_URI_STAGING");
+    expect(runbook).toContain("gcloud secrets create MONGODB_URI");
+    expect(runbook).not.toContain("gcloud secrets create MONGODB_URI_PRODUCTION");
     expect(runbook).toContain(
-      "gcloud secrets create MONGODB_URI --replication-policy=automatic --data-file=-",
+      "gcloud secrets create JWT_SECRET_STAGING --replication-policy=automatic --data-file=-",
     );
-    expect(runbook).toContain(
-      "gcloud secrets create JWT_SECRET --replication-policy=automatic --data-file=-",
-    );
+    expect(runbook).not.toContain("gcloud secrets create JWT_SECRET_PRODUCTION");
       expect(runbook).toContain(
         "gcloud secrets create VENDOR_IDENTIFIER_HMAC_SECRET --replication-policy=automatic --data-file=-",
       );
@@ -331,7 +387,7 @@ describe("FR-FND-05 API deployment", () => {
         "gcloud secrets create CLIENT_IDENTIFIER_HMAC_SECRET --replication-policy=automatic --data-file=-",
       );
     expect(runbook).toContain(
-      'gcloud secrets add-iam-policy-binding JWT_SECRET',
+      'gcloud secrets add-iam-policy-binding JWT_SECRET_STAGING',
     );
       expect(runbook).toContain(
         "gcloud secrets add-iam-policy-binding VENDOR_IDENTIFIER_HMAC_SECRET",
@@ -354,5 +410,24 @@ describe("FR-FND-05 API deployment", () => {
     expect(runbook).toContain("--set-env-vars");
     expect(runbook).toMatch(/not a Secret Manager secret/i);
     expect(runbook).toMatch(/production.+required reviewer/is);
+  });
+
+  it("documents isolated Atlas provisioning, index parity, and the explicit taxonomy decision", () => {
+    const runbook = readFileSync(deploymentRunbookPath, "utf8");
+
+    expect(runbook).toContain("MONGODB_URI_STAGING");
+    expect(runbook).toContain("MONGODB_URI");
+    expect(runbook).not.toContain("MONGODB_URI_PRODUCTION");
+    expect(runbook).toContain("eqplus-api-staging-runtime");
+    expect(runbook).toMatch(/MONGODB_URI_STAGING[\s\S]+StagingRuntimeServiceAccount/);
+    expect(runbook).toMatch(/MONGODB_URI[\s\S]+ProductionRuntimeServiceAccount/);
+    expect(runbook).toMatch(/do not copy production data/i);
+    expect(runbook).toMatch(/database user[\s\S]+staging[\s\S]+least privilege/i);
+    expect(runbook).toContain("db:migrate:status");
+    expect(runbook).toContain("db:migrate");
+    expect(runbook).toMatch(/compare[\s\S]+getIndexes\(\)/i);
+    expect(runbook).toMatch(/production[\s\S]+3[\s\S]+59/i);
+    expect(runbook).toMatch(/staging first[\s\S]+production[\s\S]+explicit approval/i);
+    expect(runbook).toMatch(/never[\s\S]+automatic[\s\S]+deploy/i);
   });
 });
