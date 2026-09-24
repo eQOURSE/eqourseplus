@@ -361,6 +361,34 @@ describe("FR-FND-05 API deployment", () => {
     );
   });
 
+  it("never truncates a folded deploy command with an inline shell comment", () => {
+    const workflow = readFileSync(workflowPath, "utf8");
+    // A folded block scalar joins its lines with spaces, so a '#' inside one
+    // turns every following flag into a shell comment and silently drops it.
+    const foldedCommands = [
+      ...workflow.matchAll(/run: >-\r?\n((?:[ \t]+\S.*\r?\n)+)/g),
+    ].map((match) => match[1]);
+
+    expect(foldedCommands.length).toBeGreaterThanOrEqual(4);
+    for (const command of foldedCommands) {
+      expect(command).not.toMatch(/^\s*#/m);
+      expect(command.replace(/\n\s*/g, " ")).not.toContain(" #");
+    }
+  });
+
+  it("documents the deploy identity's actAs grant on both runtime service accounts", () => {
+    const runbook = readFileSync(deploymentRunbookPath, "utf8");
+
+    expect(runbook).toContain("roles/iam.serviceAccountUser");
+    expect(runbook).toMatch(
+      /iam service-accounts add-iam-policy-binding[\s\S]+StagingRuntimeServiceAccount/,
+    );
+    expect(runbook).toMatch(/actAs/);
+    expect(runbook).toContain(
+      "gcloud secrets add-iam-policy-binding MONGODB_URI_STAGING",
+    );
+  });
+
   it("documents the pre-merge, main-only WIF and Secret Manager setup", () => {
     const runbook = readFileSync(deploymentRunbookPath, "utf8");
 

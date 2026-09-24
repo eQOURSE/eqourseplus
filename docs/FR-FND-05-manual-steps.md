@@ -93,6 +93,26 @@ gcloud iam service-accounts add-iam-policy-binding $ProductionRuntimeServiceAcco
   --role="roles/iam.serviceAccountUser"
 ```
 
+`roles/iam.serviceAccountUser` is what grants the deployer the `actAs`
+permission on a runtime identity. Without it, `gcloud run deploy` fails with
+`PERMISSION_DENIED: Permission 'iam.serviceaccounts.actAs' denied`, and the
+service silently keeps serving its previous revision with its previous secrets.
+Whenever a new runtime service account is introduced, this binding must be
+applied before the deploy change reaches `main`.
+
+Confirm both bindings before merging. Each command must list the deployer:
+
+```powershell
+foreach ($RuntimePrincipal in @($StagingRuntimeServiceAccount, $ProductionRuntimeServiceAccount)) {
+  Write-Host "actAs bindings on $RuntimePrincipal"
+  gcloud iam service-accounts get-iam-policy $RuntimePrincipal `
+    --project=$ProjectId `
+    --flatten="bindings[].members" `
+    --filter="bindings.role=roles/iam.serviceAccountUser" `
+    --format="value(bindings.members)"
+}
+```
+
 ## 3. Create the main-only GitHub Workload Identity Federation trust
 
 The provider accepts tokens only when all three claims match:
