@@ -517,6 +517,7 @@ open board (wk25–30) → 8 AI+CRM (31+). Never start a phase before the previo
 | FR-PUB-04 | [P1] `/vendors` landing (RFP model, capability requirements, case-study links to eqourse.com). | Same standards. |
 | FR-PUB-05 | [P1] `/about` trust page (parent-company story, certifications, security, contact). | Organization schema includes parentOrganization: eQOURSE. |
 | FR-PUB-06 | [P1] `/login` + `/register` with role choice (Freelancer / Vendor) and country selector stub feeding FR-REG-11. | On `/register`, role choice routes to the correct wizard placeholder; `/login` satisfies FR-REG-02C; app routes noindex. |
+| FR-PUB-07 | [P1] `/clients` landing for enterprise buyers: verified expert-team engagement, delivery-quality verification, RFP/project model, capability areas, governance, FAQ and clear registration CTAs. | SSR; one H1; FAQPage and BreadcrumbList JSON-LD; canonical and hreflang; every CTA resolves; public navigation and footer link to the page; no fabricated delivery metrics or verification claims. |
 | FR-SEO-01 | [P1] Programmatic SEO engine: auto-generated category×language landing pages, sitemap.xml regenerated on job publish, robots.txt blocking /app + /api, sitewide Organization + WebSite JSON-LD. | Publishing a seeded job updates sitemap.xml automatically; /app routes carry noindex. |
 
 Ordering rule: FND-01→06 strictly sequential; PUB-00→00A→01..06 then FR-SEO-01. FR-SEO-01 must not begin before FR-FND-01/05 are done.

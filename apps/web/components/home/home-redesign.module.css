@@ -60,7 +60,7 @@
   border: none;
   border-radius: 9999px;
   /* Glass-regular tier fill */
-  background: var(--glass-regular);
+  /* background: var(--glass-regular); */
   /* Hairline top specular + mint rim ring + card shadow */
   box-shadow:
     inset 0 1px 0.5px var(--glass-bezel-hairline),
@@ -96,8 +96,8 @@
 
 .brandMark {
   display: grid;
-  width: 32px;
-  height: 32px;
+  width: 130px;
+  height: 130px;
   place-items: center;
   border-radius: 50%;
   /* background: linear-gradient(45deg, var(--figma-teal), var(--figma-blue)); */
@@ -107,6 +107,22 @@
   font-weight: 900;
   letter-spacing: 0;
   box-shadow: 0 1px 1px rgb(0 0 0 / 0.05);
+}
+
+/*
+:global([data-theme="dark"]) .brandMark{
+  position: relative;
+  left: -50px;
+
+} */
+
+:global([data-theme="dark"]) .header {
+  background:
+    radial-gradient(ellipse 180px 70px at 85px center,
+      #1DD9AD99 0%,
+      #1DD9AD66 25%,
+      #1DD9AD33 55%,
+      transparent 100%);
 }
 
 .primaryLinks {
@@ -330,7 +346,7 @@
 
 .heroActions :global(.home-cta),
 .page :global(.home-cta) {
-  margin-top:15px;
+  margin-top: 15px;
   flex: 1 1 min(100%, 250px);
   max-width: 100%;
   min-height: 20px;
@@ -1843,6 +1859,8 @@
     margin: 10px;
     padding: 18px;
   }
+
+
 }
 
 /*
@@ -2191,6 +2209,43 @@
   -webkit-backdrop-filter: blur(var(--glass-clear-blur)) saturate(1.3);
 }
 
+:global([data-theme="dark"]) .footer {
+  background:
+    radial-gradient(ellipse 500px 500px at 100px 50px,
+      #1DD9AD66 0%,
+      #1DD9AD33 35%,
+      #1DD9AD14 65%,
+      transparent 100%);
+}
+
+.brandFooter {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: hsl(var(--foreground));
+  font-family: var(--font-plus-jakarta-sans);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.brandMarkFooter {
+  display: grid;
+  width: 200px;
+  height: 200px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  font-family: var(--font-inter);
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0;
+  transform: scale(1.15);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.05);
+}
+
 .footerGrid {
   display: grid;
   grid-template-columns: 2fr repeat(4, 1fr);
@@ -2336,6 +2391,14 @@
     width: min(100% - 24px, 1280px);
   }
 
+  .brandMark {
+    display: block;
+    width: 110px;
+    max-width: 100%;
+    height: auto;
+  }
+
+
   .headerWrap {
     top: 12px;
     width: calc(100% - 24px);
@@ -2357,7 +2420,7 @@
     margin-left: auto;
   }
 
-  .headerActions > a {
+  .headerActions>a {
     display: none;
   }
 
@@ -2691,9 +2754,12 @@
     font-size: 16px;
   }
 
+
   .brandMark {
-    width: 26px;
-    height: 26px;
+    display: block;
+    width: 110px;
+    max-width: 100%;
+    height: auto;
   }
 
   .faq {

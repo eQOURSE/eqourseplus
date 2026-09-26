@@ -1,11 +1,12 @@
 import styles from "./home-redesign.module.css";
+import { FadeIn } from "./motion";
 
 const rows = [
-  ["Review process", "Opaque scoring, with little explanation of outcomes", "Documented rubrics, human QA review and clear feedback loops"],
-  ["Work flexibility", "Task availability that appears and disappears without notice", "Transparent task availability matched to verified skill tiers"],
-  ["Vendor agency model", "No formal route for agencies to participate as teams", "Formal vendor onboarding, master agreements and team tooling"],
-  ["Client visibility", "Aggregate output delivered with limited provenance", "Full telemetry, contributor credentials and live QA dashboards"],
-  ["Payment integrity", "Payment disputes with unclear resolution", "Milestone-locked terms, transparent ledgers and scheduled disbursement"],
+  ["Review process", "Opaque algorithms; silent disqualification", "Documented rubrics, human QA review, clear feedback loops"],
+  ["Work flexibility", "Sudden task droughts without notice", "Transparent task availability matched to verified skill tiers"],
+  ["Vendor agency model", "Ignored or treated as unauthorized shared accounts", "Formal vendor onboarding, master agreements, team tooling"],
+  ["Client visibility", "Blind aggregate data delivered without provenance", "Full telemetry, transparent contributor credentials, live QA dashboards"],
+  ["Payment integrity", "Delayed, disputed, or arbitrarily docked payouts", "Milestone locked escrow, transparent ledgers, on-time disbursement"],
 ] as const;
 
 export function GlassBoxSection() {
@@ -14,12 +15,12 @@ export function GlassBoxSection() {
       <div className={styles.glassBoxGrid} aria-hidden="true" />
       <div className={styles.glassBoxGlow} aria-hidden="true" />
       <div className={styles.inner}>
-        <div className={`${styles.sectionHeading} ${styles.centeredHeading}`}>
+        <FadeIn className={`${styles.sectionHeading} ${styles.centeredHeading}`}>
           <p>The glass box advantage</p>
           <h2 id="glass-box-title">The Antidote to the &quot;Black-Box&quot; Industry</h2>
           <span>Operational clarity replaces opaque crowdsourcing.</span>
-        </div>
-        <div className={`${styles["home-comparison-wrap"]} eq-frosted eq-frosted--card`}>
+        </FadeIn>
+        <FadeIn delay={0.2} className={`${styles["home-comparison-wrap"]} eq-frosted eq-frosted--card`}>
           <table className={styles["home-comparison"]}>
             <thead>
               <tr>
@@ -39,7 +40,7 @@ export function GlassBoxSection() {
                 </tr>)}
               </tbody>
             </table>
-        </div>
+        </FadeIn>
       </div>
     </section>
   );

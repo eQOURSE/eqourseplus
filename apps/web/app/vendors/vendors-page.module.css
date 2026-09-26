@@ -1,11 +1,11 @@
 .page {
-    --primary: 170 82% 32%;
-    --accent: 165 75% 71%;
-    --navy: 242 33% 20%;
-    --muted: 242 15% 45%;
-    --line: 170 22% 88%;
-    background: #f4fbf8;
-    color: hsl(var(--navy));
+    --vendor-primary: var(--primary);
+    --vendor-accent: var(--accent);
+    --vendor-ink: var(--foreground);
+    --vendor-muted: var(--muted-foreground);
+    --vendor-line: var(--border);
+    background: hsl(var(--background));
+    color: hsl(var(--vendor-ink));
     overflow: hidden;
 }
 
@@ -24,7 +24,7 @@
 .body {
     position: relative;
     isolation: isolate;
-    background: #f4fbf8;
+    background: hsl(var(--background));
     font-family: Inter, Arial, sans-serif;
 }
 
@@ -35,7 +35,7 @@
     z-index: -1;
     opacity: .68;
     pointer-events: none;
-    background: radial-gradient(circle at 30% 14%, hsl(var(--accent) / .12), transparent 22rem), linear-gradient(180deg, transparent 10%, #eef7f3 52%, #f4fbf8 100%);
+    background: radial-gradient(circle at 30% 14%, hsl(var(--vendor-accent) / .12), transparent 22rem), linear-gradient(180deg, transparent 10%, hsl(var(--surface-sunken) / .72) 52%, hsl(var(--background)) 100%);
 }
 
 .hero,
@@ -61,8 +61,8 @@
 }
 
 .eyebrow {
-    color: hsl(var(--primary));
-    font-size: 11px;
+    color: hsl(var(--vendor-primary));
+    font-size: 13px;
     font-weight: 700;
     letter-spacing: .08em;
     text-transform: uppercase;
@@ -83,14 +83,14 @@
 
 .hero h1 {
     max-width: 620px;
-    font-size: clamp(2.2rem, 4.8vw, 3.65rem);
+    font-size: clamp(2.5rem, 5.2vw, 4rem);
     margin: 0 0 18px;
 }
 
 .heroCopy>p:not(.eyebrow) {
     max-width: 520px;
-    color: hsl(var(--muted));
-    font-size: 15px;
+    color: hsl(var(--vendor-muted));
+    font-size: 19px;
     line-height: 1.6;
 }
 
@@ -111,25 +111,25 @@
     align-items: center;
     gap: 12px;
     text-decoration: none;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 700;
 }
 
 .primaryButton {
-    background: hsl(var(--primary));
-    color: white;
-    box-shadow: 0 8px 20px hsl(var(--primary) / .16);
+    background: var(--gradient-primary);
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 8px 20px hsl(var(--vendor-primary) / .16);
 }
 
 .secondaryButton {
-    background: white;
-    color: hsl(var(--navy));
-    box-shadow: 0 6px 18px hsl(var(--navy) / .06);
+    background: var(--glass-clear);
+    color: hsl(var(--vendor-ink));
+    box-shadow: 0 6px 18px hsl(var(--vendor-ink) / .06);
 }
 
 .textLink {
-    color: hsl(var(--primary));
-    font-size: 12px;
+    color: hsl(var(--vendor-primary));
+    font-size: 14px;
     font-weight: 700;
     text-decoration: none;
 }
@@ -142,16 +142,17 @@
 }
 
 .process span {
-    background: hsl(0 0% 100% / .75);
+    background: var(--glass-regular);
     border-radius: 9px;
     padding: 10px;
-    color: hsl(var(--muted));
-    font-size: 10px;
-    box-shadow: 0 6px 18px hsl(var(--navy) / .04);
+    color: hsl(var(--vendor-muted));
+    font-size: 15px;
+    font-weight: bold;
+    box-shadow: 0 6px 18px hsl(var(--vendor-ink) / .04);
 }
 
 .process span::first-letter {
-    color: hsl(var(--primary));
+    color: hsl(var(--vendor-primary));
 }
 
 .illustration {
@@ -163,10 +164,10 @@
 .agencyCard,
 .milestone {
     position: absolute;
-    background: hsl(0 0% 100% / .84);
-    border: 1px solid hsl(var(--line));
+    background: var(--glass-regular);
+    border: 1px solid hsl(var(--vendor-line));
     border-radius: 15px;
-    box-shadow: 0 16px 28px hsl(var(--navy) / .1);
+    box-shadow: 0 16px 28px hsl(var(--vendor-ink) / .1);
     backdrop-filter: blur(14px);
 }
 
@@ -176,13 +177,13 @@
     top: 18px;
     padding: 18px;
     transform: rotate(-3deg);
-    color: hsl(var(--muted));
+    color: hsl(var(--vendor-muted));
     font-size: 10px;
 }
 
 .rfpBack span {
     float: right;
-    color: hsl(var(--primary));
+    color: hsl(var(--vendor-primary));
     font-size: 8px;
 }
 
@@ -190,7 +191,7 @@
     display: block;
     height: 8px;
     border-radius: 5px;
-    background: #dfeae5;
+    background: hsl(var(--surface-sunken));
     margin-top: 22px;
 }
 
@@ -220,8 +221,8 @@
     width: 38px;
     height: 38px;
     border-radius: 10px;
-    background: hsl(var(--primary) / .1);
-    color: hsl(var(--primary));
+    background: hsl(var(--vendor-primary) / .1);
+    color: hsl(var(--vendor-primary));
 }
 
 .agencyCard strong,
@@ -231,7 +232,7 @@
 }
 
 .agencyCard small {
-    color: hsl(var(--muted));
+    color: hsl(var(--vendor-muted));
     font-size: 9px;
     margin-top: 4px;
     font-weight: 400;
@@ -239,8 +240,8 @@
 
 .agencyCard em {
     margin-left: auto;
-    color: hsl(var(--primary));
-    background: #d8f7ed;
+    color: hsl(var(--vendor-primary));
+    background: hsl(var(--vendor-primary) / .12);
     border-radius: 12px;
     padding: 5px 8px;
     font-size: 9px;
@@ -253,10 +254,10 @@
     gap: 8px;
     margin-top: 18px;
     padding: 12px 8px;
-    background: #edf5f1;
+    background: hsl(var(--surface-sunken) / .72);
     border-radius: 10px;
     text-align: center;
-    color: hsl(var(--primary));
+    color: hsl(var(--vendor-primary));
 }
 
 .agencyCard .agencyChecks span {
@@ -264,7 +265,7 @@
 }
 
 .agencyCard .agencyChecks small {
-    color: hsl(var(--navy));
+    color: hsl(var(--vendor-ink));
     font-size: 8px;
 }
 
@@ -278,18 +279,18 @@
 }
 
 .milestone strong {
-    color: hsl(var(--navy));
+    color: hsl(var(--vendor-ink));
 }
 
 .milestone>b {
     float: right;
-    color: hsl(var(--primary));
+    color: hsl(var(--vendor-primary));
 }
 
 .milestone>div {
     height: 8px;
     border-radius: 8px;
-    background: #dfeae5;
+    background: hsl(var(--surface-sunken));
     margin: 12px 0 9px;
     overflow: hidden;
 }
@@ -298,21 +299,21 @@
     display: block;
     width: 75%;
     height: 100%;
-    background: hsl(var(--primary));
+    background: var(--gradient-primary);
 }
 
 .milestone small {
-    color: hsl(var(--muted));
+    color: hsl(var(--vendor-muted));
 }
 
 .milestone em {
     float: right;
-    color: hsl(var(--primary));
+    color: hsl(var(--vendor-primary));
     font-style: normal;
 }
 
 .timelineSection {
-    background: hsl(170 25% 94% / .55);
+    background: hsl(var(--surface-sunken) / .72);
     padding: 86px 24px 112px;
 }
 
@@ -326,9 +327,9 @@
     display: inline-block;
     padding: 5px 11px;
     border-radius: 14px;
-    background: #d7f8ee;
-    color: hsl(var(--primary));
-    font-size: 9px;
+    background: hsl(var(--vendor-primary) / .12);
+    color: hsl(var(--vendor-primary));
+    font-size: 11px;
     font-weight: 800;
     letter-spacing: .08em;
     text-transform: uppercase;
@@ -339,7 +340,7 @@
 .rfpCard h2,
 .rfpModel h2,
 .finalCta h2 {
-    font-size: clamp(1.8rem, 3vw, 2.45rem);
+    font-size: clamp(2.1rem, 3.5vw, 2.85rem);
     margin: 12px 0 8px;
 }
 
@@ -348,14 +349,14 @@
 .rfpCard p,
 .rfpModel>p,
 .finalCta p {
-    color: hsl(var(--muted));
-    font-size: 14px;
+    color: hsl(var(--vendor-muted));
+    font-size: 18px;
     line-height: 1.55;
     margin: 0;
 }
 
 .timeline {
-    width: min(820px, 100%);
+    width: min(1080px, 100%);
     margin-inline: auto;
     position: relative;
     padding-block: 8px;
@@ -369,7 +370,7 @@
     left: 50%;
     width: 2px;
     transform: translateX(-50%);
-    background: #9edbcd;
+    background: hsl(var(--vendor-accent));
 }
 
 .timelineItem {
@@ -377,10 +378,10 @@
     position: relative;
     padding: 17px 22px;
     margin: 0 0 24px;
-    background: hsl(0 0% 100% / .86);
-    border: 1px solid hsl(var(--line));
+    background: var(--glass-regular);
+    border: 1px solid hsl(var(--vendor-line));
     border-radius: 12px;
-    box-shadow: 0 7px 18px hsl(var(--navy) / .05);
+    box-shadow: 0 7px 18px hsl(var(--vendor-ink) / .05);
 }
 
 .timelineItem.left {
@@ -400,9 +401,9 @@
     display: grid;
     place-items: center;
     border-radius: 50%;
-    background: white;
-    border: 2px solid #a3dfd0;
-    color: hsl(var(--primary));
+    background-color: #0A0912;
+    border: 2px solid hsl(var(--vendor-accent));
+    color: hsl(var(--vendor-primary));
     font-size: 11px;
 }
 
@@ -415,20 +416,20 @@
 }
 
 .timelineItem small {
-    color: hsl(var(--primary));
-    font-size: 9px;
+    color: hsl(var(--vendor-primary));
+    font-size: 11px;
     font-weight: 800;
 }
 
 .timelineItem h3 {
     margin: 4px 0;
-    font-size: 14px;
+    font-size: 20px;
     font-weight: 600;
 }
 
 .timelineItem p {
-    color: hsl(var(--muted));
-    font-size: 11px;
+    color: hsl(var(--vendor-muted));
+    font-size: 18px;
     line-height: 1.45;
     margin: 0;
 }
@@ -448,14 +449,19 @@
     gap: 18px;
 }
 
+.dossierGrid article{
+    height: 250px;
+}
+
+
 .dossierGrid article,
 .rfpCard,
 .rfpModel {
-    background: hsl(0 0% 100% / .86);
-    border: 1px solid hsl(var(--line));
+    background: var(--glass-regular);
+    border: 1px solid hsl(var(--vendor-line));
     border-radius: 15px;
     padding: 22px;
-    box-shadow: 0 9px 22px hsl(var(--navy) / .05);
+    box-shadow: 0 9px 22px hsl(var(--vendor-ink) / .05);
 }
 
 .dossierGrid .wideCard {
@@ -468,20 +474,20 @@
     width: 38px;
     height: 38px;
     border-radius: 10px;
-    background: #dff7ef;
-    color: hsl(var(--primary));
+    background: hsl(var(--vendor-primary) / .12);
+    color: hsl(var(--vendor-primary));
     font-size: 17px;
 }
 
 .dossierGrid h3 {
     margin: 14px 0 6px;
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 600;
 }
 
 .dossierGrid p {
-    color: hsl(var(--muted));
-    font-size: 12px;
+    color: hsl(var(--vendor-muted));
+    font-size: 16px;
     line-height: 1.5;
     margin: 0;
 }
@@ -494,11 +500,11 @@
 }
 
 .tags span {
-    background: #edf5f1;
+    background: hsl(var(--surface-sunken) / .72);
     border-radius: 10px;
     padding: 5px 8px;
-    color: hsl(var(--navy));
-    font-size: 9px;
+    color: hsl(var(--vendor-ink));
+    font-size: 11px;
 }
 
 .rfpSection {
@@ -524,10 +530,10 @@
     margin-top: 20px;
     padding: 10px 14px;
     border-radius: 9px;
-    color: hsl(var(--navy));
-    background: #edf5f1;
+    color: hsl(var(--vendor-ink));
+    background: hsl(var(--surface-sunken) / .72);
     text-decoration: none;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 700;
 }
 
@@ -544,15 +550,15 @@
     align-items: center;
     justify-content: center;
     border-radius: 12px;
-    background: radial-gradient(hsl(var(--primary) / .15) 1px, transparent 1px) #edf5f1;
+    background: radial-gradient(hsl(var(--vendor-primary) / .15) 1px, transparent 1px) hsl(var(--surface-sunken) / .72);
     background-size: 12px 12px;
-    color: hsl(var(--muted));
+    color: hsl(var(--vendor-muted));
     font-size: 22px;
     text-align: center;
 }
 
 .placeholderGrid b {
-    color: hsl(var(--navy));
+    color: hsl(var(--vendor-ink));
     font-size: 11px;
     margin-top: 8px;
 }
@@ -574,13 +580,13 @@
     display: grid;
     grid-template-columns: 180px 1fr;
     gap: 18px;
-    border-top: 1px solid hsl(var(--line));
+    border-top: 1px solid hsl(var(--vendor-line));
     padding: 12px 0;
-    font-size: 12px;
+    font-size: 16px;
 }
 
 .rfpModel>div span {
-    color: hsl(var(--muted));
+    color: hsl(var(--vendor-muted));
 }
 
 .rfpModel>div h3 {
@@ -591,7 +597,7 @@
 
 .faqSection {
     padding: 88px 24px 100px;
-    background: #e3eeea;
+    background: hsl(var(--surface-sunken) / .72);
 }
 
 .faqList {
@@ -600,8 +606,8 @@
 }
 
 .faqList details {
-    background: hsl(0 0% 100% / .88);
-    border: 1px solid hsl(var(--line));
+    background: var(--glass-clear);
+    border: 1px solid hsl(var(--vendor-line));
     border-radius: 11px;
     margin-top: 9px;
     padding: 0 20px;
@@ -622,25 +628,25 @@
 
 .faqList summary h3 {
     margin: 0;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 600;
 }
 
 .faqList summary span {
-    color: hsl(var(--primary));
+    color: hsl(var(--vendor-primary));
     font-size: 20px;
 }
 
 .faqList details>p {
-    color: hsl(var(--muted));
-    font-size: 14px;
+    color: hsl(var(--vendor-muted));
+    font-size: 18px;
     line-height: 1.55;
     padding: 0 0 17px;
     margin: 0;
 }
 
 .faqList summary:focus-visible {
-    outline: 2px solid hsl(var(--primary) / .6);
+    outline: 2px solid hsl(var(--vendor-primary) / .6);
     outline-offset: 3px;
 }
 
@@ -651,10 +657,10 @@
     gap: 24px;
     padding: 34px;
     margin-block: 70px;
-    background: hsl(0 0% 100% / .9);
-    border: 1px solid hsl(var(--line));
+    background: var(--glass-regular);
+    border: 1px solid hsl(var(--vendor-line));
     border-radius: 15px;
-    box-shadow: 0 10px 22px hsl(var(--navy) / .06);
+    box-shadow: 0 10px 22px hsl(var(--vendor-ink) / .06);
 }
 
 .finalCta h2 {

@@ -1,13 +1,8 @@
 import type { Metadata } from "next";
-import { GlassSubstrate } from "@eqourse/ui";
-
-import { PublicAmbientCanvas } from "../../components/public/public-client-islands";
-import {
-  SiteFooter,
-  SiteNavigation,
-} from "../../components/public/site-chrome";
+import { HomeFooter, HomeHeader } from "../../components/home/HomeChrome";
 import { LoginForm } from "./login-form";
 import { LOGIN_DESCRIPTION, LOGIN_TITLE } from "./login-data";
+import styles from "./login-page.module.css";
 
 export const metadata: Metadata = {
   title: LOGIN_TITLE,
@@ -23,28 +18,26 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <main id="top" className="home-shell">
-      <PublicAmbientCanvas />
-      <GlassSubstrate />
-      <SiteNavigation page="login" />
+    <main id="top" className={styles.page}>
+      <HomeHeader brandHref="/" />
 
-      <section className="freelancer-hero" aria-labelledby="login-title">
-        <div className="freelancer-hero-field" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
-        <div className="freelancer-hero-content">
-          <p className="home-eyebrow">Account access</p>
-          <h1 id="login-title">Log in to eQOURSE+.</h1>
-          <p className="freelancer-hero-copy">
+      <section className={styles.accessSection} aria-labelledby="login-title">
+        <div className={styles.accessContent}>
+          <p className={styles.eyebrow}>Account access</p>
+          <h1 id="login-title" className={styles.title}>
+            <span>Log in to</span>{" "}
+            <span>eQOURSE<em>+</em>.</span>
+          </h1>
+          <p className={styles.description}>
             Enter your account email and we&apos;ll send you a secure sign-in code.
           </p>
-          <LoginForm />
+          <div className={styles.loginCard}>
+            <LoginForm />
+          </div>
         </div>
       </section>
 
-      <SiteFooter />
+      <HomeFooter />
     </main>
   );
 }

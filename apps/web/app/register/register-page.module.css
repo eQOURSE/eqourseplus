@@ -1,0 +1,239 @@
+.page {
+  min-height: 100vh;
+  overflow: hidden;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.registrationSection {
+  position: relative;
+  isolation: isolate;
+  min-height: 39rem;
+  overflow: hidden;
+  padding: 7rem 1.5rem 6rem;
+  background:
+    radial-gradient(circle at 82% 42%, hsl(var(--accent) / 0.22), transparent 25rem),
+    hsl(var(--background));
+}
+
+.registrationSection::before {
+
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-image:
+    repeating-linear-gradient(0deg, hsl(var(--primary) / 0.08) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(90deg, hsl(var(--primary) / 0.08) 0 1px, transparent 1px 40px);
+  content: "";
+  mask-image: linear-gradient(to bottom, black 0%, black 80%, transparent 100%);
+}
+
+.registrationSection::after {
+  position: absolute;
+  top: 50%;
+  right: -4rem;
+  z-index: -1;
+  width: min(39rem, 48vw);
+  aspect-ratio: 1;
+  border: 1px solid hsl(var(--primary) / 0.17);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 5rem hsl(var(--primary) / 0.04),
+    0 0 0 10rem hsl(var(--primary) / 0.025),
+    inset 0 0 0 6rem hsl(var(--primary) / 0.03);
+  content: "";
+  transform: translateY(-50%);
+}
+
+.registrationContent {
+  position: relative;
+  width: min(100%, 63rem);
+  margin-inline: auto;
+}
+
+.radarLabel {
+  position: absolute;
+  top: -2.5rem;
+  right: 0;
+  color: hsl(var(--primary) / 0.65);
+  font-family: var(--font-body);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  margin: 0 0 1.25rem;
+  color: hsl(var(--primary));
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.title {
+  max-width: 52rem;
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-family: var(--font-heading);
+  font-size: clamp(2.8rem, 6vw, 4.5rem);
+  font-weight: 700;
+  letter-spacing: -0.065em;
+  line-height: 0.97;
+}
+
+.title em {
+  color: hsl(var(--primary));
+  font-style: normal;
+}
+
+.description {
+  margin: 1.25rem 0 0;
+  color: hsl(var(--muted-foreground));
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.roleGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin-top: 2.5rem;
+}
+
+.registrationRoleCard {
+  display: flex;
+  min-height: 9rem;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  border: 1px solid var(--glass-bezel-ring);
+  border-radius: 1rem;
+  background: var(--glass-regular);
+  box-shadow:
+    inset 0 1px 0.5px var(--glass-bezel-hairline),
+    inset 0 -10px 20px -8px var(--glass-bezel-bounce),
+    var(--shadow-card);
+  color: hsl(var(--foreground));
+  text-decoration: none;
+  backdrop-filter: blur(var(--glass-regular-blur)) saturate(1.55);
+  -webkit-backdrop-filter: blur(var(--glass-regular-blur)) saturate(1.55);
+  transition:
+    transform var(--motion-hover) var(--ease-standard),
+    border-color var(--motion-hover) var(--ease-standard),
+    box-shadow var(--motion-hover) var(--ease-standard);
+}
+
+.registrationRoleCard:hover {
+  transform: translateY(-0.25rem);
+  border-color: hsl(var(--primary) / 0.45);
+  box-shadow: var(--shadow-elevated), 0 0 20px hsl(var(--primary) / 0.12);
+}
+
+.registrationRoleCard:focus-visible {
+  outline: 2px solid hsl(var(--ring) / 0.6);
+  outline-offset: 3px;
+}
+
+.roleTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.roleIcon {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border-radius: 0.75rem;
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+  font-size: 1.25rem;
+}
+
+.roleTag {
+  padding: 0.3rem 0.65rem;
+  border: 1px solid hsl(var(--primary) / 0.18);
+  border-radius: 9999px;
+  background: hsl(var(--primary) / 0.06);
+  color: hsl(var(--primary));
+  font-family: var(--font-body);
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.roleLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.roleArrow {
+  color: hsl(var(--primary));
+  font-size: 1.1rem;
+}
+
+.loginPrompt {
+  margin: 2.25rem 0 0;
+  color: hsl(var(--muted-foreground));
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+}
+
+.loginPrompt a {
+  color: hsl(var(--primary));
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.loginPrompt a:hover,
+.loginPrompt a:focus-visible {
+  text-decoration: underline;
+}
+
+@media (max-width: 760px) {
+  .registrationSection {
+    padding-block: 5.5rem 5rem;
+  }
+
+  .registrationSection::after {
+    right: -12rem;
+    width: 32rem;
+  }
+
+  .radarLabel {
+    top: -2rem;
+    right: 0;
+  }
+
+  .roleGrid {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .registrationRoleCard {
+    min-height: 7rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .registrationRoleCard {
+    transition: none;
+  }
+
+  .registrationRoleCard:hover {
+    transform: none;
+  }
+}

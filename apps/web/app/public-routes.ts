@@ -2,6 +2,7 @@ export const RESOLVING_ROUTES = [
   "/",
   "/freelancers",
   "/vendors",
+  "/clients",
   "/about",
 ] as const;
 

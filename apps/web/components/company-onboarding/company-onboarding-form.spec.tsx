@@ -167,7 +167,9 @@ describe("generic company onboarding", () => {
   it("lets a visitor fill and explore the vendor form without vendor API calls", async () => {
     render(<CompanyOnboardingForm actor="vendor" guest />);
 
-    expect(screen.getByRole("heading", { name: "Register your company." })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Tell us about your business." })).toHaveClass("company-onboarding-title");
+    expect(screen.getByRole("navigation", { name: "Company registration steps" })).toHaveClass("vendor-progress-trail");
+    expect(screen.getByRole("heading", { name: "Tell us about your business." })).toBeVisible();
     expect(screen.getByRole("button", { name: "Save draft" })).toBeEnabled();
     expect(screen.getByLabelText("Legal name")).toBeEnabled();
     fireEvent.change(screen.getByLabelText("Legal name"), {
@@ -472,6 +474,7 @@ describe("generic company onboarding", () => {
     });
     await renderReady("client");
 
+    expect(screen.getByRole("navigation", { name: "Company registration steps" })).toHaveClass("vendor-progress-trail");
     expect(screen.getByLabelText("Website")).toBeVisible();
     expect(screen.getByRole("group", { name: "Authorised person" })).toBeVisible();
     expect(screen.queryByRole("group", { name: "Bank details" })).toBeNull();
