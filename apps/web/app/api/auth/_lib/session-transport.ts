@@ -165,7 +165,7 @@ export function clearSessionCookies(response: NextResponse): void {
   });
 }
 
-function setSessionCookies(
+export function setSessionCookies(
   response: NextResponse,
   pair: AuthTokenPair,
 ): void {
