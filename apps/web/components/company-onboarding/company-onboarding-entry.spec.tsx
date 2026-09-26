@@ -61,9 +61,10 @@ describe("company onboarding entry", () => {
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Tell us about your business." })).toBeVisible());
     await waitFor(() => expect(screen.getByLabelText("Legal name")).toHaveValue("Saved Company"));
-    expect(screen.getByText("owner@example.com")).toBeVisible();
+    expect(screen.getByLabelText("Signed in user")).toHaveTextContent("owner@example.com");
     expect(screen.getByRole("button", { name: "Sign out" })).toBeVisible();
-    expect(screen.queryByRole("navigation", { name: "Primary navigation" })).not.toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
+    expect(screen.getByRole("contentinfo")).toBeVisible();
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/vendors/me", { cache: "no-store" });
   });
 });

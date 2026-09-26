@@ -1,3 +1,6 @@
+"use client";
+
+import type { AuthSession } from "@eqourse/shared";
 import Link from "next/link";
 
 import { PublicThemeToggle } from "../public/public-client-islands";
@@ -84,9 +87,12 @@ function FooterBrand() {
 type HomeHeaderProps = {
   brandHref?: string;
   activePage?: "about" | "vendors";
-};
+} & ({ session?: null; onSignOut?: never } | { session: AuthSession; onSignOut: () => void });
 
-export function HomeHeader({ brandHref = "/", activePage }: HomeHeaderProps = {}) {
+export function HomeHeader({ brandHref = "/", activePage, ...auth }: HomeHeaderProps = {}) {
+  const session = "session" in auth ? auth.session : null;
+  const onSignOut = "onSignOut" in auth ? auth.onSignOut : undefined;
+  const authenticated = Boolean(session);
   return (
     <header className={styles.headerWrap}>
       <nav
@@ -109,10 +115,8 @@ export function HomeHeader({ brandHref = "/", activePage }: HomeHeaderProps = {}
         </div>
         <div className={styles.headerActions}>
           <PublicThemeToggle />
-          <Link href="/login">Login</Link>
-          <Link className={styles.exploreButton} href="/register">
-            Access eQOURSE+
-          </Link>
+          {authenticated ? <span aria-label="Signed in user">{session?.email}</span> : <Link href="/login">Login</Link>}
+          {authenticated ? <button type="button" onClick={onSignOut}>Sign out</button> : <Link className={styles.exploreButton} href="/register">Access eQOURSE+</Link>}
         </div>
         <HomeMobileNavigation>
           <a href="/clients">Solutions</a>
@@ -121,10 +125,7 @@ export function HomeHeader({ brandHref = "/", activePage }: HomeHeaderProps = {}
           <a href="/about" aria-current={activePage === "about" ? "page" : undefined}>
             About
           </a>
-          <a href="/login">Login</a>
-          <Link className={styles.exploreButton} href="/register">
-            Access eQOURSE+
-          </Link>
+          {!authenticated ? <><a href="/login">Login</a><Link className={styles.exploreButton} href="/register">Access eQOURSE+</Link></> : null}
         </HomeMobileNavigation>
         <div className="home-nav-links sr-only" aria-hidden="true">
           <a href="#how-it-works">How it works</a>
