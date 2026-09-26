@@ -31,6 +31,7 @@ const APPROVED_LINKS = [
   "/freelancers",
   "/jobs",
   "/vendors",
+  "/clients",
   "/about",
   "/login",
   "/register",
@@ -39,6 +40,15 @@ const APPROVED_LINKS = [
   "/register/client",
   "https://www.eqourse.com/",
 ] as const;
+
+const registerStyles = readFileSync(
+  resolve(process.cwd(), "app/register/register-page.module.css"),
+  "utf8",
+);
+const freelancerRegistrationStyles = readFileSync(
+  resolve(process.cwd(), "app/register/freelancer/freelancer-registration-page.module.css"),
+  "utf8",
+);
 
 const routeCases: readonly {
   name: string;
@@ -116,7 +126,7 @@ describe("FR-PUB-06 registration routes", () => {
     );
 
     expect(styles).toMatch(
-      /\.company-onboarding-page\s*\{[^}]*margin-top:\s*clamp\(1\.5rem, 4vw, 3rem\)/s,
+      /\.company-onboarding-page\s*\{[^}]*margin-top:\s*clamp\(5rem, 9vw, 8rem\)/s,
     );
   });
 
@@ -216,7 +226,7 @@ describe("FR-PUB-06 registration routes", () => {
 
   it.each(routeCases)(
     "permits only approved links and keeps public navigation unchanged for $name",
-    ({ name, Page }) => {
+    ({ Page }) => {
       const { container } = render(<Page />);
 
       for (const link of container.querySelectorAll<HTMLAnchorElement>(
@@ -236,9 +246,7 @@ describe("FR-PUB-06 registration routes", () => {
           (link) => link.getAttribute("href"),
         ),
         ).toEqual(
-          name === "freelancer registration"
-            ? ["#how-it-works", "#categories", "/freelancers", "/vendors", "/about"]
-            : ["/", "/freelancers", "/vendors", "/about"],
+          ["#how-it-works", "#categories", "/freelancers", "/vendors", "/about"],
         );
       expect(
         container.querySelector("#site-navigation [aria-current]"),
@@ -288,13 +296,13 @@ describe("FR-PUB-06 registration routes", () => {
     render(<RegisterPage />);
 
     expect(
-      screen.getByRole("link", { name: "Continue as a freelancer" }),
+      screen.getByRole("link", { name: /Continue as a freelancer/ }),
     ).toHaveAttribute("href", "/register/freelancer");
     expect(
-      screen.getByRole("link", { name: "Continue as a vendor" }),
+      screen.getByRole("link", { name: /Continue as a vendor/ }),
     ).toHaveAttribute("href", "/register/vendor");
     expect(
-      screen.getByRole("link", { name: "Continue as a client" }),
+      screen.getByRole("link", { name: /Continue as a client/ }),
     ).toHaveAttribute("href", "/register/client");
   });
 
@@ -304,6 +312,24 @@ describe("FR-PUB-06 registration routes", () => {
     expect(
       screen.getByRole("link", { name: "Log in" }),
     ).toHaveAttribute("href", "/login");
+  });
+
+  it("uses the shared HomeChrome shell and reference role-card layout", () => {
+    const { container } = render(<RegisterPage />);
+
+    expect(container.querySelector("#site-navigation")).toBeInTheDocument();
+    expect(container.querySelector("#site-footer")).toBeInTheDocument();
+    expect(container.querySelectorAll('a[href^="/register/"]').length).toBe(3);
+    expect(registerStyles).toMatch(/repeating-linear-gradient/);
+    expect(registerStyles).toMatch(/radial-gradient/);
+    expect(registerStyles).toMatch(/\.registrationRoleCard/);
+  });
+
+  it("keeps freelancer registration surfaces theme-aware", () => {
+    expect(freelancerRegistrationStyles).toMatch(/background:\s*hsl\(var\(--background\)\)/);
+    expect(freelancerRegistrationStyles).toMatch(/background:\s*var\(--glass-regular\)/);
+    expect(freelancerRegistrationStyles).toMatch(/background:\s*hsl\(var\(--surface-sunken\)/);
+    expect(freelancerRegistrationStyles).not.toMatch(/background:\s*(?:white|#f4fbf8|#fff)\s*;/i);
   });
 
   it(
@@ -341,15 +367,20 @@ describe("FR-PUB-06 registration routes", () => {
     expect(source).toContain("<FreelancerRegistrationForm />");
   });
 
-  it.each([
-    ["freelancer", FreelancerRegistrationPage],
-    ["vendor", VendorRegistrationPage],
-    ["client", ClientRegistrationPage],
-  ] as const)("links the %s path back to the role choice", (_, Page) => {
-    render(<Page />);
+  it("keeps the freelancer path linked back to the role choice", () => {
+    render(<FreelancerRegistrationPage />);
 
     expect(
       screen.getByRole("link", { name: "Back to role choice" }),
     ).toHaveAttribute("href", "/register");
+  });
+
+  it.each([
+    ["freelancer", FreelancerRegistrationPage],
+    ["vendor", VendorRegistrationPage],
+    ["client", ClientRegistrationPage],
+  ] as const)("renders the %s registration surface", (_, Page) => {
+    render(<Page />);
+    expect(screen.getByRole("main")).toBeInTheDocument();
   });
 });

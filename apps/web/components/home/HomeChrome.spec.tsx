@@ -48,7 +48,7 @@ describe("FR-PUB-00 HomeHeader responsive disclosure", () => {
     expect(menu).toHaveAttribute("aria-hidden", "false");
     expect(within(menu!).getByRole("link", { name: "Login" })).toBeInTheDocument();
 
-    fireEvent.click(menu!.querySelector('a[href="#categories"]')!);
+    fireEvent.click(menu!.querySelector('a[href="/clients"]')!);
 
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(menu).toHaveAttribute("aria-hidden", "true");

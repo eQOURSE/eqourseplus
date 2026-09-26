@@ -245,6 +245,7 @@ export function LoginForm({ navigate = defaultNavigate }: LoginFormProps) {
           ref={emailRef}
           id="login-email"
           type="email"
+          placeholder="name@example.com"
           autoComplete="email"
           value={email}
           disabled={submitting}

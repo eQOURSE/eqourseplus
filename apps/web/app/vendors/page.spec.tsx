@@ -23,6 +23,10 @@ const globalStyles = readFileSync(
   resolve(process.cwd(), "app/globals.css"),
   "utf8",
 );
+const pageStyles = readFileSync(
+  resolve(process.cwd(), "app/vendors/vendors-page.module.css"),
+  "utf8",
+);
 
 function cssRule(source: string, selector: string) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -127,6 +131,7 @@ describe("FR-PUB-04 vendors page", () => {
         "/freelancers",
         "/jobs",
         "/vendors",
+        "/clients",
         "/about",
         "/login",
         "/register",
@@ -217,6 +222,14 @@ describe("FR-PUB-04 vendors page", () => {
     expect(pageSource).not.toMatch(/["']use client["']/);
     expect(pageSource).not.toMatch(/<Glass(?:\s|>)/);
     expect(pageSource).not.toContain("tier=\"focal\"");
+  });
+
+  it("uses shared light and dark surface tokens throughout the page", () => {
+    expect(pageStyles).toMatch(/\.page\s*\{[\s\S]*background:\s*hsl\(var\(--background\)\)/);
+    expect(pageStyles).toMatch(/background:\s*var\(--glass-regular\)/);
+    expect(pageStyles).toMatch(/background:\s*var\(--glass-clear\)/);
+    expect(pageStyles).not.toMatch(/background:\s*(?:white|#f4fbf8|#fff)\s*;/i);
+    expect(pageStyles).not.toMatch(/color:\s*white\s*;/i);
   });
 
   it("marks decorative SVGs hidden and the vendor navigation current", () => {

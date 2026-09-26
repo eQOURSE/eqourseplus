@@ -4,9 +4,8 @@ import { authSessionSchema, type AuthSession } from "@eqourse/shared";
 import { GlassSubstrate } from "@eqourse/ui";
 import { useEffect, useState } from "react";
 
-import { AuthenticatedShell } from "../authenticated/authenticated-shell";
+import { HomeFooter, HomeHeader } from "../home/HomeChrome";
 import { PublicAmbientCanvas } from "../public/public-client-islands";
-import { ArrowMark, SiteFooter, SiteNavigation } from "../public/site-chrome";
 import { type CompanyActor } from "./company-onboarding-config";
 import { CompanyOnboardingForm } from "./company-onboarding-form";
 
@@ -34,35 +33,32 @@ export function CompanyOnboardingEntry({ actor }: CompanyOnboardingEntryProps) {
     };
   }, []);
 
-  if (session) {
-    return (
-      <AuthenticatedShell initialSession={session}>
-        <div className="company-onboarding-page">
-          <CompanyOnboardingForm actor={actor} />
-        </div>
-      </AuthenticatedShell>
-    );
+  async function signOut(): Promise<void> {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      window.location.assign("/login");
+    }
   }
 
   return (
-    <main id="top" className="home-shell">
+    <main id="top" className="home-shell vendor-registration-shell">
       <PublicAmbientCanvas />
       <GlassSubstrate />
-      <SiteNavigation page="register" />
+      {session ? (
+        <HomeHeader session={session} onSignOut={() => void signOut()} />
+      ) : (
+        <HomeHeader />
+      )}
       <div className="company-onboarding-page">
         <CompanyOnboardingForm
           actor={actor}
-          guest
+          {...(session ? {} : { guest: true })}
           onAuthenticated={setSession}
         />
-        <div className="home-hero-actions">
-          <a className="home-registration-link" href="/register">
-            Back to role choice
-            <ArrowMark />
-          </a>
-        </div>
+        {!session ? <div className="home-hero-actions"><a className="home-registration-link" href="/register">← Back to role choice</a></div> : null}
       </div>
-      <SiteFooter />
+      <HomeFooter />
     </main>
   );
 }

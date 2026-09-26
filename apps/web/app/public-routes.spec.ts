@@ -12,6 +12,7 @@ import {
 const ALL_PUBLIC_ROUTES = [
   "/",
   "/about",
+  "/clients",
   "/company-reviews",
   "/dashboard",
   "/design-system",

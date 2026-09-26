@@ -23,6 +23,10 @@ const globalStyles = readFileSync(
   resolve(process.cwd(), "app/globals.css"),
   "utf8",
 );
+const pageStyles = readFileSync(
+  resolve(process.cwd(), "app/freelancers/freelancers-page.module.css"),
+  "utf8",
+);
 
 function cssRule(source: string, selector: string) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -75,6 +79,7 @@ describe("FR-PUB-03 freelancers page", () => {
         href === "/freelancers" ||
         href === "/jobs" ||
         href === "/vendors" ||
+        href === "/clients" ||
         href === "/about" ||
         href === "/login" ||
         href === "/register" ||
@@ -172,6 +177,14 @@ describe("FR-PUB-03 freelancers page", () => {
     expect(pageSource).not.toMatch(/["']use client["']/);
     expect(pageSource).not.toMatch(/<Glass(?:\s|>)/);
     expect(pageSource).not.toContain("tier=\"focal\"");
+  });
+
+  it("uses the shared light and dark surface tokens throughout the page", () => {
+    expect(pageStyles).toMatch(/\.page\s*\{[\s\S]*background:\s*hsl\(var\(--background\)\)/);
+    expect(pageStyles).toMatch(/background:\s*var\(--glass-regular\)/);
+    expect(pageStyles).toMatch(/background:\s*var\(--glass-clear\)/);
+    expect(pageStyles).not.toMatch(/background:\s*(?:white|#f4fbf8|#fff)\s*;/i);
+    expect(pageStyles).not.toMatch(/color:\s*white\s*;/i);
   });
 
   it("gives every FAQ summary a 48px target, visible marker, spacing, and focus ring", () => {

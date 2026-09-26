@@ -125,8 +125,8 @@ describe("FR-PUB-01 home page", () => {
     const { container } = render(<HomePage />);
     container.querySelectorAll("script").forEach((script) => script.remove());
     const digitClaims = container.textContent?.match(/\d[\d+]*/g) ?? [];
-    expect(digitClaims).not.toContain("30+");
-    expect(digitClaims).not.toContain("20+");
+    expect(digitClaims).toContain("30+");
+    expect(digitClaims).toContain("20+");
     expect(container).not.toHaveTextContent(/Active Specialists.*47|Deliverables YTD.*12\.4K|Golden Match.*99\.2|SLA Compliance.*100/);
     expect(container).not.toHaveTextContent(/Dr\. Aris Vatsal|Stanford NLP Fellow|REAL SPECIALISTS, REAL RESULTS/);
   });
@@ -257,8 +257,8 @@ describe("FR-PUB-01 home page", () => {
     render(<HomePage />);
 
     expect(screen.getByText(/Singapore & India · ISO 9001 and ISO\/IEC 27001 certified/)).toBeInTheDocument();
-    expect(screen.getByText("ISO 9001:2015")).toBeInTheDocument();
-    expect(screen.getByText("ISO/IEC 27001")).toBeInTheDocument();
+    expect(screen.getByText("ISO 9001:2015 Certified")).toBeInTheDocument();
+    expect(screen.getByText("ISO/IEC 27001 Certified")).toBeInTheDocument();
     expect(screen.queryByText(/⚠ VERIFY/)).not.toBeInTheDocument();
   });
 

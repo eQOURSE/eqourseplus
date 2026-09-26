@@ -1,3 +1,6 @@
+"use client";
+
+import type { AuthSession } from "@eqourse/shared";
 import Link from "next/link";
 
 import { PublicThemeToggle } from "../public/public-client-islands";
@@ -51,13 +54,30 @@ const footerRoutes: Record<string, string> = {
 function Brand() {
   return (
     <span className={styles.brand}>
-      <span>eQOURSE</span>
+      {/* <span>eQOURSE</span> */}
+      {/* <span className={styles.brandbg}></span> */}
       <Image
-        src="/eQOURSE Plus-03.svg"
+        src="/Artboard 5.svg"
         alt="eQOURSE Logo"
-        width={50}
-        height={50}
+        width={1000}
+        height={1000}
         className={styles.brandMark}
+        priority
+      />
+    </span>
+  );
+}
+function FooterBrand() {
+  return (
+    <span className={styles.brandFooter}>
+      {/* <span>eQOURSE</span> */}
+      {/* <span className={styles.brandbg}></span> */}
+      <Image
+        src="/Artboard 5.svg"
+        alt="eQOURSE Logo"
+        width={1000}
+        height={1000}
+        className={styles.brandMarkFooter}
         priority
       />
     </span>
@@ -67,9 +87,12 @@ function Brand() {
 type HomeHeaderProps = {
   brandHref?: string;
   activePage?: "about" | "vendors";
-};
+} & ({ session?: null; onSignOut?: never } | { session: AuthSession; onSignOut: () => void });
 
-export function HomeHeader({ brandHref = "/", activePage }: HomeHeaderProps = {}) {
+export function HomeHeader({ brandHref = "/", activePage, ...auth }: HomeHeaderProps = {}) {
+  const session = "session" in auth ? auth.session : null;
+  const onSignOut = "onSignOut" in auth ? auth.onSignOut : undefined;
+  const authenticated = Boolean(session);
   return (
     <header className={styles.headerWrap}>
       <nav
@@ -85,29 +108,24 @@ export function HomeHeader({ brandHref = "/", activePage }: HomeHeaderProps = {}
           <Brand />
         </a>
         <div className={styles.primaryLinks}>
-          <a href="#categories">Solutions</a>
+          <a href="/clients">Solutions</a>
           <a href="/freelancers">Experts</a>
           <a href="/vendors" aria-current={activePage === "vendors" ? "page" : undefined}>Vendors</a>
           <a href="/about" aria-current={activePage === "about" ? "page" : undefined}>About</a>
         </div>
         <div className={styles.headerActions}>
           <PublicThemeToggle />
-          <Link href="/login">Login</Link>
-          <Link className={styles.exploreButton} href="/register">
-            Access eQOURSE+
-          </Link>
+          {authenticated ? <span aria-label="Signed in user">{session?.email}</span> : <Link href="/login">Login</Link>}
+          {authenticated ? <button type="button" onClick={onSignOut}>Sign out</button> : <Link className={styles.exploreButton} href="/register">Access eQOURSE+</Link>}
         </div>
         <HomeMobileNavigation>
-          <a href="#categories">Solutions</a>
+          <a href="/clients">Solutions</a>
           <a href="/freelancers">Experts</a>
           <a href="/vendors" aria-current={activePage === "vendors" ? "page" : undefined}>Vendors</a>
           <a href="/about" aria-current={activePage === "about" ? "page" : undefined}>
             About
           </a>
-          <a href="/login">Login</a>
-          <Link className={styles.exploreButton} href="/register">
-            Access eQOURSE+
-          </Link>
+          {!authenticated ? <><a href="/login">Login</a><Link className={styles.exploreButton} href="/register">Access eQOURSE+</Link></> : null}
         </HomeMobileNavigation>
         <div className="home-nav-links sr-only" aria-hidden="true">
           <a href="#how-it-works">How it works</a>
@@ -134,7 +152,7 @@ export function HomeFooter() {
       </h2>
       <div className={styles.footerGrid}>
         <div className={styles.footerBrand}>
-          <Brand />
+          <FooterBrand />
           <p>
             Connecting verified specialists, partner agencies and enterprise
             teams for AI training and global content projects.

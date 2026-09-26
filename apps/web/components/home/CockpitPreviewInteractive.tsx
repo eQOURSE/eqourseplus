@@ -1,5 +1,6 @@
 "use client";
 
+import { motion, AnimatePresence } from "framer-motion";
 import { type KeyboardEvent, useId, useState } from "react";
 
 import styles from "./home-redesign.module.css";
@@ -131,9 +132,19 @@ export function CockpitPreview() {
             id={panelId}
             role="tabpanel"
           >
-            {graph === "bar" && <ThroughputBarChart />}
-            {graph === "line" && <ThroughputLineChart />}
-            {graph === "pie" && <ProjectStatusChart />}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={graph}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1.0] }}
+              >
+                {graph === "bar" && <ThroughputBarChart />}
+                {graph === "line" && <ThroughputLineChart />}
+                {graph === "pie" && <ProjectStatusChart />}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
 
@@ -176,7 +187,15 @@ function ThroughputBarChart() {
         {throughput.map((height, index) => (
           <div className={styles.barColumn} key={days[index]}>
             <span className={styles.barTrack}>
-              <i style={{ height: `${height}%` }} />
+              <motion.i
+                initial={{ height: "0%" }}
+                animate={{ height: `${height}%` }}
+                transition={{
+                  duration: 0.55,
+                  delay: index * 0.07,
+                  ease: [0.25, 0.1, 0.25, 1.0],
+                }}
+              />
             </span>
             <small>{days[index]}</small>
           </div>
@@ -201,10 +220,30 @@ export function ThroughputLineChart() {
       <ChartHeading title="Weekly throughput" badge="Last 7 days" />
       <div className={styles.lineChart} aria-label="Weekly throughput line chart">
         <svg className={styles.lineChartSvg} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <path className={styles.lineChartArea} d={areaPath} />
-          <path className={styles.lineChartPath} d={path} />
+          <motion.path
+            className={styles.lineChartArea}
+            d={areaPath}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          />
+          <motion.path
+            className={styles.lineChartPath}
+            d={path}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1.0] }}
+          />
           {points.map(({ x, y }, index) => (
-            <circle key={days[index]} cx={x} cy={y} r="1.8" />
+            <motion.circle
+              key={days[index]}
+              cx={x}
+              cy={y}
+              r="1.8"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2 + index * 0.05, duration: 0.25 }}
+            />
           ))}
         </svg>
         <div className={styles.chartDays} aria-hidden="true">
@@ -233,12 +272,12 @@ export function ProjectStatusChart() {
         <div className={styles.pieWrapper} aria-label="Project status pie chart">
           <svg viewBox="0 0 110 110" aria-hidden="true">
             <circle className={styles.pieTrack} cx="55" cy="55" r={radius} />
-            {segments.map((segment) => {
+            {segments.map((segment, index) => {
               const length = (segment.value / 100) * circumference;
               const currentOffset = offset;
               offset += length;
               return (
-                <circle
+                <motion.circle
                   className={segment.className}
                   cx="55"
                   cy="55"
@@ -246,20 +285,51 @@ export function ProjectStatusChart() {
                   r={radius}
                   strokeDasharray={`${length} ${circumference - length}`}
                   strokeDashoffset={-currentOffset}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{
+                    duration: 0.4,
+                    delay: index * 0.08,
+                    ease: [0.25, 0.1, 0.25, 1.0],
+                  }}
                 />
               );
             })}
-            <text x="55" y="52" textAnchor="middle">100</text>
-            <text className={styles.pieCenterLabel} x="55" y="65" textAnchor="middle">Projects</text>
+            <motion.text
+              x="55"
+              y="52"
+              textAnchor="middle"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.3 }}
+            >
+              100
+            </motion.text>
+            <motion.text
+              className={styles.pieCenterLabel}
+              x="55"
+              y="65"
+              textAnchor="middle"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.3 }}
+            >
+              Projects
+            </motion.text>
           </svg>
         </div>
         <div className={styles.pieLegend}>
-          {segments.map((segment) => (
-            <div key={segment.label}>
+          {segments.map((segment, index) => (
+            <motion.div
+              key={segment.label}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.08, duration: 0.3 }}
+            >
               <span className={segment.className} aria-hidden="true" />
               <span>{segment.label}</span>
               <b>{segment.value}</b>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>

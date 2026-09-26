@@ -19,7 +19,6 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
-  vi.unstubAllGlobals();
 });
 
 describe("company onboarding entry", () => {
@@ -31,12 +30,13 @@ describe("company onboarding entry", () => {
     });
     render(<CompanyOnboardingEntry actor="vendor" />);
 
-    expect(await screen.findByRole("heading", { name: "Register your company." })).toBeVisible();
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Tell us about your business." })).toBeVisible());
     expect(screen.getByLabelText("Legal name")).toBeEnabled();
     expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
+    expect(screen.getByRole("link", { name: /Back to role choice/ })).toHaveAttribute("href", "/register");
   });
 
-  it("shows the authenticated shell and loads the persisted draft for a signed-in person", async () => {
+  it("keeps authenticated navigation and loads the persisted draft for a signed-in person", async () => {
     fetchMock.mockImplementation((path) => {
       if (path === "/api/auth/session") return Promise.resolve(response({
         userId: "user-1",
@@ -59,9 +59,12 @@ describe("company onboarding entry", () => {
 
     render(<CompanyOnboardingEntry actor="vendor" />);
 
-    expect(await screen.findByText("owner@example.com")).toBeVisible();
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Tell us about your business." })).toBeVisible());
     await waitFor(() => expect(screen.getByLabelText("Legal name")).toHaveValue("Saved Company"));
+    expect(screen.getByLabelText("Signed in user")).toHaveTextContent("owner@example.com");
     expect(screen.getByRole("button", { name: "Sign out" })).toBeVisible();
+    expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
+    expect(screen.getByRole("contentinfo")).toBeVisible();
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/vendors/me", { cache: "no-store" });
   });
 });
