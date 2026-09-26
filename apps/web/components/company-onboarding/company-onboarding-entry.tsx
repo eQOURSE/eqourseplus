@@ -45,7 +45,11 @@ export function CompanyOnboardingEntry({ actor }: CompanyOnboardingEntryProps) {
     <main id="top" className="home-shell vendor-registration-shell">
       <PublicAmbientCanvas />
       <GlassSubstrate />
-      <HomeHeader {...(session ? { session, onSignOut: () => void signOut() } : {})} />
+      {session ? (
+        <HomeHeader session={session} onSignOut={() => void signOut()} />
+      ) : (
+        <HomeHeader />
+      )}
       <div className="company-onboarding-page">
         <CompanyOnboardingForm
           actor={actor}
