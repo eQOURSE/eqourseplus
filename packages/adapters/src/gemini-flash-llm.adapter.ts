@@ -17,7 +17,7 @@ export class GeminiFlashLLMAdapter implements LLMAdapter<StructuredGenerationReq
       headers: { "Content-Type": "application/json", "x-goog-api-key": this.apiKey },
       body: JSON.stringify({
         contents: [{ parts: [{ text: request.prompt }] }],
-        generationConfig: { responseFormat: { text: { mimeType: "application/json", schema: request.schema } } },
+        generationConfig: { responseMimeType: "application/json", responseJsonSchema: request.schema },
       }),
       signal: AbortSignal.timeout(90_000),
     });

@@ -16,5 +16,9 @@ describe("offline Gemini Flash adapter", () => {
     expect(result).toEqual({ questions: [] });
     expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain("test-key");
     expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get("x-goog-api-key")).toBe("test-key");
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)).generationConfig).toEqual({
+      responseMimeType: "application/json",
+      responseJsonSchema: { type: "object" },
+    });
   });
 });
