@@ -1452,8 +1452,8 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   return (
     <FrostedSurface aria-labelledby="company-onboarding-title" className="company-onboarding-shell onboarding-surface" variant="panel">
       <header className="onboarding-hero">
-        <p className="home-eyebrow">Company registration</p>
-        <h1 id="company-onboarding-title">Register your company.</h1>
+        <p className="home-eyebrow">{actor === "vendor" ? "Vendor registration" : "Company registration"}</p>
+        <h1 id="company-onboarding-title" className="company-onboarding-title">{actor === "vendor" && step === "company" ? "Tell us about your business." : "Register your company."}</h1>
         <p className="company-onboarding-copy">
           {guest
             ? "Fill the company form now. When you save or continue, verify your email once so your draft is protected and available when you return."
@@ -1469,7 +1469,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
           <progress aria-label="Company registration progress" value={steps.findIndex((item) => item.id === step) + 1} max={steps.length} />
         </div>
       </header>
-      <nav className="company-onboarding-stepper" aria-label="Company registration steps">
+      <nav className={`company-onboarding-stepper${actor === "vendor" || actor === "client" ? " vendor-progress-trail" : ""}`} aria-label="Company registration steps">
         <ol>
           {steps.map((item) => <li key={item.id}>
             <button
