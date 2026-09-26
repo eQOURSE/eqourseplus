@@ -93,12 +93,69 @@ describe("FR-REG-02B profile wizard", () => {
     expect(patches()).toEqual([]);
   });
 
-  it("saves a wholly empty draft as an empty PATCH body", async () => {
+  it("does not PATCH a draft that has not changed", async () => {
     await renderReady();
 
     fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
 
-    await waitFor(() => expect(patches()).toContainEqual({}));
+    expect(patches()).toEqual([]);
+  });
+
+  it("shows an accessible progress meter and a focused section panel", async () => {
+    await renderReady();
+
+    expect(screen.getByRole("progressbar", { name: "Profile completion" })).toHaveAttribute("value", "0");
+    expect(screen.getByRole("heading", { name: "Personal" }).closest("section")).toHaveClass("onboarding-section-card");
+  });
+
+  it("debounces typing into one save and does not repeat an unchanged draft", async () => {
+    await renderReady();
+    const firstName = screen.getByLabelText("First name");
+
+    fireEvent.change(firstName, { target: { value: "A" } });
+    fireEvent.change(firstName, { target: { value: "Ad" } });
+    fireEvent.change(firstName, { target: { value: "Ada" } });
+
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(patches()).toEqual([]);
+    await waitFor(() => expect(patches()).toEqual([{ personal: { firstName: "Ada" } }]), { timeout: 2000 });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    expect(patches()).toHaveLength(1);
+  });
+
+  it("uses year and month-year pickers with persisted date precision", async () => {
+    await renderReady();
+    fireEvent.click(screen.getByRole("button", { name: "Education" }));
+    await screen.findByRole("heading", { name: "Education" });
+    expect(screen.getByLabelText("Start year")).toHaveProperty("type", "select-one");
+    fireEvent.change(screen.getByLabelText("Start year"), { target: { value: "2021" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Experience" }));
+    await screen.findByRole("heading", { name: "Experience" });
+    expect(screen.queryByDisplayValue("2024-01")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Start month" }));
+    fireEvent.change(screen.getByLabelText("Year for Start month"), { target: { value: "2024" } });
+    fireEvent.click(screen.getByRole("button", { name: "January" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    await waitFor(() => expect(patches()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ education: [{ startYear: 2021 }] }),
+      expect.objectContaining({ experience: { entries: [{ startDate: expect.stringContaining("2024-01-01") }] } }),
+    ])));
+  });
+
+  it("keeps the currency symbol inside the rate input control", async () => {
+    await renderReady();
+    fireEvent.click(screen.getByRole("button", { name: "Rate" }));
+    await screen.findByRole("heading", { name: "Rate" });
+
+    const control = screen.getByLabelText("Your rate").parentElement;
+    expect(control).toHaveClass("profile-rate-control");
+    expect(control).toHaveTextContent("₹");
+    fireEvent.change(screen.getByLabelText("Currency"), { target: { value: "USD" } });
+    expect(control).toHaveTextContent("$");
+    expect(screen.getByLabelText("Your rate")).toHaveValue(null);
   });
 
   it("styles a successful draft save as success feedback", async () => {
@@ -185,7 +242,7 @@ describe("FR-REG-02B profile wizard", () => {
         expect.objectContaining({ languages: [{ languageCode: "en-GB" }], resumeSection: "EXPERIENCE" }),
         expect.objectContaining({ experience: { totalMonths: 24 }, resumeSection: "AVAILABILITY" }),
         expect.objectContaining({ availability: { weeklyHours: 40 }, resumeSection: "RATE" }),
-        expect.objectContaining({ rate: { amountMinor: 1250 } }),
+        expect.objectContaining({ rate: expect.objectContaining({ amountMinor: 1250 }) }),
       ]));
     });
   });
