@@ -149,6 +149,10 @@ async function goTo(step: string): Promise<void> {
   await screen.findByRole("heading", { name: step });
 }
 
+function registrationHeading(actor: CompanyActor): string {
+  return actor === "vendor" ? "Tell us about your business." : "Register your company.";
+}
+
 describe("generic company onboarding", () => {
   it("shows a focused registration section and accessible step progress", async () => {
     await renderReady("vendor");
@@ -202,7 +206,7 @@ describe("generic company onboarding", () => {
     });
 
     const { unmount } = render(<CompanyOnboardingForm actor={actor} />);
-    expect(await screen.findByRole("heading", { name: "Register your company." })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: registrationHeading(actor) })).toBeVisible();
     unmount();
 
     expect(fetchMock).toHaveBeenCalledWith(ownEndpoint, { cache: "no-store" });
@@ -225,7 +229,7 @@ describe("generic company onboarding", () => {
     });
 
     render(<CompanyOnboardingForm actor={actor} />);
-    expect(await screen.findByRole("heading", { name: "Register your company." })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: registrationHeading(actor) })).toBeVisible();
     fireEvent.change(screen.getByLabelText("Legal name"), {
       target: { value: "   " },
     });
@@ -263,7 +267,7 @@ describe("generic company onboarding", () => {
     });
 
     render(<CompanyOnboardingForm actor={actor} />);
-    expect(await screen.findByRole("heading", { name: "Register your company." })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: registrationHeading(actor) })).toBeVisible();
     fireEvent.change(screen.getByLabelText("Legal name"), {
       target: { value: "First field company" },
     });
