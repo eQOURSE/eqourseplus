@@ -27,7 +27,7 @@ describe("FR-PUB-01 responsive home FAQ", () => {
     expect(items[0]).toHaveAttribute("open");
     expect(container.querySelectorAll("summary")).toHaveLength(7);
     expect(
-      screen.getByText(/enterprise clients maintain control/i),
+      screen.getByText(/enterprise clients on real projects/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/support multiple languages/i),

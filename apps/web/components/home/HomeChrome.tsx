@@ -51,13 +51,30 @@ const footerRoutes: Record<string, string> = {
 function Brand() {
   return (
     <span className={styles.brand}>
-      <span>eQOURSE</span>
+      {/* <span>eQOURSE</span> */}
+      {/* <span className={styles.brandbg}></span> */}
       <Image
-        src="/eQOURSE Plus-03.svg"
+        src="/Artboard 5.svg"
         alt="eQOURSE Logo"
-        width={50}
-        height={50}
+        width={1000}
+        height={1000}
         className={styles.brandMark}
+        priority
+      />
+    </span>
+  );
+}
+function FooterBrand() {
+  return (
+    <span className={styles.brandFooter}>
+      {/* <span>eQOURSE</span> */}
+      {/* <span className={styles.brandbg}></span> */}
+      <Image
+        src="/Artboard 5.svg"
+        alt="eQOURSE Logo"
+        width={1000}
+        height={1000}
+        className={styles.brandMarkFooter}
         priority
       />
     </span>
@@ -85,7 +102,7 @@ export function HomeHeader({ brandHref = "/", activePage }: HomeHeaderProps = {}
           <Brand />
         </a>
         <div className={styles.primaryLinks}>
-          <a href="#categories">Solutions</a>
+          <a href="/clients">Solutions</a>
           <a href="/freelancers">Experts</a>
           <a href="/vendors" aria-current={activePage === "vendors" ? "page" : undefined}>Vendors</a>
           <a href="/about" aria-current={activePage === "about" ? "page" : undefined}>About</a>
@@ -98,7 +115,7 @@ export function HomeHeader({ brandHref = "/", activePage }: HomeHeaderProps = {}
           </Link>
         </div>
         <HomeMobileNavigation>
-          <a href="#categories">Solutions</a>
+          <a href="/clients">Solutions</a>
           <a href="/freelancers">Experts</a>
           <a href="/vendors" aria-current={activePage === "vendors" ? "page" : undefined}>Vendors</a>
           <a href="/about" aria-current={activePage === "about" ? "page" : undefined}>
@@ -134,7 +151,7 @@ export function HomeFooter() {
       </h2>
       <div className={styles.footerGrid}>
         <div className={styles.footerBrand}>
-          <Brand />
+          <FooterBrand />
           <p>
             Connecting verified specialists, partner agencies and enterprise
             teams for AI training and global content projects.

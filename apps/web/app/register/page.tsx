@@ -1,17 +1,11 @@
 import type { Metadata } from "next";
-import { GlassSubstrate } from "@eqourse/ui";
-
-import { PublicAmbientCanvas } from "../../components/public/public-client-islands";
-import {
-  ArrowMark,
-  SiteFooter,
-  SiteNavigation,
-} from "../../components/public/site-chrome";
+import { HomeFooter, HomeHeader } from "../../components/home/HomeChrome";
 import {
   REGISTER_DESCRIPTION,
   REGISTER_TITLE,
   registrationRoles,
 } from "./register-data";
+import styles from "./register-page.module.css";
 
 export const metadata: Metadata = {
   title: REGISTER_TITLE,
@@ -25,44 +19,54 @@ export const metadata: Metadata = {
   },
 };
 
+const roleVisuals = [
+  { tag: "Talent", icon: "♙" },
+  { tag: "Partner", icon: "▣" },
+  { tag: "Client", icon: "▤" },
+] as const;
+
 export default function RegisterPage() {
   return (
-    <main id="top" className="home-shell">
-      <PublicAmbientCanvas />
-      <GlassSubstrate />
-      <SiteNavigation page="register" />
+    <main id="top" className={styles.page}>
+      <HomeHeader brandHref="/" />
 
-      <section className="freelancer-hero" aria-labelledby="register-title">
-        <div className="freelancer-hero-field" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
-        <div className="freelancer-hero-content">
-          <p className="home-eyebrow">Registration</p>
-          <h1 id="register-title">Choose how you&apos;ll work with eQOURSE+.</h1>
-          <p className="freelancer-hero-copy">
+      <section className={styles.registrationSection} aria-labelledby="register-title">
+        <div className={styles.registrationContent}>
+          <span className={styles.radarLabel} aria-hidden="true">Radar // active</span>
+          <p className={styles.eyebrow}>Registration</p>
+          <h1 id="register-title" className={styles.title}>
+            Choose how you&apos;ll work
+            <br />
+            with eQOURSE<em>+</em>.
+          </h1>
+          <p className={styles.description}>
             Choose the role that matches how you will work with eQOURSE+.
           </p>
-          <div className="home-audience-links">
-            {registrationRoles.map((role) => (
+          <div className={styles.roleGrid}>
+            {registrationRoles.map((role, index) => (
               <a
                 key={role.href}
-                className="home-freelancer-link"
+                className={styles.registrationRoleCard}
                 href={role.href}
               >
-                {role.label}
-                <ArrowMark />
+                <span className={styles.roleTop}>
+                  <span className={styles.roleIcon} aria-hidden="true">{roleVisuals[index]?.icon ?? "●"}</span>
+                  <span className={styles.roleTag}>{roleVisuals[index]?.tag ?? "Role"}</span>
+                </span>
+                <span className={styles.roleLabel}>
+                  {role.label}
+                  <span className={styles.roleArrow} aria-hidden="true">→</span>
+                </span>
               </a>
             ))}
           </div>
-          <p className="entry-switch-copy">
+          <p className={styles.loginPrompt}>
             Already have an account? <a href="/login">Log in</a>
           </p>
         </div>
       </section>
 
-      <SiteFooter />
+      <HomeFooter />
     </main>
   );
 }

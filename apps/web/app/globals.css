@@ -1579,6 +1579,255 @@ body {
   gap: 0.75rem;
 }
 
+/* Vendor onboarding follows the Figma registration shell while retaining the
+   existing section order and submission contracts. */
+.company-onboarding-shell--vendor {
+  width: min(100%, 72rem);
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 1fr);
+  grid-template-areas:
+    "rail eyebrow"
+    "rail title"
+    "rail copy"
+    "rail status"
+    "rail form";
+  column-gap: 2rem;
+  padding: 2rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 1.5rem;
+  background: hsl(var(--card) / 0.92);
+  box-shadow: var(--shadow-elevated);
+}
+
+.company-onboarding-shell--vendor > .home-eyebrow {
+  grid-area: eyebrow;
+  margin: 0;
+  color: hsl(var(--primary));
+  letter-spacing: 0.12em;
+}
+
+.company-onboarding-shell--vendor > .company-onboarding-title {
+  grid-area: title;
+  max-width: 42rem;
+  margin-top: 0.5rem;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  letter-spacing: -0.04em;
+}
+
+.company-onboarding-shell--vendor > .company-onboarding-copy {
+  grid-area: copy;
+  max-width: 42rem;
+  margin-top: 0.75rem;
+}
+
+.company-onboarding-shell--vendor > .company-onboarding-help {
+  grid-area: status;
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.company-onboarding-shell--vendor > .company-onboarding-stepper {
+  grid-area: rail;
+  align-self: start;
+  margin: 1.25rem 0 2rem;
+  padding: 1.5rem 1rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 1.25rem;
+  background: hsl(var(--surface-sunken));
+}
+
+.company-onboarding-shell--vendor > .company-onboarding-stepper::before {
+  display: block;
+  margin-bottom: 1rem;
+  color: hsl(var(--foreground));
+  content: "Your registration";
+  font-family: var(--font-heading);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.company-onboarding-shell--vendor .company-onboarding-stepper ol {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.company-onboarding-shell--vendor .company-onboarding-stepper li {
+  position: relative;
+}
+
+.company-onboarding-shell--vendor .company-onboarding-stepper button {
+  width: 100%;
+  min-height: 2.75rem;
+  justify-content: flex-start;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  text-align: left;
+}
+
+.company-onboarding-shell--vendor .company-onboarding-stepper button[data-current="true"] {
+  border-color: hsl(var(--primary) / 0.2);
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--foreground));
+  font-weight: 700;
+}
+
+.company-onboarding-shell--vendor .company-onboarding-stepper button[data-state="previous"] {
+  color: hsl(var(--primary));
+}
+
+.vendor-progress-trail ol {
+  position: relative;
+  gap: 0;
+  counter-reset: vendor-step;
+}
+
+.vendor-progress-trail li {
+  counter-increment: vendor-step;
+  min-height: 3.75rem;
+  isolation: isolate;
+}
+
+.vendor-progress-trail li:not(:last-child)::after {
+  position: absolute;
+  top: 2.25rem;
+  bottom: 0;
+  left: 1.125rem;
+  width: 2px;
+  background: hsl(var(--border));
+  content: "";
+  z-index: -1;
+}
+
+.vendor-progress-trail li:has(button[data-state="previous"]):not(:last-child)::after {
+  background: hsl(var(--primary));
+}
+
+.vendor-progress-trail button,
+.company-onboarding-shell--vendor .vendor-progress-trail button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.75rem;
+  padding: 0.5rem 0.25rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: left;
+  transition: color var(--motion-micro) var(--ease-standard), transform var(--motion-micro) var(--ease-standard);
+}
+
+.vendor-progress-trail button::before {
+  display: inline-grid;
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
+  content: counter(vendor-step);
+  font-size: 0.75rem;
+  font-weight: 700;
+  transition: border-color var(--motion-micro) var(--ease-standard), background var(--motion-micro) var(--ease-standard), color var(--motion-micro) var(--ease-standard), box-shadow var(--motion-micro) var(--ease-standard);
+}
+
+.vendor-progress-trail button:hover:not(:disabled) {
+  transform: translateX(0.125rem);
+}
+
+.vendor-progress-trail button[data-state="previous"] {
+  color: hsl(var(--primary));
+}
+
+.vendor-progress-trail button[data-state="previous"]::before {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  content: "✓";
+}
+
+.vendor-progress-trail button[data-current="true"] {
+  color: hsl(var(--foreground));
+  font-weight: 700;
+}
+
+.vendor-progress-trail button[data-current="true"]::before {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  box-shadow: 0 0 0 0 hsl(var(--accent) / 0.45);
+  animation: vendor-progress-pulse 2.4s var(--ease-standard) infinite;
+}
+
+@keyframes vendor-progress-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--accent) / 0.45); }
+  50% { box-shadow: 0 0 0 0.35rem hsl(var(--accent) / 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vendor-progress-trail button,
+  .vendor-progress-trail button::before {
+    transition: none;
+  }
+
+  .vendor-progress-trail button[data-current="true"]::before {
+    animation: none;
+  }
+}
+
+.company-onboarding-shell--vendor > .company-onboarding-form {
+  grid-area: form;
+  min-width: 0;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.company-onboarding-shell--vendor .company-onboarding-form > section {
+  padding-top: 0;
+  border-top: 0;
+}
+
+@media (max-width: 56.25rem) {
+  .company-onboarding-shell--vendor {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "eyebrow"
+      "title"
+      "copy"
+      "status"
+      "rail"
+      "form";
+    gap: 0;
+    padding: 1.25rem;
+  }
+
+  .company-onboarding-shell--vendor > .company-onboarding-stepper {
+    margin: 1.25rem 0 1.5rem;
+  }
+
+  .company-onboarding-shell--vendor .company-onboarding-stepper ol {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .company-onboarding-shell--vendor .vendor-progress-trail ol {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 30rem) {
+  .company-onboarding-shell--vendor .company-onboarding-stepper ol {
+    grid-template-columns: 1fr;
+  }
+}
+
 .authenticated-shell {
   min-height: 100vh;
   background: hsl(var(--background));
@@ -1755,7 +2004,8 @@ body {
   display: grid;
   justify-items: center;
   gap: 1.5rem;
-  margin-top: clamp(1.5rem, 4vw, 3rem);
+  margin-top: clamp(5rem, 9vw, 8rem);
+  margin-bottom: clamp(3rem, 6vw, 5.5rem);
 }
 
 .company-onboarding-status-page {
@@ -1933,7 +2183,8 @@ body {
   .company-onboarding-page {
     width: calc(100% - 2rem);
     margin-inline: auto;
-    margin-top: clamp(1rem, 3vw, 2rem);
+    margin-top: clamp(3.5rem, 7vw, 5.5rem);
+    margin-bottom: clamp(2.5rem, 5vw, 4rem);
   }
 
   .company-onboarding-shell,
@@ -1983,6 +2234,8 @@ body {
 @media (max-width: 47.999rem) {
   .company-onboarding-page {
     width: calc(100% - 1rem);
+    margin-top: clamp(2.5rem, 6vw, 4rem);
+    margin-bottom: clamp(2rem, 4vw, 3rem);
   }
 
   .company-onboarding-shell,

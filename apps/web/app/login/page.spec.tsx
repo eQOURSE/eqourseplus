@@ -11,12 +11,17 @@ const pageSource = readFileSync(
   resolve(process.cwd(), "app/login/page.tsx"),
   "utf8",
 );
+const pageStyles = readFileSync(
+  resolve(process.cwd(), "app/login/login-page.module.css"),
+  "utf8",
+);
 
 const APPROVED_LINKS = [
   "/",
   "/freelancers",
   "/jobs",
   "/vendors",
+  "/clients",
   "/about",
   "/login",
   "/register",
@@ -87,7 +92,7 @@ describe("FR-PUB-06 login page", () => {
         ),
         (link) => link.getAttribute("href"),
       ),
-    ).toEqual(["/", "/freelancers", "/vendors", "/about"]);
+    ).toEqual(["#how-it-works", "#categories", "/freelancers", "/vendors", "/about"]);
     expect(
       container.querySelector("#site-navigation [aria-current]"),
     ).toBeNull();
@@ -132,5 +137,16 @@ describe("FR-PUB-06 login page", () => {
     expect(screen.queryByText(/not open yet/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/forgot password/i)).not.toBeInTheDocument();
+  });
+
+  it("uses the shared HomeChrome shell and the reference access layout", () => {
+    const { container } = render(<LoginPage />);
+
+    expect(container.querySelector("#site-navigation")).toBeInTheDocument();
+    expect(container.querySelector("#site-footer")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("name@example.com")).toBeInTheDocument();
+    expect(pageStyles).toMatch(/radial-gradient/);
+    expect(pageStyles).toMatch(/repeating-linear-gradient/);
+    expect(pageStyles).toMatch(/\.loginCard/);
   });
 });

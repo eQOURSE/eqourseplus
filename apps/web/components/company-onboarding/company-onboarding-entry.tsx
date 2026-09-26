@@ -4,9 +4,8 @@ import { authSessionSchema, type AuthSession } from "@eqourse/shared";
 import { GlassSubstrate } from "@eqourse/ui";
 import { useEffect, useState } from "react";
 
-import { AuthenticatedShell } from "../authenticated/authenticated-shell";
+import { HomeFooter, HomeHeader } from "../home/HomeChrome";
 import { PublicAmbientCanvas } from "../public/public-client-islands";
-import { ArrowMark, SiteFooter, SiteNavigation } from "../public/site-chrome";
 import { type CompanyActor } from "./company-onboarding-config";
 import { CompanyOnboardingForm } from "./company-onboarding-form";
 
@@ -34,35 +33,19 @@ export function CompanyOnboardingEntry({ actor }: CompanyOnboardingEntryProps) {
     };
   }, []);
 
-  if (session) {
-    return (
-      <AuthenticatedShell initialSession={session}>
-        <div className="company-onboarding-page">
-          <CompanyOnboardingForm actor={actor} />
-        </div>
-      </AuthenticatedShell>
-    );
-  }
-
   return (
-    <main id="top" className="home-shell">
+    <main id="top" className="home-shell vendor-registration-shell">
       <PublicAmbientCanvas />
       <GlassSubstrate />
-      <SiteNavigation page="register" />
+      <HomeHeader />
       <div className="company-onboarding-page">
         <CompanyOnboardingForm
           actor={actor}
-          guest
+          {...(session ? {} : { guest: true })}
           onAuthenticated={setSession}
         />
-        <div className="home-hero-actions">
-          <a className="home-registration-link" href="/register">
-            Back to role choice
-            <ArrowMark />
-          </a>
-        </div>
       </div>
-      <SiteFooter />
+      <HomeFooter />
     </main>
   );
 }
