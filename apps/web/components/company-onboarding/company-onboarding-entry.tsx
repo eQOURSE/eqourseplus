@@ -4,6 +4,7 @@ import { authSessionSchema, type AuthSession } from "@eqourse/shared";
 import { GlassSubstrate } from "@eqourse/ui";
 import { useEffect, useState } from "react";
 
+import { AuthenticatedShell } from "../authenticated/authenticated-shell";
 import { HomeFooter, HomeHeader } from "../home/HomeChrome";
 import { PublicAmbientCanvas } from "../public/public-client-islands";
 import { type CompanyActor } from "./company-onboarding-config";
@@ -33,6 +34,16 @@ export function CompanyOnboardingEntry({ actor }: CompanyOnboardingEntryProps) {
     };
   }, []);
 
+  if (session) {
+    return (
+      <AuthenticatedShell initialSession={session}>
+        <div className="company-onboarding-page">
+          <CompanyOnboardingForm actor={actor} />
+        </div>
+      </AuthenticatedShell>
+    );
+  }
+
   return (
     <main id="top" className="home-shell vendor-registration-shell">
       <PublicAmbientCanvas />
@@ -44,6 +55,11 @@ export function CompanyOnboardingEntry({ actor }: CompanyOnboardingEntryProps) {
           {...(session ? {} : { guest: true })}
           onAuthenticated={setSession}
         />
+        <div className="home-hero-actions">
+          <a className="home-registration-link" href="/register">
+            ← Back to role choice
+          </a>
+        </div>
       </div>
       <HomeFooter />
     </main>
