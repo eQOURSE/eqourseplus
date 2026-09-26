@@ -302,8 +302,6 @@ Normative seed rows (FR-FND-03):
 2. EQOURSE / Content Services / Curriculum / null
 3. TUTRAIN / Tutoring / NEET Biology / null
 
-Assessment showcase taxonomy extension (FR-FND-03A, required by FR-TST-01): EQOURSE / AI Data Services / Image Annotation Quality Assurance / null; EQOURSE / Content Services / Multilingual Content Quality Review / null. These are real service skills in the canonical idempotent taxonomy seed, bringing its total from 59 to 61 after approval. They complement the existing Bounding Box node; the three original FR-FND-03 seed rows stay unchanged. Production promotion requires deliberate approval and a separate seed run.
-
 **users** — one document per platform account.
 ```
 {

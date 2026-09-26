@@ -233,14 +233,6 @@ const SEED_ROWS = [
   },
   {
     businessUnit: "EQOURSE",
-    serviceLine: "AI Data Services",
-    skill: "Image Annotation Quality Assurance",
-    specialization: null,
-    slug: "eqourse-ai-data-services-image-annotation-quality-assurance",
-    status: "ACTIVE",
-  },
-  {
-    businessUnit: "EQOURSE",
     serviceLine: "Content Services",
     skill: "Curriculum",
     specialization: null,
@@ -357,14 +349,6 @@ const SEED_ROWS = [
     skill: "Subject-Matter Review",
     specialization: "Education Subject Review",
     slug: "eqourse-content-services-subject-matter-review-education-subject-review",
-    status: "ACTIVE",
-  },
-  {
-    businessUnit: "EQOURSE",
-    serviceLine: "Content Services",
-    skill: "Multilingual Content Quality Review",
-    specialization: null,
-    slug: "eqourse-content-services-multilingual-content-quality-review",
     status: "ACTIVE",
   },
   {
