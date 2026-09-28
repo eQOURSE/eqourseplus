@@ -6,6 +6,7 @@ import {
   profileSampleUploadRequestSchema,
   profileSampleUploadResponseSchema,
   profileDraftSchema,
+  profileCompletionGaps,
   type ProfileDraftInput,
 } from "@eqourse/shared";
 import { FrostedSurface, GlassButton } from "@eqourse/ui";
@@ -401,6 +402,7 @@ export function ProfileWizard() {
   const [taxonomy, setTaxonomy] = useState<TaxonomyOption[]>([]);
   const [taxonomyStatus, setTaxonomyStatus] = useState<"loading" | "ready" | "error">("loading");
   const dirty = useRef(new Set<ProfileSection>());
+  const latestForm = useRef(form);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const revisions = useRef(new Map<ProfileSection, number>());
@@ -423,6 +425,7 @@ export function ProfileWizard() {
     ]).then(([profile, options]) => {
       if (!active) return;
       const nextForm = formFromProfile(profile);
+      latestForm.current = nextForm;
       for (const item of WIZARD_SECTIONS) {
         savedSections.current.set(item, JSON.stringify(sectionPatch(item, nextForm)));
       }
@@ -460,13 +463,14 @@ export function ProfileWizard() {
   }
 
   function markChanged(next: ProfileFormState, changedSection: ProfileSection): void {
-    if (JSON.stringify(next) === JSON.stringify(form)) return;
+    if (JSON.stringify(next) === JSON.stringify(latestForm.current)) return;
+    latestForm.current = next;
     dirty.current.add(changedSection);
     revisions.current.set(changedSection, (revisions.current.get(changedSection) ?? 0) + 1);
     setForm(next);
     clearDebounce();
     debounce.current = setTimeout(() => {
-      void save(next, changedSection, undefined, false, false);
+      void save(latestForm.current, changedSection, undefined, false, false);
     }, 850);
   }
 
@@ -849,6 +853,9 @@ export function ProfileWizard() {
   }
 
   const editable = profileState === ProfileState.DRAFT || profileState === ProfileState.MORE_INFO_NEEDED;
+  const completionGaps = profileCompletionGaps(Object.assign({},
+    ...WIZARD_SECTIONS.map((item) => sectionPatch(item, form)),
+  ));
 
   return (
     <FrostedSurface className="company-onboarding-shell onboarding-surface" variant="panel" aria-labelledby="profile-wizard-title">
@@ -859,7 +866,7 @@ export function ProfileWizard() {
         <div className="onboarding-progress">
           <div className="onboarding-progress-copy">
             <span>Profile progress</span>
-            <strong role="status" aria-live="polite">{completionPercentage}% complete</strong>
+            <strong role="status" aria-live="polite">{Math.round(completionPercentage)}% complete</strong>
           </div>
           <progress aria-label="Profile completion" value={completionPercentage} max={100} />
           <span className="onboarding-state">State: {profileState.replaceAll("_", " ")}</span>
@@ -867,8 +874,9 @@ export function ProfileWizard() {
       </header>
       <nav className="company-onboarding-stepper" aria-label="Profile sections">
         <ol>{WIZARD_SECTIONS.map((item) => <li key={item}>
-            <button type="button" disabled={saving || !editable} data-current={section === item} data-state={section === item ? "current" : WIZARD_SECTIONS.indexOf(item) < WIZARD_SECTIONS.indexOf(section) ? "previous" : "upcoming"} aria-current={section === item ? "step" : undefined} onClick={() => void navigate(item)}>
+            <button type="button" disabled={saving || !editable} data-current={section === item} data-state={section === item ? "current" : WIZARD_SECTIONS.indexOf(item) < WIZARD_SECTIONS.indexOf(section) ? "previous" : "upcoming"} data-completion={completionGaps[item].length ? "incomplete" : "complete"} aria-label={SECTION_LABELS[item]} title={completionGaps[item].length ? `${completionGaps[item].length} required fields missing` : "Required fields complete"} aria-current={section === item ? "step" : undefined} onClick={() => void navigate(item)}>
             {SECTION_LABELS[item]}
+            {completionGaps[item].length > 0 ? <span className="profile-step-gap" aria-hidden="true">{completionGaps[item].length} missing</span> : null}
           </button>
         </li>)}</ol>
       </nav>

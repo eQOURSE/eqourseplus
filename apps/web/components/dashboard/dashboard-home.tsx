@@ -5,10 +5,14 @@ import {
   ProfileState,
   Role,
   VendorState,
+  profileCompletionGaps,
+  profileDraftSchema,
+  ProfileSection,
   type AuthSession,
+  type ProfileDraftInput,
 } from "@eqourse/shared";
 import { FrostedSurface } from "@eqourse/ui";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
 import { useAuthenticatedSession } from "../authenticated/authenticated-shell";
 import {
@@ -21,7 +25,7 @@ import {
 import type { CompanyActor } from "../company-onboarding/company-onboarding-config";
 
 type CompanyRecord = Record<string, unknown> & { state: string };
-type ProfileRecord = { completionPercentage: number; state: ProfileState };
+type ProfileRecord = ProfileDraftInput & { completionPercentage: number; state: ProfileState };
 type ResolvedHome =
   | { kind: "vendor"; record: CompanyRecord }
   | { kind: "client"; record: CompanyRecord }
@@ -155,13 +159,24 @@ async function readProfile(): Promise<ProfileRecord> {
     || typeof body.state !== "string"
     || !profileStates.has(body.state)
     || typeof body.completionPercentage !== "number"
-    || !Number.isInteger(body.completionPercentage)
     || body.completionPercentage < 0
     || body.completionPercentage > 100
   ) {
     throw new ProfileReadError("Profile response was invalid");
   }
+  const draft = profileDraftSchema.safeParse({
+      personal: body.personal,
+      education: body.education,
+      skills: body.skills,
+      languages: body.languages,
+      experience: body.experience,
+      samples: body.samples,
+      availability: body.availability,
+      rate: body.rate,
+  });
+  if (!draft.success) throw new ProfileReadError("Profile draft was invalid");
   return {
+    ...draft.data,
     completionPercentage: body.completionPercentage,
     state: body.state as ProfileState,
   };
@@ -170,20 +185,21 @@ async function readProfile(): Promise<ProfileRecord> {
 function SpecialistHome({ profile }: { profile: ProfileRecord }) {
   const action = specialistNextAction(profile);
   return (
-    <article className="role-home" aria-labelledby="role-home-title">
+    <article className="role-home role-home--specialist" aria-labelledby="role-home-title">
       <RoleHomeHeader eyebrow="Specialist home" title="Specialist workspace" />
       <div className="role-home-live">
         <Panel title="Next action">{action.copy}<ActionLink action={action} /></Panel>
         <Panel title="Profile">
-          <dl className="role-home-facts">
-            <Fact label="Completion" value={`${profile.completionPercentage}% complete`} />
-            <Fact label="State" value={humanize(profile.state)} />
-          </dl>
+          <div className="role-home-readiness" aria-label={`${Math.round(profile.completionPercentage)}% complete`} style={{ "--completion": `${profile.completionPercentage}%` } as CSSProperties}>
+            <strong>{Math.round(profile.completionPercentage)}%</strong><span>complete</span>
+          </div>
+          <dl className="role-home-facts"><Fact label="State" value={humanize(profile.state)} /></dl>
           <a className="home-registration-link" href="/profile">
             {profile.completionPercentage < 100 ? "Continue profile" : "Edit profile"}
           </a>
         </Panel>
       </div>
+      <div className="role-home-section-heading"><p className="home-eyebrow">Your workspace</p><h2>Operational stages</h2></div>
       <PendingPanels panels={specialistPending} />
       <aside className="role-home-company-action" aria-label="Company registration">
         <p>Register a vendor or client company when you are ready to operate as an organisation.</p>
@@ -322,8 +338,10 @@ function ActionLink({ action }: { action: NextAction }) {
 
 function specialistNextAction(profile: ProfileRecord): NextAction {
   if (profile.state === ProfileState.DRAFT && profile.completionPercentage < 100) {
+    const gaps = profileCompletionGaps(profile);
+    const firstGap = Object.values(ProfileSection).flatMap((section) => gaps[section])[0];
     return {
-      copy: <p>Your profile is {profile.completionPercentage}% complete. Continue the saved draft.</p>,
+      copy: <p>{firstGap ? `${firstGap === "a rate unit" ? "Choose" : "Add"} ${firstGap} to finish your profile.` : "Continue your profile to finish the required sections."}</p>,
       href: "/profile",
       label: "Continue profile",
     };
