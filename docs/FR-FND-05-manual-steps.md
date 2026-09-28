@@ -13,6 +13,11 @@ Repository administrators must establish the reviewed-PR branch rules in
 Section 6.1. Verify existing resources in Sections 2, 4, 5, 6, and 7; treat
 any discrepancy as a configuration issue rather than recreating a resource.
 
+Index parity is currently unresolved. Staging remains valid for application
+testing, including this workflow's deploy and health checks, but it is not a
+valid migration rehearsal until the separately tracked index-ownership and
+index-name reconciliation work is complete.
+
 Run read-only checks and the WIF update from a trusted PowerShell terminal.
 Do not display secret values or paste them into chat, tickets, or source control.
 
@@ -142,13 +147,18 @@ for this workflow change. Check migration status only if investigating drift,
 using the existing `db:migrate:status` command with the staging URI supplied
 transiently; do not save the URI in a repository file.
 
-The index-parity check remains a release prerequisite. Compare the complete
-`db.<collection>.getIndexes()` definitions between the staging and production
-clusters: name, key order, `unique`, `sparse`, partial filter, collation, and
-TTL. Include `_id_`; ignore only the database name in diagnostic output. If a
-definition differs, stop and prepare a reviewed `migrate-mongo` migration.
-Never use `syncIndexes()` or manually drop a production index as a shortcut.
-Production migrations remain separately approval-gated.
+Index parity is not a blocker for this application-testing rollout. It is a
+separately tracked migration-safety issue: production was created app-first and
+staging migrations-first, so Mongoose-created and migration-created indexes may
+have equivalent definitions with different names. Until index ownership and
+names are reconciled, staging is not a valid rehearsal for migrations.
+
+The follow-up must set `autoIndex: false` in deployed environments while
+retaining it locally and in tests. It must then use a reviewed, idempotent,
+name-aware `migrate-mongo` migration to reconcile indexes by key definition
+and repair its `down` path. Never use `syncIndexes()` or manually change a
+production index in Atlas. Production migrations remain separately
+approval-gated.
 
 
 
@@ -163,7 +173,8 @@ non-secret Cloud Run environment-variable group:
 The staging web origin and its GoDaddy CNAME are already complete. The API
 parses the comma-separated CORS value into two exact origins. Because gcloud
 also uses commas to separate `--set-env-vars` assignments, the staging deploy
-uses an `@` delimiter (`^@^`) so the CORS comma remains inside its value.
+uses a semicolon delimiter (`^;^`) so both the CORS comma and the sender's `@`
+sign remain inside their values.
 `--set-env-vars` replaces the service's complete plain-variable group; keep
 the workflow list complete when adding another variable.
 
