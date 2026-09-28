@@ -302,7 +302,7 @@ describe("FR-FND-05 API deployment", () => {
       "Missing required runtime configuration: CORS_ORIGINS",
     );
     expect(stagingJob).toContain(
-      '--set-env-vars="^@^CORS_ORIGINS=${CORS_ORIGINS}@MAILER_PROVIDER=${MAILER_PROVIDER}',
+      '--set-env-vars="^;^CORS_ORIGINS=${CORS_ORIGINS};MAILER_PROVIDER=${MAILER_PROVIDER}',
     );
     expect(productionJob).toContain(
       '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}"',
@@ -347,7 +347,7 @@ describe("FR-FND-05 API deployment", () => {
     expect(stagingJob).toContain("OTP_EMAIL_FROM: ${{ vars.OTP_EMAIL_FROM }}");
     expect(stagingJob).toContain("Missing required runtime configuration: OTP_EMAIL_FROM");
     expect(stagingJob).toContain(
-      '@MAILER_PROVIDER=${MAILER_PROVIDER}@OTP_EMAIL_FROM=${OTP_EMAIL_FROM}',
+      ';MAILER_PROVIDER=${MAILER_PROVIDER};OTP_EMAIL_FROM=${OTP_EMAIL_FROM}',
     );
     expect(stagingJob).toContain("RESEND_API_KEY=RESEND_API_KEY:latest");
 
@@ -459,7 +459,9 @@ describe("FR-FND-05 API deployment", () => {
     expect(runbook).toContain("SCRAM user `eqplus-staging-app`");
     expect(runbook).toContain("db:migrate:status");
     expect(runbook).toContain("db:migrate");
-    expect(runbook).toMatch(/compare[\s\S]+getIndexes\(\)/i);
+    expect(runbook).toContain("Staging remains valid for application");
+    expect(runbook).toContain("not a\nvalid migration rehearsal");
+    expect(runbook).toContain("`autoIndex: false` in deployed environments");
     expect(runbook).toContain("eqplus-staging-app");
     expect(runbook).toContain("/eqplus");
     expect(runbook).not.toContain("eqplus-staging-api");
