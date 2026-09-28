@@ -89,14 +89,16 @@ describe("FR-FND-04 CI workflow", () => {
     expect(ciJob).not.toContain("MONGODB_URI");
   });
 
-  it("cancels superseded PR runs and leaves a main-only staging deploy hook", () => {
+  it("checks pull requests and pushes to both protected branches", () => {
     const workflow = readFileSync(workflowPath, "utf8");
 
     expect(workflow).toMatch(/^concurrency:\s*$/m);
-    expect(workflow).toMatch(/cancel-in-progress:\s*true/);
+    expect(workflow).toContain("cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}");
     expect(workflow).toMatch(/^\s+push:\s*$/m);
     expect(workflow).toMatch(/^\s+- main\s*$/m);
+    expect(workflow).toMatch(/^\s+- develop\s*$/m);
     expect(workflow).toContain("staging-deploy");
+    expect(workflow).toContain("refs/heads/develop");
     expect(workflow).toContain("github.event_name == 'push'");
     expect(workflow).toContain("FR-FND-05");
   });
@@ -126,7 +128,7 @@ describe("FR-FND-05 API deployment", () => {
     expect(dockerignore).toContain("node_modules");
   });
 
-  it("builds one immutable image and deploys staging from main with keyless auth", () => {
+  it("builds one SHA image and deploys staging from develop with keyless auth", () => {
     const workflow = readFileSync(workflowPath, "utf8");
 
     expect(workflow).toContain("FR-FND-05");
@@ -136,7 +138,7 @@ describe("FR-FND-05 API deployment", () => {
     expect(workflow).toContain("IMAGE_NAME: eqplus-api");
     expect(workflow).toMatch(/staging-deploy:[\s\S]+needs: ci/);
     expect(workflow).toMatch(
-      /staging-deploy:[\s\S]+github\.event_name == 'push'[\s\S]+refs\/heads\/main/,
+      /staging-deploy:[\s\S]+github\.event_name == 'push'[\s\S]+refs\/heads\/develop/,
     );
     expect(workflow).toMatch(
       /staging-deploy:[\s\S]+permissions:[\s\S]+contents: read[\s\S]+id-token: write/,
@@ -159,7 +161,7 @@ describe("FR-FND-05 API deployment", () => {
     expect(workflow).toContain("--min-instances=0");
     expect(workflow).toContain("--allow-unauthenticated");
     expect(workflow).toContain(
-      "--set-secrets=MONGODB_URI=MONGODB_URI_STAGING:latest,JWT_SECRET=JWT_SECRET_STAGING:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
+      "--set-secrets=MONGODB_URI=MONGODB_URI_STAGING:latest,JWT_SECRET=JWT_SECRET_STAGING:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
     );
     expect(workflow).toContain("--startup-probe=httpGet.path=/health");
     expect(workflow).toContain("--liveness-probe=httpGet.path=/health");
@@ -167,16 +169,25 @@ describe("FR-FND-05 API deployment", () => {
     expect(workflow).not.toMatch(/service[_-]account[_-]key/i);
   });
 
-  it("deploys the same commit image to production only through its approval environment", () => {
+  it("promotes the successful develop image without rebuilding behind production approval", () => {
     const workflow = readFileSync(workflowPath, "utf8");
+    const productionJob = workflow.slice(workflow.indexOf("  production-deploy:"));
 
     expect(workflow).toMatch(
-      /production-deploy:[\s\S]+needs: staging-deploy[\s\S]+environment:\s*\n\s+name: production/,
+      /production-deploy:[\s\S]+needs: ci[\s\S]+environment:\s*\n\s+name: production/,
     );
+    expect(productionJob).toContain("refs/heads/main");
+    expect(productionJob).toContain("HEAD^2");
+    expect(productionJob).toContain('"$(git rev-parse origin/develop)"');
+    expect(productionJob).toContain("actions/workflows/ci.yml/runs");
+    expect(productionJob).toContain('"Build, push, and deploy staging API"');
+    expect(productionJob).toContain("gcloud artifacts docker images describe");
+    expect(productionJob).toContain('PROMOTED_IMAGE="${IMAGE_BASE}@${DIGEST}"');
+    expect(productionJob).toContain("status.imageDigest");
+    expect(productionJob).not.toContain("docker build");
+    expect(productionJob).not.toContain("docker push");
     expect(workflow).toContain("gcloud run deploy eqplus-api");
-    expect(workflow).toContain(
-      "asia-south1-docker.pkg.dev/eqplus-503212/eqplus-api/eqplus-api:${{ github.sha }}",
-    );
+    expect(productionJob).toContain('--image="${PROMOTED_IMAGE}"');
     expect(
       workflow.match(/--region=asia-south1/g)?.length,
     ).toBeGreaterThanOrEqual(2);
@@ -195,6 +206,17 @@ describe("FR-FND-05 API deployment", () => {
     expect(
       workflow.match(/--liveness-probe=httpGet\.path=\/health/g)?.length,
     ).toBeGreaterThanOrEqual(2);
+  });
+
+  it("tags the main merge commit only after production health succeeds", () => {
+    const productionJob = readFileSync(workflowPath, "utf8").split("  production-deploy:")[1];
+    expect(productionJob.indexOf("Verify production health")).toBeLessThan(
+      productionJob.indexOf("Tag production release"),
+    );
+    expect(productionJob).toContain("contents: write");
+    expect(productionJob).toContain("git tag -a");
+    expect(productionJob).toContain("prod-%Y%m%d-%H%M");
+    expect(productionJob).toContain("git push origin");
   });
 
   it("binds staging and production to separate MongoDB secrets", () => {
@@ -244,13 +266,12 @@ describe("FR-FND-05 API deployment", () => {
     expect(productionJob).not.toContain("JWT_SECRET=JWT_SECRET_STAGING:latest");
     expect(stagingJob).not.toContain("JWT_SECRET=JWT_SECRET:latest");
 
-    expect(runbook).toContain("gcloud secrets create JWT_SECRET_STAGING");
-    expect(runbook).not.toContain("gcloud secrets create JWT_SECRET_PRODUCTION");
-    expect(runbook).toContain("gcloud secrets add-iam-policy-binding JWT_SECRET_STAGING");
-    expect(runbook).toContain("gcloud secrets add-iam-policy-binding JWT_SECRET");
+    expect(runbook).not.toContain("gcloud secrets create JWT_SECRET_STAGING");
+    expect(runbook).toContain("gcloud secrets get-iam-policy JWT_SECRET_STAGING");
     expect(runbook).toContain("gcloud secrets describe JWT_SECRET_STAGING");
     expect(runbook).toContain("gcloud secrets describe JWT_SECRET");
-    expect(runbook).toContain("distinct JWT signing values");
+    expect(runbook).toContain("distinct database clusters, users,");
+    expect(runbook).toContain("JWT values");
     expect(runbook).toMatch(/Unsuffixed names are PRODUCTION/i);
   });
 
@@ -265,7 +286,7 @@ describe("FR-FND-05 API deployment", () => {
     );
 
     expect(stagingJob).toContain(
-      'CORS_ORIGINS: "http://localhost:3000"',
+      'CORS_ORIGINS: "http://localhost:3000,https://staging.plus.eqourse.com"',
     );
     expect(productionJob).toContain(
       'CORS_ORIGINS: "https://plus.eqourse.com"',
@@ -281,13 +302,13 @@ describe("FR-FND-05 API deployment", () => {
       "Missing required runtime configuration: CORS_ORIGINS",
     );
     expect(stagingJob).toContain(
-      '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}"',
+      '--set-env-vars="^@^CORS_ORIGINS=${CORS_ORIGINS}@MAILER_PROVIDER=${MAILER_PROVIDER}',
     );
     expect(productionJob).toContain(
       '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}"',
     );
     expect(stagingJob).toContain(
-      "--set-secrets=MONGODB_URI=MONGODB_URI_STAGING:latest,JWT_SECRET=JWT_SECRET_STAGING:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
+      "--set-secrets=MONGODB_URI=MONGODB_URI_STAGING:latest,JWT_SECRET=JWT_SECRET_STAGING:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
     );
     expect(productionJob).toContain(
       "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
@@ -312,7 +333,7 @@ describe("FR-FND-05 API deployment", () => {
     expect(productionJob).toContain('R2_BUCKET: "eqplus-prod-kyc-docs"');
   });
 
-  it("keeps staging email sandboxed and configures production Resend explicitly", () => {
+  it("uses the approved Resend sender in both staging and production", () => {
     const workflow = readFileSync(workflowPath, "utf8");
     const stagingJob = workflow.slice(
       workflow.indexOf("  staging-deploy:"),
@@ -322,11 +343,13 @@ describe("FR-FND-05 API deployment", () => {
       workflow.indexOf("  production-deploy:"),
     );
 
-    expect(stagingJob).toContain('MAILER_PROVIDER: "sandbox"');
+    expect(stagingJob).toContain('MAILER_PROVIDER: "resend"');
+    expect(stagingJob).toContain("OTP_EMAIL_FROM: ${{ vars.OTP_EMAIL_FROM }}");
+    expect(stagingJob).toContain("Missing required runtime configuration: OTP_EMAIL_FROM");
     expect(stagingJob).toContain(
-      '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}"',
+      '@MAILER_PROVIDER=${MAILER_PROVIDER}@OTP_EMAIL_FROM=${OTP_EMAIL_FROM}',
     );
-    expect(stagingJob).not.toContain("RESEND_API_KEY=RESEND_API_KEY:latest");
+    expect(stagingJob).toContain("RESEND_API_KEY=RESEND_API_KEY:latest");
 
     expect(productionJob).toContain('MAILER_PROVIDER: "resend"');
     expect(productionJob).toContain("OTP_EMAIL_FROM: ${{ vars.OTP_EMAIL_FROM }}");
@@ -381,49 +404,33 @@ describe("FR-FND-05 API deployment", () => {
 
     expect(runbook).toContain("roles/iam.serviceAccountUser");
     expect(runbook).toMatch(
-      /iam service-accounts add-iam-policy-binding[\s\S]+StagingRuntimeServiceAccount/,
+      /iam service-accounts get-iam-policy[\s\S]+RuntimePrincipal/,
     );
     expect(runbook).toMatch(/actAs/);
     expect(runbook).toContain(
-      "gcloud secrets add-iam-policy-binding MONGODB_URI_STAGING",
+      "gcloud secrets get-iam-policy MONGODB_URI_STAGING",
     );
   });
 
-  it("documents the pre-merge, main-only WIF and Secret Manager setup", () => {
+  it("documents develop and main WIF trust and Secret Manager setup", () => {
     const runbook = readFileSync(deploymentRunbookPath, "utf8");
 
     expect(runbook).toMatch(/before merging/i);
     expect(runbook).toContain("eQOURSE/eqourseplus");
     expect(runbook).toContain("refs/heads/main");
+    expect(runbook).toContain("refs/heads/develop");
     expect(runbook).toContain("assertion.repository_owner=='eQOURSE'");
     expect(runbook).toContain(
       "assertion.repository=='eQOURSE/eqourseplus'",
     );
-    expect(runbook).toContain("assertion.ref=='refs/heads/main'");
+    expect(runbook).toContain("assertion.ref in ['refs/heads/develop', 'refs/heads/main']");
+    expect(runbook).toContain("providers update-oidc");
     expect(runbook).toContain("roles/iam.workloadIdentityUser");
-    expect(runbook).toContain("gcloud secrets create MONGODB_URI_STAGING");
-    expect(runbook).toContain("gcloud secrets create MONGODB_URI");
-    expect(runbook).not.toContain("gcloud secrets create MONGODB_URI_PRODUCTION");
-    expect(runbook).toContain(
-      "gcloud secrets create JWT_SECRET_STAGING --replication-policy=automatic --data-file=-",
-    );
-    expect(runbook).not.toContain("gcloud secrets create JWT_SECRET_PRODUCTION");
-      expect(runbook).toContain(
-        "gcloud secrets create VENDOR_IDENTIFIER_HMAC_SECRET --replication-policy=automatic --data-file=-",
-      );
-      expect(runbook).toContain(
-        "gcloud secrets create CLIENT_IDENTIFIER_HMAC_SECRET --replication-policy=automatic --data-file=-",
-      );
-    expect(runbook).toContain(
-      'gcloud secrets add-iam-policy-binding JWT_SECRET_STAGING',
-    );
-      expect(runbook).toContain(
-        "gcloud secrets add-iam-policy-binding VENDOR_IDENTIFIER_HMAC_SECRET",
-      );
-      expect(runbook).toContain(
-        "gcloud secrets add-iam-policy-binding CLIENT_IDENTIFIER_HMAC_SECRET",
-      );
-    expect(runbook).toMatch(/VENDOR_IDENTIFIER_HMAC_SECRET[\s\S]+at least 32 characters/i);
+    expect(runbook).not.toMatch(/gcloud (?:artifacts repositories|iam service-accounts|secrets) create /);
+    expect(runbook).toContain("gcloud secrets describe MONGODB_URI_STAGING");
+    expect(runbook).toContain("gcloud secrets get-iam-policy JWT_SECRET_STAGING");
+    expect(runbook).toContain("gcloud secrets get-iam-policy VENDOR_IDENTIFIER_HMAC_SECRET");
+    expect(runbook).toContain("gcloud secrets get-iam-policy CLIENT_IDENTIFIER_HMAC_SECRET");
     expect(runbook).toMatch(
       /rotating[\s\S]+countryIdentifiers\.lookupDigest[\s\S]+recomputing every digest[\s\S]+rebuilding that index/i,
     );
@@ -432,30 +439,36 @@ describe("FR-FND-05 API deployment", () => {
     expect(runbook).toContain("CORS_ORIGINS");
     expect(runbook).toContain("RESEND_API_KEY");
     expect(runbook).toContain("OTP_EMAIL_FROM");
-    expect(runbook).toMatch(/SPF[\s\S]+DKIM[\s\S]+DMARC/i);
-    expect(runbook).toMatch(/GoDaddy[\s\S]+add-only/i);
-    expect(runbook).toMatch(/Google Workspace MX/i);
+    expect(runbook).toContain("GoDaddy CNAME");
+    expect(runbook).toContain("already complete");
     expect(runbook).toContain("--set-env-vars");
     expect(runbook).toMatch(/not a Secret Manager secret/i);
     expect(runbook).toMatch(/production.+required reviewer/is);
   });
 
-  it("documents isolated Atlas provisioning, index parity, and the explicit taxonomy decision", () => {
+  it("documents the existing isolated Atlas staging setup without stale taxonomy instructions", () => {
     const runbook = readFileSync(deploymentRunbookPath, "utf8");
 
     expect(runbook).toContain("MONGODB_URI_STAGING");
     expect(runbook).toContain("MONGODB_URI");
     expect(runbook).not.toContain("MONGODB_URI_PRODUCTION");
     expect(runbook).toContain("eqplus-api-staging-runtime");
-    expect(runbook).toMatch(/MONGODB_URI_STAGING[\s\S]+StagingRuntimeServiceAccount/);
-    expect(runbook).toMatch(/MONGODB_URI[\s\S]+ProductionRuntimeServiceAccount/);
-    expect(runbook).toMatch(/do not copy production data/i);
-    expect(runbook).toMatch(/database user[\s\S]+staging[\s\S]+least privilege/i);
+    expect(runbook).toContain("`MONGODB_URI_STAGING` and `JWT_SECRET_STAGING` must grant only the staging");
+    expect(runbook).toContain("unsuffixed database and JWT secrets must grant only production");
+    expect(runbook).toMatch(/Never copy production users, documents, or OTP\/session data/i);
+    expect(runbook).toContain("SCRAM user `eqplus-staging-app`");
     expect(runbook).toContain("db:migrate:status");
     expect(runbook).toContain("db:migrate");
     expect(runbook).toMatch(/compare[\s\S]+getIndexes\(\)/i);
-    expect(runbook).toMatch(/production[\s\S]+3[\s\S]+59/i);
-    expect(runbook).toMatch(/staging first[\s\S]+production[\s\S]+explicit approval/i);
-    expect(runbook).toMatch(/never[\s\S]+automatic[\s\S]+deploy/i);
+    expect(runbook).toContain("eqplus-staging-app");
+    expect(runbook).toContain("/eqplus");
+    expect(runbook).not.toContain("eqplus-staging-api");
+    expect(runbook).not.toContain("eqplus_staging");
+    expect(runbook).not.toContain("production database currently contains 3 taxonomy rows");
+    expect(runbook).not.toContain("disable squash and rebase merging for this repository");
+    expect(runbook).toContain("Squash feature-to-develop PRs");
+    expect(runbook).toContain("Create a merge commit");
+    expect(runbook).toContain("http://localhost:3000,https://staging.plus.eqourse.com");
+    expect(runbook).toContain("staging.plus.eqourse.com");
   });
 });
