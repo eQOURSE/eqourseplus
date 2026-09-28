@@ -238,6 +238,20 @@ function nonEmpty(value: string): string | undefined {
 
 type CompanyDraftInput = VendorDraftInput | ClientDraftInput;
 
+function hasMeaningfulDraftValue(value: unknown): boolean {
+  if (typeof value === "string") return value.trim().length > 0;
+  if (value instanceof Date) return true;
+  if (Array.isArray(value)) return value.some(hasMeaningfulDraftValue);
+  if (value && typeof value === "object") {
+    return Object.values(value).some(hasMeaningfulDraftValue);
+  }
+  return value !== null && value !== undefined;
+}
+
+function hasCompanyDraftData(draft: CompanyDraftInput): boolean {
+  return Object.values(draft).some(hasMeaningfulDraftValue);
+}
+
 function toCompanyPayload(form: CompanyFormState, actor: CompanyActor): CompanyDraftInput {
   const config = companyActorConfig[actor];
   const capabilities = form.capabilitySlugs
@@ -451,6 +465,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   const [loading, setLoading] = useState(!guest);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [draftExists, setDraftExists] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [messageError, setMessageError] = useState(false);
@@ -539,22 +554,29 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   useEffect(() => {
     if (guest) return;
     let active = true;
+    setDraftExists(false);
     void fetch(`${apiBase}/me`, { cache: "no-store" })
       .then(async (response) => {
-        if (response.status === 404) {
-          const created = await fetch(apiBase, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: "{}",
-          });
-          if (!created.ok) throw new Error("Could not create draft");
-          return readDraft(created);
-        }
+        if (response.status === 404) return null;
         if (!response.ok) throw new Error("Could not load draft");
         return readDraft(response);
       })
       .then((draft) => {
         if (!active) return;
+        if (!draft) {
+          setForm(EMPTY_FORM);
+          setSubmitted(false);
+          setStep("company");
+          setDocumentNames({});
+          setDocumentUploads({});
+          setIdentityDocumentName("");
+          setIdentityDocumentUpload({
+            status: "idle",
+            message: "No file uploaded.",
+          });
+          return;
+        }
+        setDraftExists(true);
         const nextForm = formFromDraft(draft);
         setForm(nextForm);
         setSubmitted(draft.state === "SUBMITTED" || draft.state === "UNDER_REVIEW");
@@ -655,6 +677,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
       } }));
       return;
     }
+    if (!(await persistDraft())) return;
 
     const request = uploadRequestSchema.safeParse({
       kind,
@@ -737,6 +760,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
       });
       return;
     }
+    if (!(await persistDraft())) return;
 
     const request = clientUploadRequestSchema.safeParse({
       kind: form.governmentIdentityDocumentKind,
@@ -843,13 +867,19 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
       setAccessStep("details");
       return false;
     }
+    if (!draftExists && !hasCompanyDraftData(parsed.data)) {
+      setFieldErrors({});
+      setMessageError(true);
+      setMessage("Enter at least one company detail before saving.");
+      return false;
+    }
     setFieldErrors({});
     setSaving(true);
     setMessage("");
     setMessageError(false);
     try {
-      const response = await fetch(`${apiBase}/me`, {
-        method: "PATCH",
+      const response = await fetch(draftExists ? `${apiBase}/me` : apiBase, {
+        method: draftExists ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed.data),
       });
@@ -858,6 +888,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
         setMessage(response.status === 401 ? "Sign in to save your company registration." : "We could not save this registration. Try again.");
         return false;
       }
+      setDraftExists(true);
       setMessage("Draft saved.");
       return true;
     } catch {
