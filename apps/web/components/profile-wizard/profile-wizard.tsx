@@ -20,6 +20,7 @@ import {
 } from "react";
 
 import { publicApiUrl } from "../../lib/public-api-url";
+import { MonthYearPicker } from "./month-year-picker";
 
 type EducationForm = {
   institution: string;
@@ -96,6 +97,13 @@ const EMPTY_FORM: ProfileFormState = {
 };
 
 const WIZARD_SECTIONS: readonly ProfileSection[] = Object.values(ProfileSection);
+const YEAR_OPTIONS = Array.from(
+  { length: new Date().getUTCFullYear() - 1889 },
+  (_, offset) => {
+    const year = String(new Date().getUTCFullYear() + 10 - offset);
+    return { value: year, label: year };
+  },
+);
 const SECTION_LABELS: Readonly<Record<ProfileSection, string>> = {
   [ProfileSection.PERSONAL]: "Personal",
   [ProfileSection.EDUCATION]: "Education",
@@ -191,7 +199,7 @@ function formFromProfile(profile: ProfileResponse): ProfileFormState {
     },
     rate: {
       amountMinor: rateInput(profile.rate?.amountMinor, text(profile.rate?.currencyCode)),
-      currencyCode: text(profile.rate?.currencyCode),
+      currencyCode: text(profile.rate?.currencyCode) || "INR",
       unit: text(profile.rate?.unit),
     },
   };
@@ -395,6 +403,9 @@ export function ProfileWizard() {
   const dirty = useRef(new Set<ProfileSection>());
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
+  const revisions = useRef(new Map<ProfileSection, number>());
+  const savedSections = useRef(new Map<ProfileSection, string>());
+  const savedResume = useRef<ProfileSection | undefined>(undefined);
 
   const activeTaxonomySlugs = useMemo(
     () => new Set(taxonomy.map((option) => option.slug)),
@@ -412,6 +423,10 @@ export function ProfileWizard() {
     ]).then(([profile, options]) => {
       if (!active) return;
       const nextForm = formFromProfile(profile);
+      for (const item of WIZARD_SECTIONS) {
+        savedSections.current.set(item, JSON.stringify(sectionPatch(item, nextForm)));
+      }
+      savedResume.current = profile.resumeSection;
       setForm(nextForm);
       setCompletionPercentage(profile.completionPercentage);
       setProfileState(profile.state);
@@ -445,12 +460,14 @@ export function ProfileWizard() {
   }
 
   function markChanged(next: ProfileFormState, changedSection: ProfileSection): void {
+    if (JSON.stringify(next) === JSON.stringify(form)) return;
     dirty.current.add(changedSection);
+    revisions.current.set(changedSection, (revisions.current.get(changedSection) ?? 0) + 1);
     setForm(next);
     clearDebounce();
     debounce.current = setTimeout(() => {
-      void save(next, changedSection, undefined, false);
-    }, 700);
+      void save(next, changedSection, undefined, false, false);
+    }, 850);
   }
 
   async function save(
@@ -458,11 +475,27 @@ export function ProfileWizard() {
     savedSection: ProfileSection,
     resumeSection?: ProfileSection,
     announce = true,
+    blocking = true,
   ): Promise<boolean> {
+    if (blocking) {
+      setSaving(true);
+      await saveQueue.current;
+    }
+    const patch = sectionPatch(savedSection, snapshot);
+    const signature = JSON.stringify(patch);
+    const changed = dirty.current.has(savedSection)
+      && signature !== savedSections.current.get(savedSection);
+    const revision = revisions.current.get(savedSection);
     const candidate: ProfileDraftInput = {
-      ...(dirty.current.has(savedSection) ? sectionPatch(savedSection, snapshot) : {}),
-      ...(resumeSection ? { resumeSection } : {}),
+      ...(changed ? patch : {}),
+      ...(resumeSection && resumeSection !== savedResume.current ? { resumeSection } : {}),
     };
+    if (!Object.keys(candidate).length) {
+      dirty.current.delete(savedSection);
+      if (announce) setMessage("Draft saved.");
+      if (blocking) setSaving(false);
+      return true;
+    }
     const parsed = profileDraftSchema.safeParse(candidate);
     if (!parsed.success) {
       const nextErrors: Record<string, string> = {};
@@ -472,11 +505,11 @@ export function ProfileWizard() {
       setErrors(nextErrors);
       setMessageError(true);
       setMessage(parsed.error.issues[0]?.message ?? "Check the highlighted field before saving.");
+      if (blocking) setSaving(false);
       return false;
     }
 
     setErrors({});
-    setSaving(true);
     setMessageError(false);
     const task = saveQueue.current.then(async () => {
       const response = await fetch("/api/v1/profiles/me", {
@@ -491,6 +524,11 @@ export function ProfileWizard() {
       }
       setCompletionPercentage(saved.completionPercentage);
       setProfileState(saved.state);
+      if (changed) {
+        savedSections.current.set(savedSection, signature);
+        if (revisions.current.get(savedSection) === revision) dirty.current.delete(savedSection);
+      }
+      if (resumeSection) savedResume.current = resumeSection;
     });
     saveQueue.current = task.catch(() => undefined);
     try {
@@ -502,17 +540,18 @@ export function ProfileWizard() {
       setMessage(error instanceof Error ? error.message : "We could not save your profile. Try again.");
       return false;
     } finally {
-      setSaving(false);
+      if (blocking) setSaving(false);
     }
   }
 
-  async function saveCurrent(): Promise<void> {
+  async function saveCurrent(): Promise<boolean> {
     clearDebounce();
-    await save(form, section, undefined, true);
+    return save(form, section, undefined, true);
   }
 
   async function submitProfile(): Promise<void> {
     clearDebounce();
+    if (!await save(form, section, undefined, false)) return;
     setSaving(true);
     setMessageError(false);
     try {
@@ -713,8 +752,8 @@ export function ProfileWizard() {
         {input("School or university", `profile-education-${index}-institution`, entry.institution, (value) => updateEducation(index, "institution", value))}
         {input("Qualification", `profile-education-${index}-qualification`, entry.qualification, (value) => updateEducation(index, "qualification", value))}
         {input("Area of study", `profile-education-${index}-fieldOfStudy`, entry.fieldOfStudy, (value) => updateEducation(index, "fieldOfStudy", value))}
-        {input("Start year", `profile-education-${index}-startYear`, entry.startYear, (value) => updateEducation(index, "startYear", value), { type: "number", inputMode: "numeric", min: 1900, max: new Date().getUTCFullYear() + 10 })}
-        {input("End year (optional)", `profile-education-${index}-endYear`, entry.endYear, (value) => updateEducation(index, "endYear", value), { type: "number", inputMode: "numeric", min: 1900, max: new Date().getUTCFullYear() + 10 })}
+        {select("Start year", `profile-education-${index}-startYear`, entry.startYear, (value) => updateEducation(index, "startYear", value), YEAR_OPTIONS)}
+        {select("End year (optional)", `profile-education-${index}-endYear`, entry.endYear, (value) => updateEducation(index, "endYear", value), YEAR_OPTIONS)}
       </fieldset>)}
       <GlassButton type="button" variant="secondary" onClick={() => addRow("education")}>Add education</GlassButton>
     </>;
@@ -760,8 +799,8 @@ export function ProfileWizard() {
         <legend>Experience {index + 1}</legend>
         {input("Company", `profile-experience-${index}-organization`, entry.organization, (value) => updateExperience(index, "organization", value))}
         {input("Job title", `profile-experience-${index}-title`, entry.title, (value) => updateExperience(index, "title", value))}
-        {input("Start month", `profile-experience-${index}-startDate`, entry.startDate.slice(0, 7), (value) => updateExperience(index, "startDate", value ? `${value}-01` : ""), { type: "month" })}
-        {!entry.currentlyWorks ? input("End month", `profile-experience-${index}-endDate`, entry.endDate.slice(0, 7), (value) => updateExperience(index, "endDate", value ? `${value}-01` : ""), { type: "month" }) : null}
+        <MonthYearPicker id={`profile-experience-${index}-startDate`} label="Start month" value={entry.startDate.slice(0, 7)} onChange={(value) => updateExperience(index, "startDate", value ? `${value}-01` : "")} disabled={!editable || saving} error={errors[`profile-experience-${index}-startDate`]} />
+        {!entry.currentlyWorks ? <MonthYearPicker id={`profile-experience-${index}-endDate`} label="End month" value={entry.endDate.slice(0, 7)} onChange={(value) => updateExperience(index, "endDate", value ? `${value}-01` : "")} disabled={!editable || saving} error={errors[`profile-experience-${index}-endDate`]} /> : null}
         <label className="profile-current-work"><input type="checkbox" checked={entry.currentlyWorks} disabled={saving || !editable} onChange={(event) => { const currentlyWorks = event.target.checked; const entries = form.experience.entries.map((item, itemIndex) => itemIndex === index ? { ...item, currentlyWorks, endDate: currentlyWorks ? "" : item.endDate } : item); markChanged({ ...form, experience: { ...form.experience, entries } }, ProfileSection.EXPERIENCE); }} /> I currently work here</label>
         {input("What you did (optional)", `profile-experience-${index}-summary`, entry.summary, (value) => updateExperience(index, "summary", value))}
       </fieldset>)}
@@ -787,8 +826,16 @@ export function ProfileWizard() {
       {input("IANA time zone", "profile-availability-timeZone", form.availability.timeZone, (value) => markChanged({ ...form, availability: { ...form.availability, timeZone: value } }, ProfileSection.AVAILABILITY), { help: "Example: Asia/Kolkata or Europe/London." })}
     </>;
     return <>
-      <div className="profile-rate-input"><span aria-hidden="true">{({ INR: "₹", USD: "$", EUR: "€", GBP: "£", SGD: "S$" } as Record<string, string>)[form.rate.currencyCode] ?? "¤"}</span>{input("Your rate", "profile-rate-amountMinor", form.rate.amountMinor, (value) => markChanged({ ...form, rate: { ...form.rate, amountMinor: value } }, ProfileSection.RATE), { type: "number", inputMode: "numeric", min: 0.01, help: "Enter what you want to earn before platform fees." })}</div>
-      {select("Currency", "profile-rate-currencyCode", form.rate.currencyCode, (value) => markChanged({ ...form, rate: { ...form.rate, currencyCode: value, amountMinor: rateInput(Number(form.rate.amountMinor) * (form.rate.currencyCode === "JPY" ? 1 : 100), value) } }, ProfileSection.RATE), ["INR", "USD", "EUR", "GBP", "SGD"].map((value) => ({ value, label: value })))}
+      <div className="company-onboarding-field">
+        <label htmlFor="profile-rate-amountMinor">Your rate</label>
+        <div className="profile-rate-control">
+          <span aria-hidden="true">{({ INR: "₹", USD: "$", EUR: "€", GBP: "£", SGD: "S$" } as Record<string, string>)[form.rate.currencyCode] ?? "¤"}</span>
+          <input id="profile-rate-amountMinor" type="number" inputMode="decimal" min={0.01} value={form.rate.amountMinor} disabled={saving || !editable} aria-invalid={errors["profile-rate-amountMinor"] ? true : undefined} aria-describedby="profile-rate-help" onChange={(event) => markChanged({ ...form, rate: { ...form.rate, amountMinor: event.target.value } }, ProfileSection.RATE)} />
+        </div>
+        <p id="profile-rate-help" className="company-onboarding-help">Enter what you want to earn before platform fees.</p>
+        {errors["profile-rate-amountMinor"] ? <p className="company-onboarding-error" role="alert">{errors["profile-rate-amountMinor"]}</p> : null}
+      </div>
+      {select("Currency", "profile-rate-currencyCode", form.rate.currencyCode, (value) => markChanged({ ...form, rate: { ...form.rate, currencyCode: value } }, ProfileSection.RATE), ["INR", "USD", "EUR", "GBP", "SGD"].map((value) => ({ value, label: value })))}
       {select("Per", "profile-rate-unit", form.rate.unit, (value) => markChanged({ ...form, rate: { ...form.rate, unit: value } }, ProfileSection.RATE), [{ value: "HOUR", label: "Hour" }])}
     </>;
   }
@@ -804,21 +851,30 @@ export function ProfileWizard() {
   const editable = profileState === ProfileState.DRAFT || profileState === ProfileState.MORE_INFO_NEEDED;
 
   return (
-    <FrostedSurface className="company-onboarding-shell" variant="panel" aria-labelledby="profile-wizard-title">
-      <p className="home-eyebrow">Freelancer profile</p>
-      <h1 id="profile-wizard-title">Build your profile</h1>
-      <p className="company-onboarding-copy">Save each section as you go. You can return and continue later.</p>
-      <p className="company-onboarding-help" role="status" aria-live="polite">{completionPercentage}% complete</p>
-      <p className="company-onboarding-help" role="status" aria-live="polite">State: {profileState.replaceAll("_", " ")}</p>
+    <FrostedSurface className="company-onboarding-shell onboarding-surface" variant="panel" aria-labelledby="profile-wizard-title">
+      <header className="onboarding-hero">
+        <p className="home-eyebrow">Your eQOURSE+ workspace</p>
+        <h1 id="profile-wizard-title">Build your profile</h1>
+        <p className="company-onboarding-copy">Show the work you do best. Your draft is saved as you go, and you can return whenever you need.</p>
+        <div className="onboarding-progress">
+          <div className="onboarding-progress-copy">
+            <span>Profile progress</span>
+            <strong role="status" aria-live="polite">{completionPercentage}% complete</strong>
+          </div>
+          <progress aria-label="Profile completion" value={completionPercentage} max={100} />
+          <span className="onboarding-state">State: {profileState.replaceAll("_", " ")}</span>
+        </div>
+      </header>
       <nav className="company-onboarding-stepper" aria-label="Profile sections">
         <ol>{WIZARD_SECTIONS.map((item) => <li key={item}>
-            <button type="button" disabled={saving || !editable} data-current={section === item} aria-current={section === item ? "step" : undefined} onClick={() => void navigate(item)}>
+            <button type="button" disabled={saving || !editable} data-current={section === item} data-state={section === item ? "current" : WIZARD_SECTIONS.indexOf(item) < WIZARD_SECTIONS.indexOf(section) ? "previous" : "upcoming"} aria-current={section === item ? "step" : undefined} onClick={() => void navigate(item)}>
             {SECTION_LABELS[item]}
           </button>
         </li>)}</ol>
       </nav>
       <form className="company-onboarding-form" noValidate onSubmit={submit}>
-        <section aria-labelledby="profile-section-title">
+        <section className="onboarding-section-card" aria-labelledby="profile-section-title">
+          <p className="onboarding-section-index">Step {WIZARD_SECTIONS.indexOf(section) + 1} of {WIZARD_SECTIONS.length}</p>
           <h2 id="profile-section-title" className="home-section-title">{SECTION_LABELS[section]}</h2>
           {sectionContent()}
           {editable ? <div className="company-onboarding-actions">

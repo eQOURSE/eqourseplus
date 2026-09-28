@@ -2033,6 +2033,351 @@ body {
   padding-bottom: 0.25rem;
 }
 
+/* Shared profile and company onboarding language, aligned with the public pages. */
+.company-onboarding-shell.onboarding-surface {
+  width: min(100%, 68rem);
+  padding: 0;
+  overflow: visible;
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) * 2);
+  background: hsl(var(--card) / 0.88);
+  box-shadow: var(--shadow-elevated);
+}
+
+.company-onboarding-shell.onboarding-access {
+  padding: clamp(1.5rem, 5vw, 3rem);
+  background:
+    radial-gradient(circle at 100% 0%, hsl(var(--accent) / 0.22), transparent 18rem),
+    hsl(var(--card));
+}
+
+.onboarding-access > h1 {
+  max-width: 42rem;
+  font-family: var(--font-heading);
+  font-size: clamp(2.2rem, 4vw, 3.2rem);
+  letter-spacing: -0.04em;
+}
+
+.onboarding-access > .company-onboarding-copy {
+  max-width: 40rem;
+}
+
+.onboarding-access .company-onboarding-form {
+  margin-top: 1.5rem;
+  padding: 0;
+}
+
+.onboarding-hero {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(1.5rem, 5vw, 3.5rem);
+  border-radius: calc(var(--radius) * 2) calc(var(--radius) * 2) 0 0;
+  background:
+    radial-gradient(circle at 88% 18%, hsl(var(--accent) / 0.42), transparent 17rem),
+    linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--background)));
+}
+
+.onboarding-hero::after {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, hsl(var(--primary) / 0.28) 1px, transparent 1px);
+  background-size: 2rem 2rem;
+  content: "";
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+.onboarding-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.onboarding-hero .home-eyebrow {
+  display: inline-flex;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid hsl(var(--primary) / 0.2);
+  border-radius: 999px;
+  background: hsl(var(--accent) / 0.25);
+  color: hsl(var(--primary));
+}
+
+.onboarding-hero h1 {
+  max-width: 43rem;
+  margin: 1.2rem 0 0;
+  color: hsl(var(--foreground));
+  font-family: var(--font-heading);
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1.08;
+}
+
+.onboarding-hero .company-onboarding-copy {
+  max-width: 42rem;
+  margin: 1rem 0 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.onboarding-progress {
+  display: grid;
+  gap: 0.65rem;
+  max-width: 43rem;
+  margin-top: 2rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--card) / 0.82);
+  box-shadow: var(--shadow-card);
+}
+
+.onboarding-progress-copy {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.4rem 1rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.onboarding-progress-copy strong {
+  color: hsl(var(--foreground));
+  font-family: var(--font-heading);
+}
+
+.onboarding-progress progress {
+  width: 100%;
+  height: 0.65rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  accent-color: hsl(var(--primary));
+}
+
+.onboarding-progress progress::-webkit-progress-bar {
+  border-radius: 999px;
+  background: hsl(var(--secondary));
+}
+
+.onboarding-progress progress::-webkit-progress-value {
+  border-radius: 999px;
+  background: var(--gradient-primary);
+}
+
+.onboarding-state {
+  color: hsl(var(--primary));
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.onboarding-surface .company-onboarding-stepper {
+  margin: 0;
+  padding: 1.4rem clamp(1.25rem, 5vw, 3.5rem);
+  border-top: 1px solid hsl(var(--border) / 0.7);
+  border-bottom: 1px solid hsl(var(--border) / 0.7);
+}
+
+.onboarding-surface .company-onboarding-stepper ol {
+  gap: 0.6rem;
+}
+
+.onboarding-surface .company-onboarding-stepper button {
+  min-height: 2.8rem;
+  padding-inline: 1rem;
+  border-radius: 999px;
+  background: hsl(var(--card));
+}
+
+.onboarding-surface .company-onboarding-stepper button[data-current="true"] {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary));
+  box-shadow: var(--shadow-soft);
+  color: hsl(var(--primary-foreground));
+}
+
+.onboarding-surface .company-onboarding-form {
+  margin: 0;
+  padding: clamp(1.25rem, 5vw, 3.5rem);
+}
+
+.onboarding-surface .company-onboarding-form > .onboarding-section-card {
+  gap: 1.25rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) * 1.5);
+  background: hsl(var(--card));
+  box-shadow: var(--shadow-card);
+}
+
+.onboarding-section-index {
+  margin: 0;
+  color: hsl(var(--primary));
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.onboarding-surface .company-onboarding-form .home-section-title {
+  color: hsl(var(--foreground));
+  font-family: var(--font-heading);
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  letter-spacing: -0.035em;
+}
+
+.onboarding-surface .company-onboarding-field input,
+.onboarding-surface .company-onboarding-field select,
+.onboarding-surface .profile-month-trigger {
+  min-height: 3.25rem;
+  border-color: hsl(var(--border));
+  background: hsl(var(--background));
+}
+
+.onboarding-surface .company-onboarding-field input:hover:not(:disabled),
+.onboarding-surface .company-onboarding-field select:hover:not(:disabled),
+.onboarding-surface .profile-month-trigger:hover:not(:disabled) {
+  border-color: hsl(var(--primary));
+}
+
+.onboarding-surface .company-onboarding-actions,
+.onboarding-surface .company-onboarding-review-actions {
+  margin-top: 0.4rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.profile-rate-control {
+  position: relative;
+}
+
+.profile-rate-control span {
+  position: absolute;
+  top: 50%;
+  left: 1rem;
+  z-index: 1;
+  color: hsl(var(--foreground));
+  font-weight: 800;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.company-onboarding-field .profile-rate-control input {
+  padding-inline-start: 3rem;
+}
+
+.profile-month-field {
+  position: relative;
+}
+
+.profile-month-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding-inline: 1rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  color: hsl(var(--foreground));
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--motion-micro) var(--ease-standard), box-shadow var(--motion-micro) var(--ease-standard);
+}
+
+.profile-month-trigger:focus-visible,
+.profile-month-grid button:focus-visible,
+.profile-month-clear:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.profile-month-trigger[data-invalid="true"] {
+  border-color: hsl(var(--destructive));
+}
+
+.profile-month-popover {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% - 0.25rem);
+  left: 0;
+  width: min(100%, 23rem);
+  padding: 1rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--card));
+  box-shadow: var(--shadow-elevated);
+}
+
+.profile-month-popover-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+  font-weight: 700;
+}
+
+.onboarding-surface .profile-month-popover-heading select {
+  width: 7rem;
+}
+
+.profile-month-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.profile-month-grid button,
+.profile-month-clear {
+  min-height: 2.6rem;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius) - 4px);
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+  font: inherit;
+  cursor: pointer;
+}
+
+.profile-month-grid button:hover,
+.profile-month-grid button[aria-pressed="true"] {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.12);
+}
+
+.profile-month-clear {
+  width: 100%;
+  margin-top: 0.6rem;
+  background: transparent;
+  color: hsl(var(--primary));
+}
+
+@media (max-width: 40rem) {
+  .onboarding-surface .company-onboarding-stepper ol {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.4rem;
+  }
+
+  .onboarding-surface .company-onboarding-stepper li {
+    flex: 0 0 auto;
+  }
+
+  .profile-month-popover {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-month-trigger {
+    transition: none;
+  }
+}
+
 .company-onboarding-stepper ol {
   display: flex;
   flex-wrap: wrap;

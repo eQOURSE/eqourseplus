@@ -150,6 +150,13 @@ async function goTo(step: string): Promise<void> {
 }
 
 describe("generic company onboarding", () => {
+  it("shows a focused registration section and accessible step progress", async () => {
+    await renderReady("vendor");
+
+    expect(screen.getByRole("progressbar", { name: "Company registration progress" })).toHaveAttribute("value", "1");
+    expect(screen.getByRole("heading", { name: "Company" }).closest("section")).toHaveClass("onboarding-section-card");
+  });
+
   it("routes an unmapped schema issue to an actionable field", () => {
     expect(schemaIssueField("website")).toBe("website");
     expect(schemaIssueField("bankDetails.accountIdentifier.scheme")).toBe("bankAccountScheme");
