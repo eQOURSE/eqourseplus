@@ -19,6 +19,7 @@ interface Category {
   serviceLine: string;
   questionCount: number;
   timeLimitSeconds: number;
+  guideline: { title: string; body: string; digest: string };
   eligibility: { remainingAttempts: number; cooldownExpiry: string | null; canStart: boolean };
 }
 interface Item { questionId: string; prompt: string; options: Array<{ id: string; text: string }> }
@@ -56,7 +57,9 @@ function restoreProgress(saved: Attempt): { position: number; answers: Record<st
 
 async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, cache: "no-store" });
-  if (!response.ok) throw new Error(response.status === 401 ? "Sign in to open your test center." : "The test service is unavailable. Please try again.");
+  if (!response.ok) throw new Error(response.status === 401 ? "Sign in to open your test center." :
+    response.status === 409 ? "This test or guideline changed. Return to the test list and review it again." :
+      "The test service is unavailable. Please try again.");
   return response.json() as Promise<T>;
 }
 
@@ -67,6 +70,8 @@ function formatDuration(seconds: number): string {
 
 export function TestCenter() {
   const [categories, setCategories] = useState<Category[] | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [guidelineAccepted, setGuidelineAccepted] = useState(false);
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [position, setPosition] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -160,13 +165,19 @@ export function TestCenter() {
   }, [attempt]);
 
   async function start(category: Category) {
+    if (!guidelineAccepted) return;
     setBusy(true);
     setError("");
     try {
       if (!document.documentElement.requestFullscreen) throw new Error("Full-screen mode is required for this test.");
       await document.documentElement.requestFullscreen();
-      const next = await readJson<Attempt>(`/api/tests/${category.taxonomySlug}/attempts`, { method: "POST" });
+      const next = await readJson<Attempt>(`/api/tests/${category.taxonomySlug}/attempts`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acknowledged: true, guidelineDigest: category.guideline.digest }),
+      });
       setAttempt(next);
+      setSelectedCategory(null);
+      setGuidelineAccepted(false);
       integrityDeliveryFailed.current = false;
       pendingViolations.current = [];
       setFullScreenRequired(false);
@@ -246,9 +257,16 @@ export function TestCenter() {
           <div className="mt-9 flex justify-end"><button type="button" disabled={busy || remaining === 0 || !answers[item.questionId]} onClick={() => position < attempt.items.length - 1 ? advance() : void submit()} className="inline-flex min-h-12 items-center gap-2 rounded-lg bg-primary px-6 font-semibold text-primary-foreground shadow-soft transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none">{position < attempt.items.length - 1 ? "Next question" : "Submit test"}<Icon kind="arrow" className="h-4 w-4" /></button></div>
         </section>
         <aside className="space-y-6 text-sm text-muted-foreground"><div className="border-l-2 border-primary pl-4"><p className="mb-1 font-semibold text-foreground">One direction</p><p>Answers can be changed until you move to the next question. You cannot go back.</p></div><div className="border-l-2 border-border pl-4"><p className="mb-1 font-semibold text-foreground">Integrity checks</p><p>Stay in full-screen mode and keep this tab in focus. Events are included in your attempt report.</p></div>{integrityNotice && <p role="status" className="rounded-lg bg-secondary p-4 text-foreground">{integrityNotice}</p>}{remaining === 0 && <p role="alert" className="rounded-lg bg-destructive/10 p-4 text-foreground">Time is up. The server will reject late answers.</p>}</aside>
-      </div> : attempt && attempt.status !== "IN_PROGRESS" ? <section className="max-w-2xl"><div className="mb-6 flex h-14 w-14 items-center justify-center rounded-lg bg-secondary text-primary"><Icon kind="check" className="h-7 w-7" /></div><p className="mb-2 text-xs font-bold uppercase tracking-widest text-primary">Attempt complete</p><h1 className="mb-4 font-heading text-4xl font-bold">{attempt.status === "PASSED" ? "Test passed" : attempt.status === "UNDER_REVIEW" ? "Under review" : attempt.status === "EXPIRED" ? "Time expired" : "Test not passed"}</h1><p className="mb-8 text-muted-foreground">{attempt.status === "UNDER_REVIEW" ? "A verifier will review the integrity events before the result is final." : attempt.status === "PASSED" ? `Your score is ${attempt.scorePercent}%. ${attempt.tier} tier has been awarded.` : `Score: ${attempt.scorePercent ?? 0}%. Check your next eligible date in the test center.`}</p><button onClick={() => { setAttempt(null); window.history.replaceState({}, "", "/tests"); }} className="rounded-lg bg-primary px-5 py-3 font-semibold text-primary-foreground">Back to test center</button></section> : <section>
+      </div> : attempt && attempt.status !== "IN_PROGRESS" ? <section className="max-w-2xl"><div className="mb-6 flex h-14 w-14 items-center justify-center rounded-lg bg-secondary text-primary"><Icon kind="check" className="h-7 w-7" /></div><p className="mb-2 text-xs font-bold uppercase tracking-widest text-primary">Attempt complete</p><h1 className="mb-4 font-heading text-4xl font-bold">{attempt.status === "PASSED" ? "Test passed" : attempt.status === "UNDER_REVIEW" ? "Under review" : attempt.status === "EXPIRED" ? "Time expired" : "Test not passed"}</h1><p className="mb-8 text-muted-foreground">{attempt.status === "UNDER_REVIEW" ? "A verifier will review the integrity events before the result is final." : attempt.status === "PASSED" ? `Your score is ${attempt.scorePercent}%. ${attempt.tier} tier has been awarded.` : `Score: ${attempt.scorePercent ?? 0}%. Check your next eligible date in the test center.`}</p><button onClick={() => { setAttempt(null); window.history.replaceState({}, "", "/tests"); }} className="rounded-lg bg-primary px-5 py-3 font-semibold text-primary-foreground">Back to test center</button></section> : selectedCategory ? <section className="max-w-3xl" aria-labelledby="guideline-title">
+        <p className="mb-2 text-xs font-bold uppercase tracking-widest text-primary">Before your timed test</p>
+        <h1 id="guideline-title" className="mb-4 font-heading text-3xl font-bold">{selectedCategory.guideline.title}</h1>
+        <p className="mb-6 text-sm text-muted-foreground">Read the {selectedCategory.title} guideline. The server timer begins only after you acknowledge it and start the test.</p>
+        <div className="mb-8 whitespace-pre-wrap rounded-lg border border-border bg-card p-6 leading-relaxed">{selectedCategory.guideline.body}</div>
+        <label className="mb-8 flex items-start gap-3 text-sm font-medium"><input type="checkbox" checked={guidelineAccepted} onChange={(event) => setGuidelineAccepted(event.target.checked)} className="mt-1 h-4 w-4 accent-primary" />I have read the category guideline and will follow it during this test.</label>
+        <div className="flex flex-wrap gap-3"><button type="button" disabled={busy} onClick={() => { setSelectedCategory(null); setGuidelineAccepted(false); void loadCatalog(); }} className="min-h-12 rounded-lg border border-border px-6 font-semibold disabled:opacity-50">Back to tests</button><button type="button" disabled={!guidelineAccepted || busy} onClick={() => void start(selectedCategory)} className="min-h-12 rounded-lg bg-primary px-6 font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">Start test</button></div>
+      </section> : <section>
         <div className="mb-10 flex flex-wrap items-end justify-between gap-5"><div><p className="mb-2 text-xs font-bold uppercase tracking-widest text-primary">Skills assessment</p><h1 className="font-heading text-3xl font-bold sm:text-4xl">Available tests</h1><p className="mt-3 text-muted-foreground">Choose a category to see your eligibility and start a timed assessment.</p></div><Icon kind="shield" className="h-10 w-10 text-primary" /></div>
-        {categories === null ? <p role="status" className="text-muted-foreground">Loading tests…</p> : categories.length === 0 ? <div className="max-w-lg border-t border-border py-12"><Icon kind="expand" className="mb-6 h-12 w-12 text-primary" /><p className="mb-5 text-muted-foreground">No approved category test is available yet.</p><button onClick={() => void loadCatalog()} className="rounded-lg bg-primary px-5 py-3 font-semibold text-primary-foreground">Check again</button></div> : <div className="divide-y divide-border border-y border-border">{categories.map((category) => <article key={category.taxonomySlug} className="grid gap-5 py-7 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"><div><p className="mb-1 text-xs font-semibold uppercase tracking-widest text-primary">{category.serviceLine}</p><h2 className="font-heading text-xl font-bold">{category.title}</h2><p className="mt-2 text-sm text-muted-foreground">{category.questionCount} questions · {Math.ceil(category.timeLimitSeconds / 60)} minutes · {category.eligibility.remainingAttempts} {category.eligibility.remainingAttempts === 1 ? "attempt" : "attempts"} remaining</p>{category.eligibility.cooldownExpiry && !category.eligibility.canStart && category.eligibility.remainingAttempts > 0 && <p className="mt-2 text-sm text-muted-foreground">Available after {new Date(category.eligibility.cooldownExpiry).toLocaleDateString()}</p>}</div><button type="button" disabled={!category.eligibility.canStart || busy} onClick={() => void start(category)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-primary px-6 font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground">Start test<Icon kind="arrow" className="h-4 w-4" /></button></article>)}</div>}
+        {categories === null ? <p role="status" className="text-muted-foreground">Loading tests…</p> : categories.length === 0 ? <div className="max-w-lg border-t border-border py-12"><Icon kind="expand" className="mb-6 h-12 w-12 text-primary" /><p className="mb-5 text-muted-foreground">No approved category test is available yet.</p><button onClick={() => void loadCatalog()} className="rounded-lg bg-primary px-5 py-3 font-semibold text-primary-foreground">Check again</button></div> : <div className="divide-y divide-border border-y border-border">{categories.map((category) => <article key={category.taxonomySlug} className="grid gap-5 py-7 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"><div><p className="mb-1 text-xs font-semibold uppercase tracking-widest text-primary">{category.serviceLine}</p><h2 className="font-heading text-xl font-bold">{category.title}</h2><p className="mt-2 text-sm text-muted-foreground">{category.questionCount} questions · {Math.ceil(category.timeLimitSeconds / 60)} minutes · {category.eligibility.remainingAttempts} {category.eligibility.remainingAttempts === 1 ? "attempt" : "attempts"} remaining</p>{category.eligibility.cooldownExpiry && !category.eligibility.canStart && category.eligibility.remainingAttempts > 0 && <p className="mt-2 text-sm text-muted-foreground">Available after {new Date(category.eligibility.cooldownExpiry).toLocaleDateString()}</p>}</div><button type="button" disabled={!category.eligibility.canStart || busy} onClick={() => { setSelectedCategory(category); setGuidelineAccepted(false); }} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-primary px-6 font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground">Review guideline<Icon kind="arrow" className="h-4 w-4" /></button></article>)}</div>}
       </section>}
     </div>
   </div>;

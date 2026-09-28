@@ -1,4 +1,4 @@
-import { randomInt } from "node:crypto";
+import { createHash, randomInt } from "node:crypto";
 
 import {
   BadRequestException,
@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { Types } from "mongoose";
-import type { BusinessUnit } from "@eqourse/shared";
+import type { BusinessUnit, TestGuidelineAcknowledgementInput } from "@eqourse/shared";
 import { LiteProctoringAdapter, type ProctoringAdapter } from "@eqourse/adapters";
 import { Inject, Optional } from "@nestjs/common";
 
@@ -28,6 +28,10 @@ function shuffle<T>(values: readonly T[]): T[] {
   return result;
 }
 
+function guidelineDigest(guideline: { title: string; body: string }): string {
+  return createHash("sha256").update(JSON.stringify([guideline.title, guideline.body])).digest("hex");
+}
+
 function publicAttempt(attempt: TestAttemptRecord & { _id: Types.ObjectId }, serverNow: Date, remainingAttempts?: number) {
   return {
     id: attempt._id.toString(),
@@ -43,6 +47,7 @@ function publicAttempt(attempt: TestAttemptRecord & { _id: Types.ObjectId }, ser
     })),
     scorePercent: attempt.scorePercent,
     tier: attempt.tier,
+    guidelineAcknowledgement: attempt.guidelineAcknowledgement,
     violations: attempt.violations,
     remainingAttempts,
     serverNow: serverNow.toISOString(),
@@ -118,8 +123,9 @@ export class AssessmentService {
   }
 
   async catalog(userId: string) {
-    const tests = await TestModel.find({}, { taxonomySlug: 1, questionCount: 1, timeLimitSeconds: 1, questions: 1 }).lean();
-    const available = tests.filter((test) => test.questions.filter((question) => question.status === "APPROVED").length >= test.questionCount);
+    const tests = await TestModel.find({}, { taxonomySlug: 1, guideline: 1, questionCount: 1, timeLimitSeconds: 1, questions: 1 }).lean();
+    const available = tests.filter((test) => test.guideline?.title && test.guideline?.body &&
+      test.questions.filter((question) => question.status === "APPROVED").length >= test.questionCount);
     return Promise.all(available.map(async (test) => {
       const taxonomy = await SkillTaxonomyModel.findOne({ slug: test.taxonomySlug, status: SkillTaxonomyStatus.ACTIVE }).lean();
       if (!taxonomy) return null;
@@ -129,6 +135,7 @@ export class AssessmentService {
         serviceLine: taxonomy.serviceLine,
         questionCount: test.questionCount,
         timeLimitSeconds: test.timeLimitSeconds,
+        guideline: { ...test.guideline, digest: guidelineDigest(test.guideline) },
         eligibility: await this.eligibility(userId, test.taxonomySlug),
       };
     })).then((rows) => rows.filter((row) => row !== null));
@@ -144,9 +151,13 @@ export class AssessmentService {
     return publicAttempt(attempt, this.now());
   }
 
-  async start(userId: string, slug: string) {
+  async start(userId: string, slug: string, acknowledgment: TestGuidelineAcknowledgementInput) {
     const test = await TestModel.findOne({ taxonomySlug: slug }).lean();
     if (!test) throw new NotFoundException("Category test not configured");
+    if (!test.guideline?.title || !test.guideline?.body) throw new ConflictException("Category guideline unavailable");
+    if (!acknowledgment?.acknowledged || acknowledgment.guidelineDigest !== guidelineDigest(test.guideline)) {
+      throw new ConflictException("Current guideline acknowledgement required");
+    }
     const candidate = new Types.ObjectId(userId);
     if (!await ProfileModel.exists({ userId: candidate })) {
       throw new ConflictException("Submitted freelancer profile missing");
@@ -182,6 +193,12 @@ export class AssessmentService {
       expiresAt: new Date(now.getTime() + test.timeLimitSeconds * 1000),
       passThresholdPercent: test.passThresholdPercent,
       tierBands: test.tierBands,
+      guidelineAcknowledgement: {
+        digest: acknowledgment.guidelineDigest,
+        title: test.guideline.title,
+        body: test.guideline.body,
+        acknowledgedAt: now,
+      },
       items,
       answers: [],
       violations: [],

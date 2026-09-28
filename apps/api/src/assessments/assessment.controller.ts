@@ -4,6 +4,7 @@ import {
 } from "@nestjs/common";
 import {
   type BusinessUnit, ProfileState, Role, testAnswersSchema, testConfigSchema,
+  testGuidelineAcknowledgementSchema, type TestGuidelineAcknowledgementInput,
   testQuestionSchema, testViolationSchema, type TestAnswersInput,
   type TestConfigInput, type TestQuestionInput, type TestViolationInput,
 } from "@eqourse/shared";
@@ -102,8 +103,9 @@ export class AssessmentController {
 
   @Post(":slug/attempts")
   @Header("Cache-Control", "no-store")
-  async start(@Req() request: AuthenticatedRequest, @Param("slug") slug: string) {
-    return this.assessments.start(await this.candidate(request), slug);
+  async start(@Req() request: AuthenticatedRequest, @Param("slug") slug: string,
+    @Body(new ZodBodyPipe(testGuidelineAcknowledgementSchema)) body: TestGuidelineAcknowledgementInput) {
+    return this.assessments.start(await this.candidate(request), slug, body);
   }
 
   @Post("attempts/:attemptId/violations")

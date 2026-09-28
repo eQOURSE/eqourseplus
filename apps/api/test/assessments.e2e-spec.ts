@@ -33,6 +33,10 @@ describe("FR-TST-01/05/06 assessment engine", () => {
       up: (database: mongoDriver.Db) => Promise<void>;
     };
     await migration.up(client.db("test"));
+    const guidelineMigration = require("../database/migrations/20260926000000-add-assessment-guidelines.cjs") as {
+      up: (database: mongoDriver.Db) => Promise<void>;
+    };
+    await guidelineMigration.up(client.db("test"));
     await client.close();
     await connect(mongo.getUri());
     await Promise.all([TestModel.init(), TestAttemptModel.init()]);
@@ -67,6 +71,7 @@ describe("FR-TST-01/05/06 assessment engine", () => {
   async function configure(): Promise<void> {
     await service.configure({
       taxonomySlug: slug,
+      guideline: { title: "Curriculum review rules", body: "Check the client rubric before answering." },
       timeLimitSeconds: 60,
       questionCount: 2,
       passThresholdPercent: 50,
@@ -88,23 +93,51 @@ describe("FR-TST-01/05/06 assessment engine", () => {
     }
   }
 
+  async function startAcknowledged() {
+    const catalog = await service.catalog(userId);
+    return service.start(userId, slug, { acknowledged: true, guidelineDigest: catalog[0]!.guideline.digest });
+  }
+
   it("configures a taxonomy category and serves randomized approved MCQs without keys", async () => {
     await configure();
-    const attempt = await service.start(userId, slug);
+    const catalog = await service.catalog(userId);
+    expect(catalog[0]?.guideline).toMatchObject({ title: "Curriculum review rules", body: "Check the client rubric before answering." });
+    await expect(service.start(userId, slug, { acknowledged: true, guidelineDigest: "0".repeat(64) }))
+      .rejects.toThrow(/acknowledg/i);
+    expect(await TestAttemptModel.countDocuments()).toBe(0);
+    const acknowledgment = { acknowledged: true as const, guidelineDigest: catalog[0]!.guideline.digest };
+    const attempt = await service.start(userId, slug, acknowledgment);
     expect(attempt.items).toHaveLength(2);
+    expect((await TestAttemptModel.findById(attempt.id).lean())?.guidelineAcknowledgement)
+      .toMatchObject({ digest: acknowledgment.guidelineDigest, title: "Curriculum review rules",
+        body: "Check the client rubric before answering.", acknowledgedAt: now });
     expect(JSON.stringify(attempt)).not.toContain("correctOptionId");
     expect(attempt.expiresAt).toEqual("2026-09-24T10:01:00.000Z");
     expect(attempt.remainingAttempts).toBe(1);
   });
 
+  it("invalidates a viewed guideline after an admin edit without starting the timer", async () => {
+    await configure();
+    const oldDigest = (await service.catalog(userId))[0]!.guideline.digest;
+    await service.configure({
+      taxonomySlug: slug, timeLimitSeconds: 60, questionCount: 2,
+      passThresholdPercent: 50, cooldownDays: 14, maxAttempts: 2,
+      tierBands: { silverMinPercent: 70, goldMinPercent: 90 },
+      guideline: { title: "Curriculum review rules", body: "Updated client rubric." },
+    });
+    await expect(service.start(userId, slug, { acknowledged: true, guidelineDigest: oldDigest }))
+      .rejects.toThrow(/acknowledg/i);
+    expect(await TestAttemptModel.countDocuments()).toBe(0);
+  });
+
   it("scores on the server, assigns a tier, and enforces cooldown and max attempts", async () => {
     await configure();
-    const first = await service.start(userId, slug);
+    const first = await startAcknowledged();
     const result = await service.submit(userId, first.id, []);
     expect(result.status).toBe("FAILED");
-    await expect(service.start(userId, slug)).rejects.toThrow(/cooldown/i);
+    await expect(startAcknowledged()).rejects.toThrow(/cooldown/i);
     now = new Date("2026-10-08T10:00:00Z");
-    const second = await service.start(userId, slug);
+    const second = await startAcknowledged();
     const saved = await TestAttemptModel.findById(second.id).lean();
     const answers = saved!.items.map((item) => ({
       questionId: item.questionId,
@@ -115,25 +148,27 @@ describe("FR-TST-01/05/06 assessment engine", () => {
     expect(passed.tier).toBe("GOLD");
     const profile = await ProfileModel.findOne({ userId }).lean();
     expect(profile?.assessmentBadges).toMatchObject([{ taxonomySlug: slug, tier: "GOLD", scorePercent: 100 }]);
-    await expect(service.start(userId, slug)).rejects.toThrow(/maximum/i);
+    await expect(startAcknowledged()).rejects.toThrow(/maximum/i);
   });
 
   it("keeps the scoring threshold that was active when the attempt began", async () => {
     await configure();
-    const started = await service.start(userId, slug);
+    const started = await startAcknowledged();
     await service.configure({
       taxonomySlug: slug, timeLimitSeconds: 60, questionCount: 2,
       passThresholdPercent: 90, cooldownDays: 14, maxAttempts: 2,
+      guideline: { title: "Curriculum review rules", body: "Check the updated client rubric before answering." },
       tierBands: { silverMinPercent: 90, goldMinPercent: 100 },
     });
     const saved = await TestAttemptModel.findById(started.id).lean();
+    expect(saved?.guidelineAcknowledgement?.body).toBe("Check the client rubric before answering.");
     const oneCorrect = [{ questionId: saved!.items[0]!.questionId, optionId: saved!.items[0]!.correctOptionId }];
     expect((await service.submit(userId, started.id, oneCorrect)).status).toBe("PASSED");
   });
 
   it("uses the server deadline and holds flagged results for review", async () => {
     await configure();
-    const first = await service.start(userId, slug);
+    const first = await startAcknowledged();
     await service.recordViolation(userId, first.id, "TAB_SWITCH");
     const saved = await TestAttemptModel.findById(first.id).lean();
     const answers = saved!.items.map((item) => ({
@@ -175,10 +210,13 @@ describe("FR-TST-01/05/06 assessment engine", () => {
       const config = {
         taxonomySlug: slug, timeLimitSeconds: 60, questionCount: 1,
         passThresholdPercent: 50, cooldownDays: 14, maxAttempts: 2,
+        guideline: { title: "Client rules", body: "Read the classification rules before the test." },
         tierBands: { silverMinPercent: 70, goldMinPercent: 90 },
       };
       await request(app.getHttpServer()).put("/api/v1/tests/config").set("x-test-role", Role.SUPER_ADMIN)
         .send(config).expect(200);
+      await request(app.getHttpServer()).put("/api/v1/tests/config").set("x-test-role", Role.SUPER_ADMIN)
+        .send({ ...config, guideline: { title: "", body: "Read the rules." } }).expect(400);
       const question = {
         id: "q1", kind: "MCQ", status: "DRAFT", prompt: "Which is correct?", difficulty: "EASY",
         options: ["a", "b", "c", "d"].map((id) => ({ id, text: id })), correctOptionId: "a",
@@ -195,9 +233,17 @@ describe("FR-TST-01/05/06 assessment engine", () => {
       const catalog = await request(app.getHttpServer()).get("/api/v1/tests/catalog")
         .set("x-test-role", Role.FREELANCER).expect(200);
       expect(catalog.body[0].taxonomySlug).toBe(slug);
+      expect(catalog.body[0].guideline).toMatchObject({ title: "Client rules", body: "Read the classification rules before the test." });
       expect(JSON.stringify(catalog.body)).not.toContain("correctOptionId");
+      await request(app.getHttpServer()).post(`/api/v1/tests/${slug}/attempts`)
+        .set("x-test-role", Role.FREELANCER).send({}).expect(400);
+      await request(app.getHttpServer()).post(`/api/v1/tests/${slug}/attempts`)
+        .set("x-test-role", Role.FREELANCER)
+        .send({ acknowledged: true, guidelineDigest: "0".repeat(64) }).expect(409);
+      expect(await TestAttemptModel.countDocuments()).toBe(0);
       const started = await request(app.getHttpServer()).post(`/api/v1/tests/${slug}/attempts`)
-        .set("x-test-role", Role.FREELANCER).expect(201);
+        .set("x-test-role", Role.FREELANCER)
+        .send({ acknowledged: true, guidelineDigest: catalog.body[0].guideline.digest }).expect(201);
       expect(JSON.stringify(started.body)).not.toContain("correctOptionId");
       const attempt = await TestAttemptModel.findById(started.body.id).lean();
       const submitted = await request(app.getHttpServer()).post(`/api/v1/tests/attempts/${started.body.id}/submit`)
@@ -209,6 +255,10 @@ describe("FR-TST-01/05/06 assessment engine", () => {
       const report = await request(app.getHttpServer()).get(`/api/v1/tests/attempts/${started.body.id}/report`)
         .set("x-test-role", Role.VERIFIER).expect(200);
       expect(report.body.scorePercent).toBe(100);
+      expect(report.body.guidelineAcknowledgement).toMatchObject({
+        digest: catalog.body[0].guideline.digest, title: "Client rules",
+        body: "Read the classification rules before the test.",
+      });
       const badge = await request(app.getHttpServer()).get(`/api/v1/tests/profiles/${userId}/badges/${slug}`)
         .set("x-test-role", Role.VERIFIER).expect(200);
       expect(badge.body.tier).toBe("GOLD");

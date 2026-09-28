@@ -1,5 +1,6 @@
 const { connect, disconnect } = require("mongoose");
 const { assertAssessmentSeedTarget } = require("./seed-target.cjs");
+const { GUIDELINES } = require("./showcase-guidelines.cjs");
 
 const SLUGS = [
   "eqourse-ai-data-services-annotation-bounding-box",
@@ -19,6 +20,7 @@ async function run() {
       }
       await TestModel.updateOne({ taxonomySlug }, { $setOnInsert: {
         taxonomySlug,
+        guideline: GUIDELINES[taxonomySlug],
         timeLimitSeconds: 900,
         questionCount: 10,
         passThresholdPercent: 70,
@@ -27,6 +29,11 @@ async function run() {
         tierBands: { silverMinPercent: 80, goldMinPercent: 90 },
         questions: [],
       } }, { upsert: true, runValidators: true });
+      await TestModel.updateOne(
+        { taxonomySlug, guideline: { $exists: false } },
+        { $set: { guideline: GUIDELINES[taxonomySlug] } },
+        { runValidators: true },
+      );
     }
     process.stdout.write("Showcase tests configured (3 categories; existing configurations preserved)\n");
   } finally { await disconnect(); }

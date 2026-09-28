@@ -5,6 +5,10 @@ const percent = z.number().int().min(0).max(100);
 
 export const testConfigSchema = z.object({
   taxonomySlug: slug,
+  guideline: z.object({
+    title: z.string().trim().min(1).max(200),
+    body: z.string().trim().min(1).max(10000),
+  }).strict(),
   timeLimitSeconds: z.number().int().positive(),
   questionCount: z.number().int().positive(),
   passThresholdPercent: percent,
@@ -31,7 +35,13 @@ export const testViolationSchema = z.object({
   kind: z.enum(["FULLSCREEN_EXIT", "TAB_SWITCH", "WINDOW_BLUR"]),
 }).strict();
 
+export const testGuidelineAcknowledgementSchema = z.object({
+  acknowledged: z.literal(true),
+  guidelineDigest: z.string().regex(/^[a-f0-9]{64}$/),
+}).strict();
+
 export type TestConfigInput = z.infer<typeof testConfigSchema>;
 export type TestQuestionInput = z.infer<typeof testQuestionSchema>;
 export type TestAnswersInput = z.infer<typeof testAnswersSchema>;
 export type TestViolationInput = z.infer<typeof testViolationSchema>;
+export type TestGuidelineAcknowledgementInput = z.infer<typeof testGuidelineAcknowledgementSchema>;

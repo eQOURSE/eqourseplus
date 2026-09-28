@@ -12,6 +12,7 @@ export interface TestQuestion {
 
 export interface TestRecord {
   taxonomySlug: string;
+  guideline: { title: string; body: string };
   timeLimitSeconds: number;
   questionCount: number;
   passThresholdPercent: number;
@@ -43,6 +44,10 @@ const tierBandsSchema = new Schema({
 
 export const testSchema = new Schema<TestRecord>({
   taxonomySlug: { type: String, required: true },
+  guideline: { type: new Schema({
+    title: { type: String, required: true, trim: true },
+    body: { type: String, required: true, trim: true },
+  }, { _id: false, strict: "throw" }), required: true },
   timeLimitSeconds: { type: Number, required: true, min: 1 },
   questionCount: { type: Number, required: true, min: 1 },
   passThresholdPercent: { type: Number, required: true, min: 0, max: 100 },

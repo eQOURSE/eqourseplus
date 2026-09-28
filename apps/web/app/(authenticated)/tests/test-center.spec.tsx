@@ -33,6 +33,7 @@ describe("FR-TST-01/05 test center", () => {
         taxonomySlug: "eqourse-ai-data-services-annotation-bounding-box",
         title: "Bounding Box", serviceLine: "AI Data Services", questionCount: 1,
         timeLimitSeconds: 900,
+        guideline: { title: "Bounding box rules", body: "Include worn backpacks in pedestrian boxes.", digest: "a".repeat(64) },
         eligibility: { remainingAttempts: 2, canStart: true, cooldownExpiry: null },
       }]), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
@@ -44,10 +45,20 @@ describe("FR-TST-01/05 test center", () => {
         ] }], violations: [],
       }), { status: 201 }));
     render(<TestCenter />);
+    fireEvent.click(await screen.findByRole("button", { name: /review guideline/i }));
     const button = await screen.findByRole("button", { name: /start test/i });
+    expect(screen.getByText("Include worn backpacks in pedestrian boxes.")).toBeInTheDocument();
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(fullScreen).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("checkbox", { name: /read.*guideline/i }));
     expect(button).not.toBeDisabled();
     fireEvent.click(button);
     await waitFor(() => expect(fullScreen).toHaveBeenCalledTimes(1));
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+      acknowledged: true, guidelineDigest: "a".repeat(64),
+    });
     expect(await screen.findByText("Identify the correct box.")).toBeInTheDocument();
     expect(screen.queryByText(/correctOptionId/)).not.toBeInTheDocument();
   });

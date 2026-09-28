@@ -20,6 +20,7 @@ export interface TestAttemptRecord {
   expiresAt: Date;
   passThresholdPercent: number;
   tierBands: { silverMinPercent: number; goldMinPercent: number };
+  guidelineAcknowledgement?: { digest: string; title: string; body: string; acknowledgedAt: Date };
   submittedAt?: Date;
   items: Array<{
     questionId: string;
@@ -62,6 +63,12 @@ export const testAttemptSchema = new Schema<TestAttemptRecord>({
   expiresAt: { type: Date, required: true },
   passThresholdPercent: { type: Number, required: true, min: 0, max: 100 },
   tierBands: { type: tierBandsSchema, required: true },
+  guidelineAcknowledgement: { type: new Schema({
+    digest: { type: String, required: true, match: /^[a-f0-9]{64}$/ },
+    title: { type: String, required: true },
+    body: { type: String, required: true },
+    acknowledgedAt: { type: Date, required: true },
+  }, { _id: false, strict: "throw" }) },
   submittedAt: { type: Date },
   items: { type: [itemSchema], required: true },
   answers: { type: [answerSchema], required: true, default: [] },
