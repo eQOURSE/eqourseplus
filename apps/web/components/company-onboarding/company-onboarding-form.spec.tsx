@@ -322,7 +322,15 @@ describe("generic company onboarding", () => {
     fireEvent.change(screen.getByLabelText("Legal name"), {
       target: { value: "Guest Company" },
     });
+    fireEvent.change(screen.getByLabelText("Trading name (optional)"), {
+      target: { value: "Guest Trading" },
+    });
     fireEvent.change(screen.getByLabelText("Country"), { target: { value: "SG" } });
+    fireEvent.click(screen.getByRole("button", { name: "Address" }));
+    fireEvent.change(screen.getByLabelText("Address line one"), { target: { value: "1 Guest Road" } });
+    fireEvent.change(screen.getByLabelText("City"), { target: { value: "Singapore" } });
+    fireEvent.change(screen.getByLabelText("Postal code"), { target: { value: "018989" } });
+    fireEvent.click(screen.getByRole("button", { name: "Company" }));
     fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
 
     expect(await screen.findByRole("heading", { name: "Create account to save" })).toBeVisible();
@@ -346,8 +354,48 @@ describe("generic company onboarding", () => {
     );
     expect(JSON.parse(String(createCall?.[1]?.body))).toMatchObject({
       legalName: "Guest Company",
+      tradingName: "Guest Trading",
       countryCode: "SG",
+      registeredAddress: expect.objectContaining({ line1: "1 Guest Road" }),
     });
+  });
+
+  it("does not recreate a draft when the first post-auth session read fails", async () => {
+    const onAuthenticated = vi.fn();
+    const session = {
+      userId: "user-1",
+      email: "owner@example.com",
+      roleAssignments: [],
+      profileState: "DRAFT",
+    };
+    let sessionReads = 0;
+    fetchMock.mockImplementation((path) => {
+      if (String(path).endsWith("/api/v1/auth/register/request")) return Promise.resolve(response({ status: "accepted", channels: ["email"] }));
+      if (path === "/api/auth/register/verify") return Promise.resolve(response({ ok: true }));
+      if (path === "/api/auth/session") {
+        sessionReads += 1;
+        return Promise.resolve(sessionReads === 1 ? response({}, 500) : response(session));
+      }
+      if (path === "/api/v1/vendors") return Promise.resolve(response(draft, 201));
+      return Promise.resolve(response(draft));
+    });
+
+    render(<CompanyOnboardingForm actor="vendor" guest onAuthenticated={onAuthenticated} />);
+    await waitFor(() => expect(screen.getByLabelText("Country")).toBeEnabled());
+    fireEvent.change(screen.getByLabelText("Legal name"), { target: { value: "Retry Company" } });
+    fireEvent.change(screen.getByLabelText("Country"), { target: { value: "SG" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    fireEvent.change(await screen.findByLabelText("Email address"), { target: { value: "owner@example.com" } });
+    fireEvent.change(screen.getByLabelText("Phone number"), { target: { value: "+6591234567" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
+    fireEvent.change(await screen.findByLabelText("Email verification code"), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "Verify and save draft" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("company draft was saved, but we could not load your session");
+    fireEvent.click(screen.getByRole("button", { name: "Verify and save draft" }));
+    await waitFor(() => expect(onAuthenticated).toHaveBeenCalledWith(session));
+    expect(fetchMock.mock.calls.filter(([path, init]) => path === "/api/v1/vendors" && init?.method === "POST")).toHaveLength(1);
+    expect(fetchMock.mock.calls.filter(([path]) => path === "/api/auth/register/verify")).toHaveLength(1);
   });
 
   it("offers existing users sign-in after the field-agnostic 409 and preserves their draft", async () => {

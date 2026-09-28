@@ -108,6 +108,17 @@ describe("FR-REG-02B profile wizard", () => {
     expect(screen.getByRole("heading", { name: "Personal" }).closest("section")).toHaveClass("onboarding-section-card");
   });
 
+  it("marks incomplete navigation sections with their missing required-field counts", async () => {
+    installFetch(profile({ personal: { firstName: "Ada" }, completionPercentage: 5 }));
+    await renderReady();
+
+    expect(screen.getByRole("button", { name: "Personal" })).toHaveAttribute("data-completion", "incomplete");
+    expect(screen.getByRole("button", { name: "Personal" })).toHaveTextContent("1 missing");
+    expect(screen.getByRole("button", { name: "Education" })).toHaveTextContent("4 missing");
+    expect(screen.getByRole("button", { name: "Samples" })).toHaveAttribute("data-completion", "incomplete");
+    expect(screen.getByRole("button", { name: "Samples" })).toHaveTextContent("1 missing");
+  });
+
   it("debounces typing into one save and does not repeat an unchanged draft", async () => {
     await renderReady();
     const firstName = screen.getByLabelText("First name");

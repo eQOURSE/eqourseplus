@@ -1988,7 +1988,137 @@ body {
   padding-top: 0.5rem;
 }
 
+.role-home--specialist {
+  gap: 1.5rem;
+}
+
+.role-home--specialist .role-home-header h1 {
+  font-size: clamp(2rem, 3vw, 2.8rem);
+}
+
+.role-home--specialist .role-home-live {
+  grid-template-columns: minmax(0, 2fr) minmax(17rem, 1fr);
+}
+
+.role-home--specialist .role-home-panel,
+.role-home--specialist .role-home-empty,
+.role-home--specialist .role-home-company-action {
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) * 2);
+  background: hsl(var(--card));
+  box-shadow: var(--shadow-card);
+}
+
+.role-home--specialist .role-home-live .role-home-panel:first-child {
+  min-height: 19rem;
+  background: radial-gradient(circle at 85% 20%, hsl(var(--accent) / 0.24), transparent 16rem), hsl(var(--card));
+}
+
+.role-home--specialist .role-home-panel h2 {
+  color: hsl(var(--muted-foreground));
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.role-home--specialist .role-home-live .role-home-panel:first-child p {
+  max-width: 36rem;
+  color: hsl(var(--foreground));
+  font-family: var(--font-heading);
+  font-size: clamp(1.35rem, 2vw, 1.8rem);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.role-home--specialist .role-home-live .home-registration-link {
+  justify-self: start;
+  align-self: end;
+}
+
+.role-home-readiness {
+  display: grid;
+  place-content: center;
+  justify-self: center;
+  width: 9rem;
+  aspect-ratio: 1;
+  border: 0.7rem solid transparent;
+  border-radius: 50%;
+  background: linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
+    conic-gradient(hsl(var(--primary)) var(--completion), hsl(var(--secondary)) 0) border-box;
+  text-align: center;
+}
+
+.role-home-readiness strong {
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.role-home-readiness span {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.role-home--specialist .role-home-facts {
+  justify-self: center;
+}
+
+.role-home-section-heading h2 {
+  margin: 0.25rem 0 0;
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+}
+
+.role-home--specialist .role-home-pending {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  border: 0;
+}
+
+.role-home--specialist .role-home-empty {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: start;
+  gap: 0.65rem;
+  min-height: 13rem;
+  padding: 1.5rem;
+}
+
+.role-home--specialist .role-home-empty:last-child {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.role-home--specialist .role-home-empty::before {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius);
+  background: hsl(var(--primary) / 0.12);
+  content: "";
+}
+
+.role-home--specialist .role-home-empty h2 {
+  font-size: 1.05rem;
+}
+
+.role-home--specialist .role-home-company-action {
+  padding: 1.5rem;
+}
+
+@media (max-width: 64rem) {
+  .role-home--specialist .role-home-pending {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 48rem) {
+  .role-home--specialist .role-home-live,
+  .role-home--specialist .role-home-pending {
+    grid-template-columns: 1fr;
+  }
   .role-home-live {
     grid-template-columns: 1fr;
   }
@@ -2438,6 +2568,31 @@ body {
 .company-onboarding-stepper button:focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
+}
+
+.onboarding-surface .company-onboarding-stepper button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.onboarding-surface .company-onboarding-stepper button[data-completion="incomplete"]:not([data-current="true"]) {
+  border-color: hsl(var(--primary) / 0.4);
+}
+
+.profile-step-gap {
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  background: hsl(var(--primary) / 0.13);
+  color: hsl(var(--primary));
+  font-size: 0.68rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.onboarding-surface .company-onboarding-stepper button[data-current="true"] .profile-step-gap {
+  background: hsl(var(--primary-foreground) / 0.2);
+  color: hsl(var(--primary-foreground));
 }
 
 .company-onboarding-subsection {

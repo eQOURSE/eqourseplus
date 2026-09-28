@@ -142,6 +142,11 @@ describe("FR-REG-02B authenticated profile draft API", () => {
 
   it("submits a complete draft through the guarded, audited profile transition", async () => {
     const owner = await account("submit-profile@example.com");
+    const upload = await request(app.getHttpServer())
+      .post("/api/v1/profiles/me/samples/upload-url")
+      .set("authorization", `Bearer ${owner.accessToken}`)
+      .send({ contentType: "application/pdf", size: 128 })
+      .expect(201);
     await connection.collection("skillTaxonomy").insertOne({
       businessUnit: "EQOURSE",
       serviceLine: "AI Data Services",
@@ -159,6 +164,7 @@ describe("FR-REG-02B authenticated profile draft API", () => {
       skills: [{ taxonomySlug: "eqourse-ai-data-services-annotation-bounding-box", level: "EXPERT" }],
       languages: [{ languageCode: "en-GB", proficiency: "NATIVE" }],
       experience: { totalMonths: 24, entries: [{ organization: "Example", title: "Annotator", startDate: "2024-01-01" }] },
+      samples: [{ title: "Portfolio", objectKey: upload.body.objectKey }],
       availability: { availableFrom: "2026-10-01", weeklyHours: 40, timeZone: "Europe/London" },
       rate: { amountMinor: 12_500, currencyCode: "GBP", unit: "HOUR" },
     }).expect(200);
@@ -289,6 +295,11 @@ describe("FR-REG-02B authenticated profile draft API", () => {
         updatedAt: new Date(),
       },
     ]);
+    const upload = await request(app.getHttpServer())
+      .post("/api/v1/profiles/me/samples/upload-url")
+      .set("authorization", `Bearer ${owner.accessToken}`)
+      .send({ contentType: "application/pdf", size: 128 })
+      .expect(201);
     const firstEntries = {
       personal: { firstName: "Ada", lastName: "Lovelace" },
       education: [
@@ -323,6 +334,7 @@ describe("FR-REG-02B authenticated profile draft API", () => {
         timeZone: "Europe/London",
       },
       rate: { amountMinor: 12_500, currencyCode: "GBP", unit: "HOUR" },
+      samples: [{ title: "Portfolio", objectKey: upload.body.objectKey }],
     };
 
     await saveProfile(owner.accessToken, firstEntries).expect(200);
