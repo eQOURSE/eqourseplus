@@ -71,8 +71,9 @@ jobs:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
     runs-on: ubuntu-latest
     env:
-      CORS_ORIGINS: "http://localhost:3000"
-      MAILER_PROVIDER: "sandbox"
+      CORS_ORIGINS: "http://localhost:3000,https://staging.plus.eqourse.com"
+      MAILER_PROVIDER: "resend"
+      OTP_EMAIL_FROM: ${{ vars.OTP_EMAIL_FROM }}
       SMS_PROVIDER: "sandbox"
       STORAGE_PROVIDER: "r2"
       R2_ENDPOINT: "https://50c49dfc680d966ef959aba266b04ea9.r2.cloudflarestorage.com"
@@ -86,6 +87,10 @@ jobs:
         run: |
           if [ -z "${CORS_ORIGINS:-}" ]; then
             echo "::error::Missing required runtime configuration: CORS_ORIGINS"
+            exit 1
+          fi
+          if [ -z "${OTP_EMAIL_FROM:-}" ]; then
+            echo "::error::Missing required runtime configuration: OTP_EMAIL_FROM"
             exit 1
           fi
 
@@ -123,6 +128,7 @@ jobs:
       # Unsuffixed secret names are PRODUCTION. Every non-production environment
       # must use an explicitly suffixed secret. Keep comments outside the folded
       # command below: a '#' inside it comments out every flag that follows.
+      # The @ delimiter preserves the comma between the two CORS origins.
       - name: Deploy staging API
         run: >-
           gcloud run deploy eqplus-api-staging
@@ -136,8 +142,8 @@ jobs:
           --network=default
           --subnet=default
           --vpc-egress=all-traffic
-          --set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",SMS_PROVIDER="${SMS_PROVIDER}",STORAGE_PROVIDER="${STORAGE_PROVIDER}",R2_ENDPOINT="${R2_ENDPOINT}",R2_BUCKET="${R2_BUCKET}"
-          --set-secrets=MONGODB_URI=MONGODB_URI_STAGING:latest,JWT_SECRET=JWT_SECRET_STAGING:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest
+          --set-env-vars="^@^CORS_ORIGINS=${CORS_ORIGINS}@MAILER_PROVIDER=${MAILER_PROVIDER}@OTP_EMAIL_FROM=${OTP_EMAIL_FROM}@SMS_PROVIDER=${SMS_PROVIDER}@STORAGE_PROVIDER=${STORAGE_PROVIDER}@R2_ENDPOINT=${R2_ENDPOINT}@R2_BUCKET=${R2_BUCKET}"
+          --set-secrets=MONGODB_URI=MONGODB_URI_STAGING:latest,JWT_SECRET=JWT_SECRET_STAGING:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest
           --startup-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=0,timeoutSeconds=2,periodSeconds=5,failureThreshold=12
           --liveness-probe=httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=10,timeoutSeconds=2,periodSeconds=30,failureThreshold=3
           --quiet
