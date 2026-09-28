@@ -6,7 +6,7 @@ the FR-FND-05 API pipeline. They do not deploy to Vercel or Utho.
 ## Execution order — do this before merging
 
 **Run every step in Sections 1–6 while the PR is still open, before merging it
-to `main`.** The staging workflow fires on the merge itself, so Artifact
+to `develop`.** The staging workflow fires on the merge itself, so Artifact
 Registry, all three service accounts, Workload Identity Federation,
 `MONGODB_URI`, `MONGODB_URI_STAGING`, `JWT_SECRET`, `JWT_SECRET_STAGING`,
 `VENDOR_IDENTIFIER_HMAC_SECRET`, `CLIENT_IDENTIFIER_HMAC_SECRET`, the per-service `CORS_ORIGINS`
@@ -113,13 +113,13 @@ foreach ($RuntimePrincipal in @($StagingRuntimeServiceAccount, $ProductionRuntim
 }
 ```
 
-## 3. Create the main-only GitHub Workload Identity Federation trust
+## 3. Allow develop and main in GitHub Workload Identity Federation
 
 The provider accepts tokens only when all three claims match:
 
 - repository owner is `eQOURSE`;
 - repository is exactly `eQOURSE/eqourseplus`;
-- Git ref is exactly `refs/heads/main`.
+- Git ref is exactly `refs/heads/develop` or `refs/heads/main`.
 
 Tokens from forks, pull-request refs, tags, and arbitrary branches are rejected
 by the provider before service-account impersonation is considered.
@@ -134,10 +134,10 @@ gcloud iam workload-identity-pools providers create-oidc $ProviderId `
   --project=$ProjectId `
   --location=global `
   --workload-identity-pool=$PoolId `
-  --display-name="eQOURSE eqourseplus main" `
+  --display-name="eQOURSE eqourseplus deployment branches" `
   --issuer-uri="https://token.actions.githubusercontent.com" `
   --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.repository_owner=assertion.repository_owner,attribute.ref=assertion.ref" `
-  --attribute-condition="assertion.repository_owner=='eQOURSE' && assertion.repository=='eQOURSE/eqourseplus' && assertion.ref=='refs/heads/main'"
+  --attribute-condition="assertion.repository_owner=='eQOURSE' && assertion.repository=='eQOURSE/eqourseplus' && assertion.ref in ['refs/heads/develop', 'refs/heads/main']"
 
 gcloud iam service-accounts add-iam-policy-binding $DeployServiceAccount `
   --project=$ProjectId `
@@ -146,6 +146,17 @@ gcloud iam service-accounts add-iam-policy-binding $DeployServiceAccount `
 ```
 
 No service-account key is created or downloaded.
+
+For the already-created provider, update its condition before the first
+`develop` merge. Do not recreate the pool, provider, or service account:
+
+```powershell
+gcloud iam workload-identity-pools providers update-oidc $ProviderId `
+  --project=$ProjectId `
+  --location=global `
+  --workload-identity-pool=$PoolId `
+  --attribute-condition="assertion.repository_owner=='eQOURSE' && assertion.repository=='eQOURSE/eqourseplus' && assertion.ref in ['refs/heads/develop', 'refs/heads/main']"
+```
 
 ## 4. Create runtime secrets without putting their values in chat or files
 
@@ -412,6 +423,24 @@ The workflow declares `environment: production`; the production job will remain
 visibly waiting until a configured reviewer approves it. Merely allowing
 GitHub to auto-create an unprotected environment would not satisfy FR-FND-05.
 
+### 6.1 Protect develop and main promotion
+
+In GitHub repository branch protection or rulesets, require a pull request and
+the `Lint, test, and build` check before merging into both `develop` and `main`.
+Require human review for each. Allow only merge commits for the `develop` to
+`main` release PR; disable squash and rebase merging for this repository and
+block direct pushes to `main`. The second parent of that merge commit must be
+the tested `develop` tip. Do not use CI to merge or push `develop` into `main`.
+After the `develop` push workflow succeeds, open a PR with base `main` and head
+`develop`, review it, and merge it. The `main` workflow verifies the merge
+parents, the successful staging job for the source SHA, and the SHA-tagged image
+before the approval-gated production deploy. A missing image or staging run
+fails the release. Successful production health creates an annotated UTC
+`prod-YYYYMMDD-HHMM` tag on the `main` merge commit; its message records the
+promoted source SHA and image digest. The production job needs `contents: write`
+to push this tag; the repository ruleset must allow the GitHub Actions identity
+to create tags matching `prod-*`.
+
 ## 7. Pre-merge verification
 
 Run these while the PR is still open:
@@ -451,7 +480,7 @@ reviewer. Only then merge the PR.
 
 ## 8. Post-merge acceptance verification
 
-The staging job builds and pushes the commit-SHA image, deploys
+The `develop` push staging job builds and pushes the commit-SHA image, deploys
 `eqplus-api-staging` in `asia-south1` with `min-instances=0`, public invocation,
 `CORS_ORIGINS=http://localhost:3000` as non-secret runtime configuration,
 Secret Manager injection from `MONGODB_URI_STAGING` and `JWT_SECRET_STAGING`
@@ -463,8 +492,11 @@ Production receives
 `CORS_ORIGINS=https://plus.eqourse.com` and the unsuffixed production secrets
 `MONGODB_URI` and `JWT_SECRET` only after manual approval.
 
-After that succeeds, the `Deploy production API` job must be visibly waiting
-for approval. Approve it only when you intend to promote that exact commit image.
+After staging succeeds, merge the reviewed `develop` to `main` PR. The `main`
+workflow runs its own lint, test, and build checks; `Deploy production API`
+then waits for approval. Approve it only when you intend to promote the exact
+staging image, without a rebuild. Verify the resulting `prod-*` annotated tag
+points to the `main` merge commit after production `/health` succeeds.
 
 Verify staging independently:
 

@@ -89,14 +89,16 @@ describe("FR-FND-04 CI workflow", () => {
     expect(ciJob).not.toContain("MONGODB_URI");
   });
 
-  it("cancels superseded PR runs and leaves a main-only staging deploy hook", () => {
+  it("checks pull requests and pushes to both protected branches", () => {
     const workflow = readFileSync(workflowPath, "utf8");
 
     expect(workflow).toMatch(/^concurrency:\s*$/m);
-    expect(workflow).toMatch(/cancel-in-progress:\s*true/);
+    expect(workflow).toContain("cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}");
     expect(workflow).toMatch(/^\s+push:\s*$/m);
     expect(workflow).toMatch(/^\s+- main\s*$/m);
+    expect(workflow).toMatch(/^\s+- develop\s*$/m);
     expect(workflow).toContain("staging-deploy");
+    expect(workflow).toContain("refs/heads/develop");
     expect(workflow).toContain("github.event_name == 'push'");
     expect(workflow).toContain("FR-FND-05");
   });
@@ -126,7 +128,7 @@ describe("FR-FND-05 API deployment", () => {
     expect(dockerignore).toContain("node_modules");
   });
 
-  it("builds one immutable image and deploys staging from main with keyless auth", () => {
+  it("builds one SHA image and deploys staging from develop with keyless auth", () => {
     const workflow = readFileSync(workflowPath, "utf8");
 
     expect(workflow).toContain("FR-FND-05");
@@ -136,7 +138,7 @@ describe("FR-FND-05 API deployment", () => {
     expect(workflow).toContain("IMAGE_NAME: eqplus-api");
     expect(workflow).toMatch(/staging-deploy:[\s\S]+needs: ci/);
     expect(workflow).toMatch(
-      /staging-deploy:[\s\S]+github\.event_name == 'push'[\s\S]+refs\/heads\/main/,
+      /staging-deploy:[\s\S]+github\.event_name == 'push'[\s\S]+refs\/heads\/develop/,
     );
     expect(workflow).toMatch(
       /staging-deploy:[\s\S]+permissions:[\s\S]+contents: read[\s\S]+id-token: write/,
@@ -167,16 +169,25 @@ describe("FR-FND-05 API deployment", () => {
     expect(workflow).not.toMatch(/service[_-]account[_-]key/i);
   });
 
-  it("deploys the same commit image to production only through its approval environment", () => {
+  it("promotes the successful develop image without rebuilding behind production approval", () => {
     const workflow = readFileSync(workflowPath, "utf8");
+    const productionJob = workflow.slice(workflow.indexOf("  production-deploy:"));
 
     expect(workflow).toMatch(
-      /production-deploy:[\s\S]+needs: staging-deploy[\s\S]+environment:\s*\n\s+name: production/,
+      /production-deploy:[\s\S]+needs: ci[\s\S]+environment:\s*\n\s+name: production/,
     );
+    expect(productionJob).toContain("refs/heads/main");
+    expect(productionJob).toContain("HEAD^2");
+    expect(productionJob).toContain('"$(git rev-parse origin/develop)"');
+    expect(productionJob).toContain("actions/workflows/ci.yml/runs");
+    expect(productionJob).toContain('"Build, push, and deploy staging API"');
+    expect(productionJob).toContain("gcloud artifacts docker images describe");
+    expect(productionJob).toContain('PROMOTED_IMAGE="${IMAGE_BASE}@${DIGEST}"');
+    expect(productionJob).toContain("status.imageDigest");
+    expect(productionJob).not.toContain("docker build");
+    expect(productionJob).not.toContain("docker push");
     expect(workflow).toContain("gcloud run deploy eqplus-api");
-    expect(workflow).toContain(
-      "asia-south1-docker.pkg.dev/eqplus-503212/eqplus-api/eqplus-api:${{ github.sha }}",
-    );
+    expect(productionJob).toContain('--image="${PROMOTED_IMAGE}"');
     expect(
       workflow.match(/--region=asia-south1/g)?.length,
     ).toBeGreaterThanOrEqual(2);
@@ -195,6 +206,17 @@ describe("FR-FND-05 API deployment", () => {
     expect(
       workflow.match(/--liveness-probe=httpGet\.path=\/health/g)?.length,
     ).toBeGreaterThanOrEqual(2);
+  });
+
+  it("tags the main merge commit only after production health succeeds", () => {
+    const productionJob = readFileSync(workflowPath, "utf8").split("  production-deploy:")[1];
+    expect(productionJob.indexOf("Verify production health")).toBeLessThan(
+      productionJob.indexOf("Tag production release"),
+    );
+    expect(productionJob).toContain("contents: write");
+    expect(productionJob).toContain("git tag -a");
+    expect(productionJob).toContain("prod-%Y%m%d-%H%M");
+    expect(productionJob).toContain("git push origin");
   });
 
   it("binds staging and production to separate MongoDB secrets", () => {
@@ -389,17 +411,19 @@ describe("FR-FND-05 API deployment", () => {
     );
   });
 
-  it("documents the pre-merge, main-only WIF and Secret Manager setup", () => {
+  it("documents develop and main WIF trust and Secret Manager setup", () => {
     const runbook = readFileSync(deploymentRunbookPath, "utf8");
 
     expect(runbook).toMatch(/before merging/i);
     expect(runbook).toContain("eQOURSE/eqourseplus");
     expect(runbook).toContain("refs/heads/main");
+    expect(runbook).toContain("refs/heads/develop");
     expect(runbook).toContain("assertion.repository_owner=='eQOURSE'");
     expect(runbook).toContain(
       "assertion.repository=='eQOURSE/eqourseplus'",
     );
-    expect(runbook).toContain("assertion.ref=='refs/heads/main'");
+    expect(runbook).toContain("assertion.ref in ['refs/heads/develop', 'refs/heads/main']");
+    expect(runbook).toContain("providers update-oidc");
     expect(runbook).toContain("roles/iam.workloadIdentityUser");
     expect(runbook).toContain("gcloud secrets create MONGODB_URI_STAGING");
     expect(runbook).toContain("gcloud secrets create MONGODB_URI");

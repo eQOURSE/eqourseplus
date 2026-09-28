@@ -4,10 +4,8 @@ on:
   pull_request:
   push:
     branches:
+      - develop
       - main
-    paths-ignore:
-      - docs/**
-      - '**.md'
 
 permissions:
   contents: read
@@ -23,7 +21,7 @@ env:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   ci:
@@ -67,10 +65,10 @@ jobs:
         run: pnpm build
 
   staging-deploy:
-    # FR-FND-05: build once on main, then promote this immutable image to prod.
+    # FR-FND-05: build once on develop, then promote this immutable image to prod.
     name: Build, push, and deploy staging API
     needs: ci
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
     runs-on: ubuntu-latest
     env:
       CORS_ORIGINS: "http://localhost:3000"
@@ -112,6 +110,15 @@ jobs:
       - name: Push API image
         run: docker push "${IMAGE_URI}"
 
+      - name: Pin staging image by digest
+        run: |
+          DIGEST="$(gcloud artifacts docker images describe "${IMAGE_URI}" --project="${PROJECT_ID}" --format='value(image_summary.digest)')"
+          if [[ ! "${DIGEST}" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "::error::Built image has no valid digest"
+            exit 1
+          fi
+          echo "STAGED_IMAGE=${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/${IMAGE_NAME}@${DIGEST}" >> "${GITHUB_ENV}"
+
       # Route all egress through the VPC so Atlas sees the NAT's static address.
       # Unsuffixed secret names are PRODUCTION. Every non-production environment
       # must use an explicitly suffixed secret. Keep comments outside the folded
@@ -121,7 +128,7 @@ jobs:
           gcloud run deploy eqplus-api-staging
           --project=eqplus-503212
           --region=asia-south1
-          --image="${IMAGE_URI}"
+          --image="${STAGED_IMAGE}"
           --service-account="${STAGING_RUNTIME_SERVICE_ACCOUNT}"
           --port=8080
           --min-instances=0
@@ -151,7 +158,7 @@ jobs:
 
   production-deploy:
     name: Deploy production API
-    needs: staging-deploy
+    needs: ci
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     environment:
@@ -165,7 +172,8 @@ jobs:
       R2_ENDPOINT: "https://50c49dfc680d966ef959aba266b04ea9.r2.cloudflarestorage.com"
       R2_BUCKET: "eqplus-prod-kyc-docs"
     permissions:
-      contents: read
+      contents: write
+      actions: read
       id-token: write
 
     steps:
@@ -181,6 +189,39 @@ jobs:
           fi
 
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve and validate staged develop commit
+        run: |
+          PARENTS="$(git rev-list --parents -n 1 HEAD)"
+          if [ "$(wc -w <<< "${PARENTS}")" -ne 3 ]; then
+            echo "::error::Production requires a two-parent develop-to-main merge commit"
+            exit 1
+          fi
+          SOURCE_SHA="$(git rev-parse HEAD^2)"
+          if [ "${SOURCE_SHA}" != "$(git rev-parse origin/develop)" ]; then
+            echo "::error::Merge second parent is not the current develop tip"
+            exit 1
+          fi
+          echo "SOURCE_SHA=${SOURCE_SHA}" >> "${GITHUB_ENV}"
+
+      - name: Verify source commit passed staging deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_IDS="$(gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs" -f branch=develop -f head_sha="${SOURCE_SHA}" -f event=push -f status=success --jq '.workflow_runs[].id')"
+          VERIFIED=false
+          for RUN_ID in ${RUN_IDS}; do
+            if gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/jobs?per_page=100" --jq '.jobs[] | select(.name == "Build, push, and deploy staging API" and .conclusion == "success") | .id' | grep -q .; then
+              VERIFIED=true
+              break
+            fi
+          done
+          if [ "${VERIFIED}" != true ]; then
+            echo "::error::No successful staging deployment found for ${SOURCE_SHA}"
+            exit 1
+          fi
 
       - name: Authenticate to Google Cloud with Workload Identity Federation
         uses: google-github-actions/auth@v3
@@ -192,6 +233,23 @@ jobs:
       - name: Set up Google Cloud CLI
         uses: google-github-actions/setup-gcloud@v3
 
+      - name: Resolve exact staged image digest
+        run: |
+          IMAGE_BASE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/${IMAGE_NAME}"
+          DIGEST="$(gcloud artifacts docker images describe "${IMAGE_BASE}:${SOURCE_SHA}" --project="${PROJECT_ID}" --format='value(image_summary.digest)')"
+          if [[ ! "${DIGEST}" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "::error::Staged image is missing or has an invalid digest"
+            exit 1
+          fi
+          PROMOTED_IMAGE="${IMAGE_BASE}@${DIGEST}"
+          STAGING_REVISION="$(gcloud run services describe eqplus-api-staging --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.latestReadyRevisionName)')"
+          STAGING_DIGEST="$(gcloud run revisions describe "${STAGING_REVISION}" --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.imageDigest)')"
+          if [ "${STAGING_DIGEST}" != "${PROMOTED_IMAGE}" ] && [ "${STAGING_DIGEST}" != "${DIGEST}" ]; then
+            echo "::error::Staging is not running the image selected for promotion"
+            exit 1
+          fi
+          echo "PROMOTED_IMAGE=${PROMOTED_IMAGE}" >> "${GITHUB_ENV}"
+
       # Route all egress through the VPC so Atlas sees the NAT's static address.
       # Unsuffixed secret names are PRODUCTION and belong only to this job. Keep
       # comments outside the folded command below: a '#' inside it comments out
@@ -201,7 +259,7 @@ jobs:
           gcloud run deploy eqplus-api
           --project=eqplus-503212
           --region=asia-south1
-          --image="${IMAGE_URI}"
+          --image="${PROMOTED_IMAGE}"
           --service-account="${PRODUCTION_RUNTIME_SERVICE_ACCOUNT}"
           --port=8080
           --min-instances=0
@@ -228,3 +286,11 @@ jobs:
         run: |
           SERVICE_URL="$(gcloud run services describe eqplus-api --project=eqplus-503212 --region=asia-south1 --format='value(status.url)')"
           curl --fail --retry 12 --retry-all-errors --retry-delay 5 "${SERVICE_URL}/health"
+
+      - name: Tag production release
+        run: |
+          TAG="$(date -u +prod-%Y%m%d-%H%M)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${TAG}" "${GITHUB_SHA}" -m "Production release ${TAG}; image source ${SOURCE_SHA}; image ${PROMOTED_IMAGE}"
+          git push origin "refs/tags/${TAG}"
