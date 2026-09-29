@@ -20,6 +20,12 @@ export interface ProfileRecord {
   samples?: Array<Record<string, unknown>>;
   availability?: Record<string, unknown>;
   rate?: Record<string, unknown>;
+  assessmentBadges: Array<{
+    taxonomySlug: string;
+    tier: "BRONZE" | "SILVER" | "GOLD";
+    scorePercent: number;
+    awardedAt: Date;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -125,6 +131,16 @@ const rateSchema = new Schema(
   { _id: false, strict: "throw" },
 );
 
+const assessmentBadgeSchema = new Schema(
+  {
+    taxonomySlug: { type: String, required: true },
+    tier: { type: String, enum: ["BRONZE", "SILVER", "GOLD"], required: true },
+    scorePercent: { type: Number, min: 0, max: 100, required: true },
+    awardedAt: { type: Date, required: true },
+  },
+  { _id: false, strict: "throw" },
+);
+
 export const profileSchema = new Schema<ProfileRecord>(
   {
     userId: { type: Schema.Types.ObjectId, required: true },
@@ -143,6 +159,7 @@ export const profileSchema = new Schema<ProfileRecord>(
     samples: optionalArray(sampleSchema),
     availability: { type: availabilitySchema },
     rate: { type: rateSchema },
+    assessmentBadges: { type: [assessmentBadgeSchema], required: true, default: [] },
   },
   {
     collection: "profiles",
