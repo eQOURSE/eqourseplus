@@ -73,6 +73,31 @@ describe("FR-PUB-01 home page", () => {
     expect(cockpitSource).not.toContain("telementry-live");
   });
 
+  it("renders the categories section as the same selectable explorer pattern as How It Works", () => {
+    render(<HomePage />);
+
+    const categories = document.getElementById("categories");
+    expect(categories?.querySelector('[role="tablist"]')).not.toBeNull();
+    expect(categories?.querySelectorAll('[role="tab"]')).toHaveLength(3);
+    expect(categories?.querySelector('[role="tabpanel"]')).not.toBeNull();
+    expect(categories?.querySelector(".advantageGrid")).toBeNull();
+  });
+
+  it("renders the seven-step circular How It Works animation", () => {
+    render(<HomePage />);
+
+    const orbit = document.querySelector('[data-workflow-orbit="true"]');
+    expect(orbit).not.toBeNull();
+    expect(orbit?.querySelectorAll('[data-workflow-node]')).toHaveLength(7);
+    expect(orbit?.querySelectorAll('[data-workflow-node-counter]')).toHaveLength(7);
+    expect(orbit?.querySelector('[data-workflow-center]')).toHaveAttribute(
+      "aria-label",
+      "eQOURSE Strategy",
+    );
+    expect(homeStyles).toMatch(/\.workflowOrbitNode\s*\{[^}]*translateY\(-35cqw\)/s);
+    expect(homeStyles).toMatch(/\.workflowOrbitNodeCounter\s*\{[^}]*workflowOrbitCounter/s);
+  });
+
   it("uses the exact Figma typography, palette, frame width and section geometry", () => {
     expect(homeStyles).toMatch(/--figma-ink:\s*#18181b/);
     expect(homeStyles).toMatch(/--figma-teal:\s*#0f766e/);

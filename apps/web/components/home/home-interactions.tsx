@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import styles from "./home-redesign.module.css";
 
@@ -69,6 +69,55 @@ const specializationTracks = [
   ["RLHF, preference ranking and red-teaming", "Human feedback ranking, adversarial prompt design, bias mitigation and safety rubric enforcement."],
 ] as const;
 
+const workflowOrbitNodes = [
+  ["01", "Understand", "⌁"],
+  ["02", "Plan", "▤"],
+  ["03", "Develop", "□"],
+  ["04", "Communicate", "◌"],
+  ["05", "Quality Check", "✓"],
+  ["06", "Deliver", "↗"],
+  ["07", "Feedback", "✦"],
+] as const;
+
+export function WorkflowOrbit() {
+  const [active, setActive] = useState(0);
+  const activeNode = workflowOrbitNodes[active] ?? workflowOrbitNodes[0];
+
+  return (
+    <div className={styles.workflowOrbit} data-workflow-orbit="true">
+      <div className={styles.workflowOrbitGlow} aria-hidden="true" />
+      <div className={styles.workflowOrbitTrack} role="group" aria-label="eQOURSE+ delivery workflow">
+        <div className={styles.workflowOrbitPath} aria-hidden="true" />
+        {workflowOrbitNodes.map(([number, title, icon], index) => (
+          <button
+            key={number}
+            type="button"
+            className={styles.workflowOrbitNode}
+            data-workflow-node
+            aria-pressed={active === index}
+            aria-label={`${number} ${title}`}
+            style={{ "--orbit-angle": `${(index / workflowOrbitNodes.length) * 360}deg` } as CSSProperties}
+            onClick={() => setActive(index)}
+          >
+            <span className={styles.workflowOrbitNodeContent}>
+              <span className={styles.workflowOrbitNodeCounter} data-workflow-node-counter>
+                <span className={styles.workflowOrbitNodeFace} aria-hidden="true">{icon}</span>
+                <small>{number}</small>
+                <strong>{title}</strong>
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
+      <div className={styles.workflowOrbitCenter} data-workflow-center aria-label="eQOURSE Strategy" aria-live="polite">
+        <span>eQOURSE</span>
+        <strong>Strategy</strong>
+        <small>{activeNode?.[1]}</small>
+      </div>
+    </div>
+  );
+}
+
 export function SpecializationTracks() {
   const [active, setActive] = useState(0);
   const track = specializationTracks[active] ?? specializationTracks[0];
@@ -111,6 +160,130 @@ export function SpecializationTracks() {
         </div>
         <div className={styles.specializationFooter}>
           <span>Track {String(active + 1).padStart(2, "0")} of {String(specializationTracks.length).padStart(2, "0")}</span>
+          <span aria-hidden="true">✦</span>
+        </div>
+      </article>
+    </div>
+  );
+}
+
+export type PillarExplorerItem = {
+  title: string;
+  body: string;
+  bullets: readonly string[];
+  cta: string;
+  href: string;
+  more?: string;
+  moreHref?: string;
+};
+
+export function PillarExplorer({ items }: { items: readonly PillarExplorerItem[] }) {
+  const SCROLL_STEP_PX = 220;
+  const [active, setActive] = useState(0);
+  const activeRef = useRef(0);
+  const explorerRef = useRef<HTMLDivElement>(null);
+  const scrollDistanceRef = useRef(0);
+  const sectionActiveRef = useRef(false);
+  const item = items[active] ?? items[0];
+
+  const selectActive = (next: number) => {
+    activeRef.current = next;
+    setActive(next);
+  };
+
+  useEffect(() => {
+    const explorer = explorerRef.current;
+    if (!explorer || items.length < 2) return;
+
+    const onWheel = (event: WheelEvent) => {
+      const rect = explorer.getBoundingClientRect();
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 1;
+      const sectionIsActive = rect.top <= viewportHeight * 0.58 && rect.bottom >= viewportHeight * 0.42;
+
+      if (!sectionIsActive) {
+        sectionActiveRef.current = false;
+        scrollDistanceRef.current = 0;
+        if (rect.top > viewportHeight * 0.58 && activeRef.current !== 0) selectActive(0);
+        return;
+      }
+
+      if (event.deltaY === 0) return;
+      if (!sectionActiveRef.current) {
+        sectionActiveRef.current = true;
+        scrollDistanceRef.current = 0;
+        if (activeRef.current !== 0) selectActive(0);
+      }
+
+      const direction = event.deltaY > 0 ? 1 : -1;
+      const atBoundary = (direction < 0 && activeRef.current === 0) ||
+        (direction > 0 && activeRef.current === items.length - 1);
+      if (atBoundary) {
+        scrollDistanceRef.current = 0;
+        return;
+      }
+
+      event.preventDefault();
+      scrollDistanceRef.current += event.deltaY;
+      const steps = Math.floor(Math.abs(scrollDistanceRef.current) / SCROLL_STEP_PX);
+      if (steps > 0) {
+        const next = Math.min(
+          items.length - 1,
+          Math.max(0, activeRef.current + direction * steps),
+        );
+        scrollDistanceRef.current %= SCROLL_STEP_PX;
+        selectActive(next);
+      }
+    };
+
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => window.removeEventListener("wheel", onWheel);
+  }, [items.length]);
+
+  if (!item) return null;
+
+  return (
+    <div ref={explorerRef} className={styles.specializationExplorer} data-scroll-switch="true">
+      <div className={styles.specializationList} data-scroll-options="vertical" role="tablist" aria-label="eQOURSE+ delivery paths">
+        {items.map((entry, index) => (
+          <button
+            key={entry.title}
+            type="button"
+            role="tab"
+            aria-selected={active === index}
+            aria-controls="pillar-detail"
+            id={`pillar-track-${index}`}
+            onClick={() => selectActive(index)}
+          >
+            <span className={styles.specializationNumber}>{String(index + 1).padStart(2, "0")}</span>
+            <span>{entry.title}</span>
+            <i aria-hidden="true">→</i>
+          </button>
+        ))}
+      </div>
+      <article
+        id="pillar-detail"
+        role="tabpanel"
+        aria-live="polite"
+        aria-labelledby={`pillar-track-${active}`}
+        className={`${styles.specializationDetail} eq-frosted eq-frosted--card`}
+      >
+        <div className={styles.specializationDetailTop}>
+          <span>DELIVERY PATH</span>
+          <b>TRANSPARENT BY DESIGN</b>
+        </div>
+        <h3>{item.title}</h3>
+        <p>{item.body}</p>
+        <div className={styles.specializationSignals} aria-label={`${item.title} benefits`}>
+          {item.bullets.slice(0, 3).map((bullet) => (
+            <div key={bullet}>
+              <span aria-hidden="true">✓</span>
+              <strong>{bullet.split(":")[0]}</strong>
+              <small>{bullet.includes(":") ? bullet.slice(bullet.indexOf(":") + 1).trim() : bullet}</small>
+            </div>
+          ))}
+        </div>
+        <div className={styles.specializationFooter}>
+          <Link className="home-text-link" href={item.href}>{item.cta} <span aria-hidden="true">→</span></Link>
           <span aria-hidden="true">✦</span>
         </div>
       </article>

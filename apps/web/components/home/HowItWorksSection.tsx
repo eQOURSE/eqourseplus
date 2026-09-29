@@ -1,4 +1,4 @@
-import { SpecializationTracks } from "./home-interactions";
+import { WorkflowOrbit } from "./home-interactions";
 import styles from "./home-redesign.module.css";
 import { FadeIn } from "./motion";
 
@@ -12,7 +12,7 @@ export function HowItWorksSection() {
           <span>Connect your capabilities to projects that need specialist depth.</span>
         </FadeIn>
         <FadeIn delay={0.15}>
-          <SpecializationTracks />
+          <WorkflowOrbit />
         </FadeIn>
       </div>
     </section>

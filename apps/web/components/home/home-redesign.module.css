@@ -307,7 +307,7 @@
   margin: 24px 0 0;
   color: hsl(var(--foreground));
   font-family: var(--font-plus-jakarta-sans);
-  font-size: clamp(28px, 5.5vw, 60px);
+  font-size: clamp(28px, 5.5vw, 70px);
   font-weight: 800;
   letter-spacing: -2px;
   line-height: 1.1;
@@ -1190,6 +1190,187 @@
   background: hsl(var(--surface-sunken) / 0.48);
 }
 
+.workflowOrbit {
+  position: relative;
+  width: min(100%, 720px);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  container-type: inline-size;
+  isolation: isolate;
+}
+
+.workflowOrbitGlow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, hsl(var(--accent) / 0.3), hsl(var(--primary) / 0.12) 54%, transparent 72%);
+  filter: blur(28px);
+  transform: translate(-50%, -50%);
+  animation: workflowOrbitPulse 4.8s ease-in-out infinite;
+}
+
+.workflowOrbitTrack {
+  position: absolute;
+  inset: 0;
+  animation: workflowOrbitSpin 32s linear infinite;
+}
+
+.workflowOrbitPath {
+  position: absolute;
+  inset: 15%;
+  border: 2px dashed hsl(var(--primary) / 0.22);
+  border-radius: 50%;
+}
+
+.workflowOrbitNode {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: clamp(78px, 15cqw, 108px);
+  justify-items: center;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  text-align: center;
+  transform: translate(-50%, -50%) rotate(var(--orbit-angle)) translateY(-35cqw);
+  transform-origin: center;
+}
+
+.workflowOrbitNodeContent {
+  transform: rotate(calc(-1 * var(--orbit-angle)));
+}
+
+.workflowOrbitNodeCounter {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  animation: workflowOrbitCounter 32s linear infinite;
+}
+
+.workflowOrbitNodeFace {
+  display: grid;
+  width: clamp(58px, 10cqw, 76px);
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid hsl(var(--accent) / 0.28);
+  border-radius: 18px;
+  background: linear-gradient(145deg, hsl(var(--accent) / 0.86), hsl(var(--primary) / 0.94));
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.35),
+    0 12px 26px hsl(var(--primary) / 0.2);
+  color: white;
+  font-size: clamp(22px, 4cqw, 32px);
+  font-weight: 500;
+  transition: transform var(--motion-hover) var(--ease-spring), box-shadow var(--motion-hover) var(--ease-standard);
+}
+
+.workflowOrbitNode small {
+  color: hsl(var(--primary) / 0.68);
+  font: 700 10px/1 var(--font-inter);
+}
+
+.workflowOrbitNode strong {
+  max-width: 9rem;
+  font: 700 clamp(11px, 1.8cqw, 16px)/1.25 var(--font-plus-jakarta-sans);
+}
+
+.workflowOrbitNode:hover .workflowOrbitNodeFace,
+.workflowOrbitNode:focus-visible .workflowOrbitNodeFace,
+.workflowOrbitNode[aria-pressed="true"] .workflowOrbitNodeFace {
+  transform: scale(1.1);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.5),
+    0 0 0 6px hsl(var(--accent) / 0.14),
+    0 18px 34px hsl(var(--primary) / 0.3);
+}
+
+.workflowOrbitNode:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 8px;
+}
+
+.workflowOrbitCenter {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 31%;
+  aspect-ratio: 1;
+  place-content: center;
+  justify-items: center;
+  border: 1px solid hsl(var(--accent) / 0.32);
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 24%, hsl(var(--accent) / 0.8), hsl(var(--primary) / 0.94) 68%);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.32),
+    0 0 0 18px hsl(var(--accent) / 0.06),
+    0 20px 48px hsl(var(--primary) / 0.24);
+  color: white;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.workflowOrbitCenter::before,
+.workflowOrbitCenter::after {
+  position: absolute;
+  inset: 13%;
+  border: 1px solid hsl(var(--accent) / 0.22);
+  border-radius: 50%;
+  content: "";
+  transform: rotate(28deg) scaleX(0.5);
+}
+
+.workflowOrbitCenter::after {
+  transform: rotate(-28deg) scaleX(0.5);
+}
+
+.workflowOrbitCenter span,
+.workflowOrbitCenter strong,
+.workflowOrbitCenter small {
+  position: relative;
+  z-index: 1;
+}
+
+.workflowOrbitCenter span {
+  font: 800 clamp(13px, 2.8cqw, 24px)/1 var(--font-plus-jakarta-sans);
+}
+
+.workflowOrbitCenter strong {
+  margin-top: 6px;
+  color: hsl(var(--accent));
+  font: 700 clamp(9px, 1.5cqw, 13px)/1 var(--font-inter);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.workflowOrbitCenter small {
+  margin-top: 16px;
+  color: hsl(0 0% 100% / 0.72);
+  font-size: clamp(9px, 1.5cqw, 12px);
+}
+
+@keyframes workflowOrbitSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes workflowOrbitCounter {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes workflowOrbitPulse {
+  0%, 100% { opacity: 0.65; transform: translate(-50%, -50%) scale(0.94); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
+}
+
 .workflowGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1532,11 +1713,13 @@
   display: grid;
   grid-template-columns: minmax(18rem, 0.85fr) minmax(0, 1.15fr);
   gap: 32px;
-  align-items: start;
+  align-items: stretch;
+  overscroll-behavior: contain;
 }
 
 .specializationList {
   display: grid;
+  align-self: center;
   gap: 8px;
 }
 
@@ -1718,6 +1901,16 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.specializationFooter a {
+  color: hsl(var(--primary));
+  text-decoration: none;
+}
+
+.specializationFooter a:hover,
+.specializationFooter a:focus-visible {
+  text-decoration: underline;
 }
 
 .home-comparison-wrap {
@@ -2643,6 +2836,7 @@
 
   .specializationList {
     display: flex;
+    align-self: auto;
     overflow-x: auto;
     gap: 8px;
     padding-bottom: 8px;
@@ -2889,6 +3083,16 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+
+  .workflowOrbitTrack,
+  .workflowOrbitNodeContent,
+  .workflowOrbitNodeCounter,
+  .workflowOrbitNodeFace,
+  .workflowOrbitNode small,
+  .workflowOrbitNode strong,
+  .workflowOrbitGlow {
+    animation: none !important;
+  }
 
   .mobileMenu {
     transition: none !important;

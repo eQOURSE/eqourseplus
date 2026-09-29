@@ -13,9 +13,7 @@ export function HeroSection() {
           <span aria-hidden="true" />The Transparent Talent &amp; Delivery Ecosystem by eQOURSE · Singapore &amp; India · ISO 9001 and ISO/IEC 27001 certified
         </FadeInStaggerItem>
         <FadeInStaggerItem>
-          <h1 id="hero-title" className={styles.heroTitle}>
-            Join the expert network powering AI and world-class content.
-          </h1>
+          <h1 id="hero-title" className={styles.heroTitle}>Partner for World-Class AI & Content</h1>
         </FadeInStaggerItem>
         <FadeInStaggerItem>
           <p className={styles.heroCopy}>
