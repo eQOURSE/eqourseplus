@@ -35,10 +35,15 @@ do not promote it to `main` until the production role split is verified.
    Confirm application startup creates no index and normal reads/writes work.
 6. Only then run the reviewed name-reconciliation migration on staging with
    `NODE_ENV=production` and `MONGODB_MIGRATION_URI` set to the staging
-   migration credential. Pause application writes before any unique index is
-   dropped; keep them paused until its replacement is built and verified.
-   Confirm complete manifest parity and migration idempotence before the
-   separately approved production run.
+   migration credential. Set `INDEX_RECONCILIATION_BASELINE_PATH` to a new,
+   absolute path outside the repository and retain the generated file for
+   rollback. Use a different file for production. Pause application writes
+   before any unique index is dropped and only then set
+   `INDEX_RECONCILIATION_WRITES_PAUSED=true`; keep writes paused until the
+   replacement is built and the complete manifest is verified. The migration
+   refuses missing or unexpected options and refuses rollback without its
+   original per-cluster baseline file. Confirm complete manifest parity and
+   migration idempotence before the separately approved production run.
 
 The existing `MONGODB_URI` remains the API runtime credential. Local
 development and tests may still use it with `autoIndex: true`. A deployed
