@@ -1,11 +1,11 @@
+import { approvedHome } from "../content/approved-home";
 import {
   parentOrganization,
   PLATFORM_ORGANIZATION_ID,
 } from "./site-structured-data";
 
-export const HOME_TITLE = "eQOURSE+ | Expert Network for AI Training & Content";
-export const HOME_DESCRIPTION =
-  "Remote work on frontier AI and global content projects. Verified specialists, partner agencies and enterprise clients in one transparent, audited ecosystem.";
+export const HOME_TITLE = approvedHome.title;
+export const HOME_DESCRIPTION = approvedHome.description;
 export const SOCIAL_IMAGE_ALT = "eQOURSE+ brand gradient";
 
 const organization = {

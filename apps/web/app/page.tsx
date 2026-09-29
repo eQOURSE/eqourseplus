@@ -1,21 +1,8 @@
 import type { Metadata } from "next";
-import { CalloutBanner } from "../components/home/CalloutBanner";
-import { FeaturesSection } from "../components/home/FeaturesSection";
-import { GlassBoxSection } from "../components/home/GlassBoxSection";
-import { HeroSection } from "../components/home/HeroSection";
-import { HowItWorksSection } from "../components/home/HowItWorksSection";
-import { HomeFaq } from "../components/home/HomeFaq";
-import { HomeFooter, HomeHeader } from "../components/home/HomeChrome";
-import { TrustSection } from "../components/home/TrustSection";
-import styles from "../components/home/home-redesign.module.css";
+import { ApprovedHomepage } from "../components/home/approved-homepage";
+import styles from "../components/home/approved-homepage.module.css";
 import { serializeJsonLd } from "../lib/json-ld";
-import {
-  HOME_DESCRIPTION,
-  HOME_TITLE,
-  SOCIAL_IMAGE_ALT,
-  structuredData,
-} from "./home-data";
-
+import { HOME_DESCRIPTION, HOME_TITLE, SOCIAL_IMAGE_ALT, structuredData } from "./home-data";
 export const metadata: Metadata = {
   title: HOME_TITLE,
   description: HOME_DESCRIPTION,
@@ -55,25 +42,7 @@ export const metadata: Metadata = {
   },
 };
 
+
 export default function HomePage() {
-  return (
-    <main className={`home-shell ${styles.page}`}>
-      <HomeHeader />
-      <HeroSection />
-      <FeaturesSection />
-      <HowItWorksSection />
-      <GlassBoxSection />
-      <TrustSection />
-      <HomeFaq />
-      <CalloutBanner />
-      <HomeFooter />
-      {structuredData.map((block) => (
-        <script
-          key={block["@type"]}
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: serializeJsonLd(block) }}
-        />
-      ))}
-    </main>
-  );
+ return <main className={styles.page}><ApprovedHomepage />{structuredData.map(block => <script key={block["@type"]} type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(block) }} />)}</main>;
 }
