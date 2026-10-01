@@ -25,11 +25,11 @@ import HomePage from "./page";
 
 describe("FR-PUB-01 metadata", () => {
   it("keeps keyword-first title and description within Section 18 limits", () => {
-    expect(HOME_TITLE).toBe("eQOURSE+ | Partner for World-Class AI and Content");
+    expect(HOME_TITLE).toBe("eQOURSE+ | Expert Network for AI Training & Content");
     expect(HOME_TITLE.length).toBeGreaterThan(0);
     expect(HOME_TITLE.length).toBeLessThanOrEqual(60);
     expect(HOME_DESCRIPTION).toBe(
-      "Work from anywhere, anytime on frontier AI and global content projects. eQOURSE+ connects verified domain specialists, partner agencies, and leading AI labs in a fully transparent, ISO-certified ecosystem with guaranteed milestone payouts.",
+      "Remote work on frontier AI and global content projects. Verified specialists, partner agencies and enterprise clients in one transparent, audited ecosystem.",
     );
     expect(HOME_DESCRIPTION.length).toBeGreaterThan(0);
   });
@@ -88,7 +88,7 @@ describe("FR-PUB-01 metadata", () => {
 });
 
 describe("FR-PUB-01 structured data", () => {
-  it("emits unchanged Organization and WebSite plus the seven native FAQs", () => {
+  it("emits exactly Organization and WebSite JSON-LD blocks", () => {
     const { container } = render(createElement(HomePage));
     const blocks = Array.from(
       container.querySelectorAll<HTMLScriptElement>(
@@ -97,10 +97,12 @@ describe("FR-PUB-01 structured data", () => {
     );
     const parsed = blocks.map((block) => JSON.parse(block.textContent ?? ""));
 
-    expect(blocks).toHaveLength(3);
-    expect(parsed.map((block) => block["@type"]).sort()).toEqual(["FAQPage", "Organization", "WebSite"]);
-    expect(parsed.filter(block => block["@type"] !== "FAQPage")).toEqual(structuredData);
-    expect(parsed.find(block => block["@type"] === "FAQPage").mainEntity).toHaveLength(7);
+    expect(blocks).toHaveLength(2);
+    expect(parsed.map((block) => block["@type"])).toEqual([
+      "Organization",
+      "WebSite",
+    ]);
+    expect(parsed).toEqual(structuredData);
   });
 
   it("identifies the parent organization and verified social profile", () => {

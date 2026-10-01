@@ -50,6 +50,3 @@ Last completed FR: FR-REG-02B profile-wizard draft API — 2026-09-21 — Added 
 - [ ] FR-TAL-04/05  - [ ] FR-QLT-02/03  - [ ] FR-FIN-09  - [ ] FR-ADM-04..06  - [ ] Open job board
 ## Phase 8 — AI + CRM
 - [ ] FR-QLT-06  - [ ] FR-CRM-01..04
-
-## Presentation exploration — 2026-09-29
-- FR-PUB-01 presentation only, on `ui-bhavesh` from `develop`: rebuilt the homepage with the user's supplied content architecture and teal/white glass direction; dark mode, bounded refraction, native seven-question FAQ/schema, existing CTA destinations, and responsive composition. Other public pages, API/shared source, auth flows, wizard, onboarding and CI are unchanged. See `UI-HOMEPAGE-REVIEW.md` for validation and the existing TypeScript fixture limitation. This is a visual exploration, not completion of a new feature FR.

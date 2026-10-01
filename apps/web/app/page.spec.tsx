@@ -13,7 +13,6 @@ import {
   worstAmbientSurface,
 } from "../../../packages/ui/test/contrast-helpers";
 import HomePage from "./page";
-import { approvedHome } from "../content/approved-home";
 import { EXCLUDED_ROUTES, RESOLVING_ROUTES } from "./public-routes";
 
 const pageSource = readFileSync(resolve(process.cwd(), "app/page.tsx"), "utf8");
@@ -26,15 +25,15 @@ const uiStyles = readFileSync(
   "utf8",
 );
 const homeStyles = readFileSync(
-  resolve(process.cwd(), "components/home/approved-homepage.module.css"),
+  resolve(process.cwd(), "components/home/home-redesign.module.css"),
   "utf8",
 );
 const heroSource = readFileSync(
-  resolve(process.cwd(), "components/home/approved-homepage.tsx"),
+  resolve(process.cwd(), "components/home/HeroSection.tsx"),
   "utf8",
 );
 const cockpitSource = readFileSync(
-  resolve(process.cwd(), "components/home/home-materials.tsx"),
+  resolve(process.cwd(), "components/home/CockpitPreviewInteractive.tsx"),
   "utf8",
 );
 
@@ -46,41 +45,42 @@ function cssRule(source: string, selector: string) {
 afterEach(cleanup);
 
 describe("FR-PUB-01 home page", () => {
-  it("renders the supplied header-to-footer copy", () => {
+  it("matches the selected Figma frame's visible header-to-footer copy", () => {
     render(<HomePage />);
 
-    expect(screen.getAllByRole("link", { name: "eQOURSE+" })[0]).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Platform" })[0]).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Experts" })[0]).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Vendors" })[0]).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Apply as an Expert" })[0]).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "eQOURSE+" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Solutions" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Experts" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Vendors" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Access eQOURSE+" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Partner for World-Class AI and Content",
+      "Join the expert network powering AI and world-class content.",
     );
-    expect(screen.getByRole("heading", { name: /The Antidote to the/ })).toBeInTheDocument();
+    expect(screen.getByText('The Antidote to the "Black-Box" Industry')).toBeInTheDocument();
     expect(screen.getByText("Frequently Asked Questions")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /Ready to Power the Next Frontier/ })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Platform" })).toBeInTheDocument();
-    expect(screen.getByText(approvedHome.subheadline)).toBeInTheDocument();
+    expect(screen.getByText("Ready to Power the Next Frontier of AI and Content?")).toBeInTheDocument();
+    expect(screen.getByText("PLATFORM")).toBeInTheDocument();
+    expect(screen.getByText(/Transparent project delivery/)).toBeInTheDocument();
   });
 
-  it("keeps the approved hero sentence and real audience conversion addresses", () => {
-    render(<HomePage />);
-    expect(screen.getByText(approvedHome.subheadline)).toBeInTheDocument();
+  it("keeps the approved hero sentence and cockpit display address", () => {
+    expect(heroSource).toContain(
+      "Whether you are a specialist, an agency or an enterprise, eQOURSE+ delivers operational clarity.",
+    );
     expect(cockpitSource).toContain(
-      "/register/freelancer",
+      "plus.eqourse.com/cockpit/telemetry-live",
     );
     expect(cockpitSource).not.toContain("telementry-live");
   });
 
-  it("uses the teal and white typography, palette, fluid frame and section geometry", () => {
-    expect(homeStyles).toMatch(/--home-ink:\s*#153c37/);
-    expect(homeStyles).toMatch(/--home-teal:\s*#08796b/);
-    expect(homeStyles).toMatch(/--home-mint:\s*#7be8c9/);
-    expect(homeStyles).toMatch(/--home-line:\s*#d5e6df/);
+  it("uses the exact Figma typography, palette, frame width and section geometry", () => {
+    expect(homeStyles).toMatch(/--figma-ink:\s*#18181b/);
+    expect(homeStyles).toMatch(/--figma-teal:\s*#0f766e/);
+    expect(homeStyles).toMatch(/--figma-blue:\s*#0284c7/);
+    expect(homeStyles).toMatch(/--figma-border:\s*#e4e4e7/);
     expect(homeStyles).toMatch(/font-family:\s*var\(--font-plus-jakarta-sans\)/);
-    expect(homeStyles).toMatch(/max-width:\s*1320px/);
-    expect(homeStyles).toMatch(/font-size:\s*clamp\(/);
+    expect(homeStyles).toMatch(/max-width:\s*1280px/);
+    expect(homeStyles).toMatch(/min-height:\s*1329px/);
   });
 
   it("renders one h1 with an unbroken heading hierarchy", () => {
@@ -97,7 +97,7 @@ describe("FR-PUB-01 home page", () => {
     }
   });
 
-  it("renders the supplied landing-page regions in the required order", () => {
+  it("renders the Figma landing-page regions in the required order", () => {
     const { container } = render(<HomePage />);
     const regions = Array.from(
       container.querySelectorAll<HTMLElement>("[data-home-region]"),
@@ -106,8 +106,8 @@ describe("FR-PUB-01 home page", () => {
     expect(regions.map((region) => region.id)).toEqual([
       "site-navigation",
       "hero",
-      "ecosystem",
       "categories",
+      "how-it-works",
       "glass-box",
       "trust",
       "faq",
@@ -160,12 +160,13 @@ describe("FR-PUB-01 home page", () => {
     expect(
       Array.from(
         container.querySelectorAll<HTMLAnchorElement>(
-          "#site-navigation > div:first-of-type a",
+          "#site-navigation .home-nav-links a",
         ),
         (link) => link.getAttribute("href"),
       ),
     ).toEqual([
-      "/#ecosystem",
+      "#how-it-works",
+      "#categories",
       "/freelancers",
       "/vendors",
       "/about",
@@ -175,15 +176,15 @@ describe("FR-PUB-01 home page", () => {
   it("links to both public talent models from the primary navigation", () => {
     render(<HomePage />);
 
-    expect(screen.getAllByRole("link", { name: "Experts" })[0]).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Experts" })).toHaveAttribute(
       "href",
       "/freelancers",
     );
-    expect(screen.getAllByRole("link", { name: "Vendors" })[0]).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Vendors" })).toHaveAttribute(
       "href",
       "/vendors",
     );
-    expect(screen.getAllByRole("link", { name: "About eQOURSE+" })[0]).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "About" })).toHaveAttribute(
       "href",
       "/about",
     );
@@ -227,16 +228,17 @@ describe("FR-PUB-01 home page", () => {
     expect(cssRule(globalStyles, ".home-footer-link")).toMatch(/padding-inline:/);
   });
 
-  it("gives supplied CTA anchors a route and a visible focus contract", () => {
+  it("gives CTA anchors the deep plate, gel press, and focus contract", () => {
     render(<HomePage />);
     const primaryCta = screen.getByRole("link", {
-      name: /Apply as an Expert \(Work Remotely\)/,
+      name: "Apply as an Expert",
     });
 
-    expect(primaryCta.className).toContain("primaryButton");
-    expect(homeStyles).toContain("outline: 3px solid var(--home-teal)");
-    expect(homeStyles).toContain("scale(.97)");
-    expect(primaryCta).toHaveAttribute("href", "/register/freelancer");
+    expect(primaryCta).toHaveClass(
+      "eq-glass-button",
+      "eq-glass-button--primary",
+      "home-cta",
+    );
     expect(uiStyles).toContain(
       "--glass-plate-primary: linear-gradient(135deg, hsl(170 82% 26%), hsl(174 72% 20%));",
     );
@@ -254,19 +256,19 @@ describe("FR-PUB-01 home page", () => {
   it("uses the confirmed Singapore and ISO wording without verification markers", () => {
     render(<HomePage />);
 
-    expect(screen.getByText(/Dual Governance: Singapore & India · ISO 9001 & ISO 27001 Certified/)).toBeInTheDocument();
+    expect(screen.getByText(/Singapore & India · ISO 9001 and ISO\/IEC 27001 certified/)).toBeInTheDocument();
     expect(screen.getByText("ISO 9001:2015 Certified")).toBeInTheDocument();
-    expect(screen.getByText("ISO 27001:2013 Certified")).toBeInTheDocument();
+    expect(screen.getByText("ISO/IEC 27001 Certified")).toBeInTheDocument();
     expect(screen.queryByText(/⚠ VERIFY/)).not.toBeInTheDocument();
   });
 
-  it("uses bounded liquid refraction and actionable specialization controls", () => {
+  it("uses the predefined UI glass substrate and button primitives", () => {
     const { container } = render(<HomePage />);
 
-    expect(container.querySelector("#hero .eq-glass__backing")).not.toBeNull();
-    expect(container.querySelectorAll("#categories button[aria-pressed]")).toHaveLength(8);
-    expect(container.querySelector(".cockpit")).toBeNull();
-    expect(cockpitSource).toContain("refractedContent=");
+    expect(container.querySelector(".eq-glass-stage > .eq-glass-substrate")).not.toBeNull();
+    expect(container.querySelectorAll(".eq-glass-button").length).toBeGreaterThanOrEqual(7);
+    expect(container.querySelector(".cockpit")).toHaveClass("eq-glass-stage");
+    expect(cockpitSource).toContain("eq-glass-substrate");
     expect(heroSource).not.toContain("LiquidGlassHomeEffect");
   });
 
