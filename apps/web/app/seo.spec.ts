@@ -132,6 +132,29 @@ describe("FR-PUB-01 structured data", () => {
 });
 
 describe("FR-PUB-01 crawl controls", () => {
+  it("keeps the develop deployment out of search results", () => {
+    const previousStaging = process.env.IS_STAGING;
+    const previousBranch = process.env.VERCEL_GIT_COMMIT_REF;
+    try {
+      delete process.env.IS_STAGING;
+      process.env.VERCEL_GIT_COMMIT_REF = "develop";
+      expect(robots()).toEqual({
+        rules: { userAgent: "*", disallow: "/" },
+      });
+
+      process.env.VERCEL_GIT_COMMIT_REF = "main";
+      process.env.IS_STAGING = "true";
+      expect(robots()).toEqual({
+        rules: { userAgent: "*", disallow: "/" },
+      });
+    } finally {
+      if (previousStaging === undefined) delete process.env.IS_STAGING;
+      else process.env.IS_STAGING = previousStaging;
+      if (previousBranch === undefined) delete process.env.VERCEL_GIT_COMMIT_REF;
+      else process.env.VERCEL_GIT_COMMIT_REF = previousBranch;
+    }
+  });
+
   it("blocks private and noindex routes while declaring host and sitemap", () => {
     const rules = robots();
 
