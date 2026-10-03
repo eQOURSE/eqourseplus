@@ -68,7 +68,7 @@ describe("FR-PUB-01 metadata", () => {
       : [pageMetadata.openGraph?.images];
     expect(openGraphImages).toHaveLength(1);
     expect(openGraphImages[0]).toMatchObject({
-      url: "/social-preview.jpg",
+      url: "/social-preview.png",
       width: 1200,
       height: 630,
       alt: "eQOURSE+ expert network team",
@@ -79,7 +79,7 @@ describe("FR-PUB-01 metadata", () => {
       description: HOME_DESCRIPTION,
       images: [
         {
-          url: "/social-preview.jpg",
+          url: "/social-preview.png",
           alt: "eQOURSE+ expert network team",
         },
       ],
@@ -181,10 +181,10 @@ describe("FR-PUB-01 crawl controls", () => {
 });
 
 describe("FR-PUB-01 social image", () => {
-  it("uses a LinkedIn-compatible static JPG with the approved dimensions", () => {
+  it("uses a LinkedIn-compatible static PNG with the approved dimensions", () => {
     expect(pageMetadata.openGraph?.images).toEqual([
       {
-        url: "/social-preview.jpg",
+        url: "/social-preview.png",
         width: 1200,
         height: 630,
         alt: "eQOURSE+ expert network team",
