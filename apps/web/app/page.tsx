@@ -12,7 +12,6 @@ import { serializeJsonLd } from "../lib/json-ld";
 import {
   HOME_DESCRIPTION,
   HOME_TITLE,
-  SOCIAL_IMAGE_ALT,
   structuredData,
 } from "./home-data";
 
@@ -35,10 +34,10 @@ export const metadata: Metadata = {
     locale: "en",
     images: [
       {
-        url: "/opengraph-image",
+        url: "/social-preview.jpg",
         width: 1200,
         height: 630,
-        alt: SOCIAL_IMAGE_ALT,
+        alt: "eQOURSE+ expert network team",
       },
     ],
   },
@@ -48,8 +47,8 @@ export const metadata: Metadata = {
     description: HOME_DESCRIPTION,
     images: [
       {
-        url: "/opengraph-image",
-        alt: SOCIAL_IMAGE_ALT,
+        url: "/social-preview.jpg",
+        alt: "eQOURSE+ expert network team",
       },
     ],
   },

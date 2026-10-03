@@ -68,10 +68,10 @@ describe("FR-PUB-01 metadata", () => {
       : [pageMetadata.openGraph?.images];
     expect(openGraphImages).toHaveLength(1);
     expect(openGraphImages[0]).toMatchObject({
-      url: "/opengraph-image",
+      url: "/social-preview.jpg",
       width: 1200,
       height: 630,
-      alt: "eQOURSE+ brand gradient",
+      alt: "eQOURSE+ expert network team",
     });
     expect(pageMetadata.twitter).toMatchObject({
       card: "summary_large_image",
@@ -79,8 +79,8 @@ describe("FR-PUB-01 metadata", () => {
       description: HOME_DESCRIPTION,
       images: [
         {
-          url: "/opengraph-image",
-          alt: "eQOURSE+ brand gradient",
+          url: "/social-preview.jpg",
+          alt: "eQOURSE+ expert network team",
         },
       ],
     });
@@ -132,6 +132,29 @@ describe("FR-PUB-01 structured data", () => {
 });
 
 describe("FR-PUB-01 crawl controls", () => {
+  it("keeps the develop deployment out of search results", () => {
+    const previousStaging = process.env.IS_STAGING;
+    const previousBranch = process.env.VERCEL_GIT_COMMIT_REF;
+    try {
+      delete process.env.IS_STAGING;
+      process.env.VERCEL_GIT_COMMIT_REF = "develop";
+      expect(robots()).toEqual({
+        rules: { userAgent: "*", disallow: "/" },
+      });
+
+      process.env.VERCEL_GIT_COMMIT_REF = "main";
+      process.env.IS_STAGING = "true";
+      expect(robots()).toEqual({
+        rules: { userAgent: "*", disallow: "/" },
+      });
+    } finally {
+      if (previousStaging === undefined) delete process.env.IS_STAGING;
+      else process.env.IS_STAGING = previousStaging;
+      if (previousBranch === undefined) delete process.env.VERCEL_GIT_COMMIT_REF;
+      else process.env.VERCEL_GIT_COMMIT_REF = previousBranch;
+    }
+  });
+
   it("blocks private and noindex routes while declaring host and sitemap", () => {
     const rules = robots();
 
@@ -158,12 +181,14 @@ describe("FR-PUB-01 crawl controls", () => {
 });
 
 describe("FR-PUB-01 social image", () => {
-  it("is a static build-time image with the approved dimensions", async () => {
-    const imageModule = await import("./opengraph-image");
-
-    expect(imageModule.dynamic).toBe("force-static");
-    expect(imageModule.size).toEqual({ width: 1200, height: 630 });
-    expect(imageModule.alt).toBe("eQOURSE+ brand gradient");
-    expect(imageModule.contentType).toBe("image/svg+xml");
+  it("uses a LinkedIn-compatible static JPG with the approved dimensions", () => {
+    expect(pageMetadata.openGraph?.images).toEqual([
+      {
+        url: "/social-preview.jpg",
+        width: 1200,
+        height: 630,
+        alt: "eQOURSE+ expert network team",
+      },
+    ]);
   });
 });
