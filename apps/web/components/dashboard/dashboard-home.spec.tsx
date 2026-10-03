@@ -236,12 +236,34 @@ describe("FR-REG-16/17/18 role-resolved dashboard", () => {
     renderHome();
 
     expect(await screen.findByRole("heading", { name: "Specialist workspace" })).toBeVisible();
-    expect(screen.getByText("35% complete")).toBeVisible();
+    expect(screen.getByLabelText("35% complete")).toBeVisible();
     expect(screen.getByText("Draft")).toBeVisible();
     const profilePanel = screen.getByRole("region", { name: "Profile" });
     expect(within(profilePanel).getByRole("link", { name: "Continue profile" }))
       .toHaveAttribute("href", "/profile");
     expect(screen.getByRole("link", { name: "Register a company" })).toHaveAttribute("href", "/register");
+  });
+
+  it("names the missing required field in a draft's next action", async () => {
+    fetchMock.mockImplementation((path) => {
+      if (path === "/api/v1/vendors/me" || path === "/api/v1/clients/me") return response({}, 404);
+      if (path === "/api/v1/profiles/me") return response({
+        userId: "user-1", state: "DRAFT", completionPercentage: 90.47619047619048,
+        personal: { firstName: "Ava", lastName: "Singh" },
+        education: [{ institution: "College", qualification: "BSc", fieldOfStudy: "Math", startYear: 2020 }],
+        skills: [{ taxonomySlug: "math", level: "EXPERT" }],
+        languages: [{ languageCode: "en", proficiency: "NATIVE" }],
+        experience: { totalMonths: 12, entries: [{ organization: "Acme", title: "Reviewer", startDate: "2024-01-01" }] },
+        availability: { availableFrom: "2026-10-01", weeklyHours: 20, timeZone: "Asia/Kolkata" },
+        rate: { amountMinor: 1000, currencyCode: "INR" },
+      });
+      throw new Error(`Unexpected request: ${String(path)}`);
+    });
+
+    renderHome();
+
+    expect(await screen.findByRole("region", { name: "Next action" }))
+      .toHaveTextContent("Add at least one work sample to finish your profile.");
   });
 
   it.each([404, 500])("surfaces profile status %s instead of deriving a specialist action from absent data", async (status) => {

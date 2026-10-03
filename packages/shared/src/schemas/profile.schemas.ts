@@ -106,6 +106,10 @@ const sampleEntryDraftSchema = z.strictObject({
   uploadedAt: z.coerce.date().optional(),
 });
 
+const sampleEntrySubmissionSchema = sampleEntryDraftSchema.extend({
+  objectKey: nonEmptyString,
+});
+
 const availabilityDraftSchema = z.strictObject({
   availableFrom: z.coerce.date().optional(),
   weeklyHours: z.number().int().min(1).max(168).optional(),
@@ -181,7 +185,7 @@ export const profileSubmissionSchema = z.strictObject({
     totalMonths: z.number().int().min(0).max(960),
     entries: z.tuple([experienceEntrySubmissionSchema]).rest(experienceEntryDraftSchema),
   }),
-  samples: z.array(sampleEntryDraftSchema).optional(),
+  samples: z.tuple([sampleEntrySubmissionSchema]).rest(sampleEntryDraftSchema),
   availability: z.strictObject({
     availableFrom: z.coerce.date(),
     weeklyHours: z.number().int().min(1).max(168),
@@ -214,34 +218,54 @@ export type ProfileSampleUploadResponse = z.infer<typeof profileSampleUploadResp
 const present = (value: unknown): boolean =>
   value !== undefined && (typeof value !== "string" || value.length > 0);
 
-export function calculateProfileCompletionPercentage(
-  draft: ProfileDraftInput,
-): number {
+function profileCompletionChecks(draft: ProfileDraftInput) {
   const education = draft.education?.[0];
   const skill = draft.skills?.[0];
   const language = draft.languages?.[0];
   const experience = draft.experience?.entries?.[0];
-  const checks = [
-    draft.personal?.firstName,
-    draft.personal?.lastName,
-    education?.institution,
-    education?.qualification,
-    education?.fieldOfStudy,
-    education?.startYear,
-    skill?.taxonomySlug,
-    skill?.level,
-    language?.languageCode,
-    language?.proficiency,
-    draft.experience?.totalMonths,
-    experience?.organization,
-    experience?.title,
-    experience?.startDate,
-    draft.availability?.availableFrom,
-    draft.availability?.weeklyHours,
-    draft.availability?.timeZone,
-    draft.rate?.amountMinor,
-    draft.rate?.currencyCode,
-    draft.rate?.unit,
-  ];
-  return checks.filter(present).length * 5;
+  return [
+    [ProfileSection.PERSONAL, "your first name", draft.personal?.firstName],
+    [ProfileSection.PERSONAL, "your last name", draft.personal?.lastName],
+    [ProfileSection.EDUCATION, "an education institution", education?.institution],
+    [ProfileSection.EDUCATION, "an education qualification", education?.qualification],
+    [ProfileSection.EDUCATION, "a field of study", education?.fieldOfStudy],
+    [ProfileSection.EDUCATION, "an education start year", education?.startYear],
+    [ProfileSection.SKILLS, "a skill", skill?.taxonomySlug],
+    [ProfileSection.SKILLS, "a skill level", skill?.level],
+    [ProfileSection.LANGUAGES, "a language", language?.languageCode],
+    [ProfileSection.LANGUAGES, "a language proficiency", language?.proficiency],
+    [ProfileSection.EXPERIENCE, "your total experience", draft.experience?.totalMonths],
+    [ProfileSection.EXPERIENCE, "an experience organisation", experience?.organization],
+    [ProfileSection.EXPERIENCE, "an experience title", experience?.title],
+    [ProfileSection.EXPERIENCE, "an experience start date", experience?.startDate],
+    [ProfileSection.SAMPLES, "at least one work sample", draft.samples?.[0]?.objectKey],
+    [ProfileSection.AVAILABILITY, "an availability start date", draft.availability?.availableFrom],
+    [ProfileSection.AVAILABILITY, "your weekly availability", draft.availability?.weeklyHours],
+    [ProfileSection.AVAILABILITY, "an availability time zone", draft.availability?.timeZone],
+    [ProfileSection.RATE, "a rate amount", draft.rate?.amountMinor],
+    [ProfileSection.RATE, "a rate currency", draft.rate?.currencyCode],
+    [ProfileSection.RATE, "a rate unit", draft.rate?.unit],
+  ] as const;
+}
+
+export function profileCompletionGaps(draft: ProfileDraftInput): Record<ProfileSection, string[]> {
+  const gaps: Record<ProfileSection, string[]> = {
+    [ProfileSection.PERSONAL]: [],
+    [ProfileSection.EDUCATION]: [],
+    [ProfileSection.SKILLS]: [],
+    [ProfileSection.LANGUAGES]: [],
+    [ProfileSection.EXPERIENCE]: [],
+    [ProfileSection.SAMPLES]: [],
+    [ProfileSection.AVAILABILITY]: [],
+    [ProfileSection.RATE]: [],
+  };
+  for (const [section, label, value] of profileCompletionChecks(draft)) {
+    if (!present(value)) gaps[section].push(label);
+  }
+  return gaps;
+}
+
+export function calculateProfileCompletionPercentage(draft: ProfileDraftInput): number {
+  const checks = profileCompletionChecks(draft);
+  return checks.filter(([, , value]) => present(value)).length / checks.length * 100;
 }

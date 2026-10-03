@@ -30,6 +30,7 @@ import {
   useState,
   type ChangeEvent,
   type FormEvent,
+  type SetStateAction,
 } from "react";
 
 import { createCountryOptions, type CountryOption } from "../../app/register/country-codes";
@@ -460,6 +461,14 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     : VENDOR_UPLOAD_MAX_BYTES;
   const [countryOptions, setCountryOptions] = useState<CountryOption[]>([]);
   const [form, setForm] = useState<CompanyFormState>(EMPTY_FORM);
+  const guestFormSnapshot = useRef(form);
+  function setFormAndSnapshot(next: SetStateAction<CompanyFormState>): void {
+    setForm((current) => {
+      const resolved = typeof next === "function" ? next(current) : next;
+      guestFormSnapshot.current = resolved;
+      return resolved;
+    });
+  }
   const [step, setStep] = useState<StepId>("company");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(!guest);
@@ -474,6 +483,9 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   const [taxonomyStatus, setTaxonomyStatus] = useState<TaxonomyStatus>("loading");
   const [capabilitySearch, setCapabilitySearch] = useState("");
   const pendingFocus = useRef<string | null>(null);
+  const guestDraftCreated = useRef(false);
+  const guestSubmissionComplete = useRef(false);
+  const guestAccountVerified = useRef(false);
   const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
   const [documentUploads, setDocumentUploads] = useState<Record<string, DocumentUploadState>>({});
   const [identityDocumentName, setIdentityDocumentName] = useState("");
@@ -525,6 +537,10 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   useEffect(() => setCountryOptions(createCountryOptions()), []);
 
   useEffect(() => {
+    guestFormSnapshot.current = form;
+  }, [form]);
+
+  useEffect(() => {
     if (!config.capabilities) {
       setTaxonomyStatus("ready");
       return;
@@ -564,7 +580,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
       .then((draft) => {
         if (!active) return;
         if (!draft) {
-          setForm(EMPTY_FORM);
+          setFormAndSnapshot(EMPTY_FORM);
           setSubmitted(false);
           setStep("company");
           setDocumentNames({});
@@ -578,7 +594,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
         }
         setDraftExists(true);
         const nextForm = formFromDraft(draft);
-        setForm(nextForm);
+        setFormAndSnapshot(nextForm);
         setSubmitted(draft.state === "SUBMITTED" || draft.state === "UNDER_REVIEW");
         setStep(firstIncompleteStep(nextForm, actor));
         setDocumentNames(Object.fromEntries(Object.entries(nextForm.documents).map(([kind, document]) => [kind, document.objectKey])));
@@ -613,7 +629,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   );
 
   function updateField(field: keyof Omit<CompanyFormState, "identifiers" | "documents">, value: string): void {
-    setForm((current) => ({ ...current, [field]: value }));
+    setFormAndSnapshot((current) => ({ ...current, [field]: value }));
     setFieldErrors((current) => {
       if (!current[field]) return current;
       const next = { ...current };
@@ -633,7 +649,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   }
 
   function setCapabilitySelected(slug: string, selected: boolean): void {
-    setForm((current) => {
+    setFormAndSnapshot((current) => {
       const slugs = new Set(
         current.capabilitySlugs.split(",").map((value) => value.trim()).filter(Boolean),
       );
@@ -650,7 +666,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   }
 
   function updateCountry(value: string): void {
-    setForm((current) => ({ ...current, countryCode: value, addressCountryCode: value, bankCountryCode: value, identifiers: {}, documents: {} }));
+    setFormAndSnapshot((current) => ({ ...current, countryCode: value, addressCountryCode: value, bankCountryCode: value, identifiers: {}, documents: {} }));
     setFieldErrors((current) => {
       if (!current.countryCode) return current;
       const next = { ...current };
@@ -663,7 +679,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   }
 
   function updateIdentifier(scheme: string, value: string): void {
-    setForm((current) => ({ ...current, identifiers: { ...current.identifiers, [scheme]: value } }));
+    setFormAndSnapshot((current) => ({ ...current, identifiers: { ...current.identifiers, [scheme]: value } }));
   }
 
   async function updateDocument(kind: string, event: ChangeEvent<HTMLInputElement>): Promise<void> {
@@ -733,7 +749,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
       });
       if (!saved.ok) throw new Error("Upload record failed");
 
-      setForm(nextForm);
+      setFormAndSnapshot(nextForm);
       setDocumentNames((current) => ({ ...current, [kind]: file.name }));
       setDocumentUploads((current) => ({ ...current, [kind]: {
         status: "uploaded",
@@ -819,7 +835,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
         body: JSON.stringify(draft),
       });
       if (!saved.ok) throw new Error("Upload record failed");
-      setForm(nextForm);
+      setFormAndSnapshot(nextForm);
       setIdentityDocumentName(file.name);
       setIdentityDocumentUpload({
         status: "uploaded",
@@ -1048,23 +1064,58 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     }
   }
 
-  async function saveDraftAfterAuthentication(): Promise<void> {
-    const draftResult = draftSchema.safeParse(toCompanyPayload(form, actor));
-    if (!draftResult.success) throw new Error("Invalid company draft");
-    const created = await fetch(apiBase, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(draftResult.data),
-    });
-    if (!created.ok) throw new Error("Draft creation failed");
-    if (pendingSubmission.current) {
-      const submittedResponse = await fetch(`${apiBase}/me/submit`, { method: "POST" });
-      if (!submittedResponse.ok) throw new Error("Submission failed");
+  type GuestSaveStage = "draft" | "submission" | "session";
+  class GuestSaveError extends Error {
+    constructor(readonly stage: GuestSaveStage, message: string) {
+      super(message);
     }
-    const sessionResponse = await fetch("/api/auth/session", { cache: "no-store" });
-    if (!sessionResponse.ok) throw new Error("Session load failed");
-    const session = authSessionSchema.safeParse(await sessionResponse.json());
-    if (!session.success) throw new Error("Invalid session");
+  }
+
+  async function saveDraftAfterAuthentication(): Promise<void> {
+    const draftResult = draftSchema.safeParse(toCompanyPayload(guestFormSnapshot.current, actor));
+    if (!draftResult.success) throw new GuestSaveError("draft", "Invalid company draft");
+    if (!guestDraftCreated.current) {
+      let created: Response;
+      try {
+        created = await fetch(apiBase, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(draftResult.data),
+        });
+      } catch {
+        throw new GuestSaveError("draft", "Draft creation failed");
+      }
+      if (!created.ok && created.status !== 409) throw new GuestSaveError("draft", "Draft creation failed");
+      guestDraftCreated.current = true;
+      setDraftExists(true);
+    }
+    if (pendingSubmission.current && !guestSubmissionComplete.current) {
+      let submittedResponse: Response;
+      try {
+        submittedResponse = await fetch(`${apiBase}/me/submit`, { method: "POST" });
+      } catch {
+        throw new GuestSaveError("submission", "Submission failed");
+      }
+      if (!submittedResponse.ok && submittedResponse.status !== 409) {
+        throw new GuestSaveError("submission", "Submission failed");
+      }
+      guestSubmissionComplete.current = true;
+    }
+    let sessionResponse: Response;
+    try {
+      sessionResponse = await fetch("/api/auth/session", { cache: "no-store" });
+    } catch {
+      throw new GuestSaveError("session", "Session load failed");
+    }
+    if (!sessionResponse.ok) throw new GuestSaveError("session", "Session load failed");
+    let sessionBody: unknown;
+    try {
+      sessionBody = await sessionResponse.json();
+    } catch {
+      throw new GuestSaveError("session", "Invalid session");
+    }
+    const session = authSessionSchema.safeParse(sessionBody);
+    if (!session.success) throw new GuestSaveError("session", "Invalid session");
     onAuthenticated?.(session.data);
   }
 
@@ -1086,16 +1137,27 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     setMessage("");
     setMessageError(false);
     try {
-      const verified = await fetch("/api/auth/otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(result.data),
-      });
-      if (!verified.ok) throw new Error("Sign-in verification failed");
+      if (!guestAccountVerified.current) {
+        const verified = await fetch("/api/auth/otp/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(result.data),
+        });
+        if (!verified.ok) throw new Error("Sign-in verification failed");
+        guestAccountVerified.current = true;
+      }
       await saveDraftAfterAuthentication();
-    } catch {
+    } catch (error) {
       setMessageError(true);
-      setMessage("We could not sign you in and save this draft. Check the code and try again.");
+      if (error instanceof GuestSaveError) {
+        setMessage(error.stage === "draft"
+          ? "We could not confirm the company draft. Your details are retained; try again."
+          : error.stage === "submission"
+            ? "Your company draft was saved, but submission failed. Try again."
+            : "Your company draft was saved, but we could not load your session. Refresh and try again.");
+      } else {
+        setMessage("We could not sign you in and confirm the company draft. Your details are retained; try again.");
+      }
     } finally {
       setSaving(false);
     }
@@ -1121,16 +1183,27 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
     setAccessErrors({});
     setMessage("");
     try {
-      const verified = await fetch("/api/auth/register/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(result.data),
-      });
-      if (!verified.ok) throw new Error("Verification failed");
+      if (!guestAccountVerified.current) {
+        const verified = await fetch("/api/auth/register/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(result.data),
+        });
+        if (!verified.ok) throw new Error("Verification failed");
+        guestAccountVerified.current = true;
+      }
       await saveDraftAfterAuthentication();
-    } catch {
+    } catch (error) {
       setMessageError(true);
-      setMessage("Your account was verified, but we could not save the company draft. Try again.");
+      if (error instanceof GuestSaveError) {
+        setMessage(error.stage === "draft"
+          ? "We could not confirm the company draft. Your details are retained; try again."
+          : error.stage === "submission"
+            ? "Your company draft was saved, but submission failed. Try again."
+            : "Your company draft was saved, but we could not load your session. Refresh and try again.");
+      } else {
+        setMessage("We could not confirm the company draft. Your details are retained; try again.");
+      }
     } finally {
       setSaving(false);
     }

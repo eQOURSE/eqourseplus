@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   calculateProfileCompletionPercentage,
+  profileCompletionGaps,
   ProfileSection,
   profileDraftSchema,
   profileSubmissionSchema,
@@ -53,10 +54,11 @@ const completeDraft = () =>
       currencyCode: "GBP",
       unit: "HOUR",
     },
+    samples: [{ title: "Portfolio", objectKey: "profiles/user-1/samples/portfolio.pdf" }],
   });
 
 describe("FR-REG-02B profile draft contracts", () => {
-  it("keeps one shared profile-section definition including out-of-scope samples", () => {
+  it("keeps one shared profile-section definition including samples", () => {
     expect(Object.values(ProfileSection)).toEqual([
       "PERSONAL",
       "EDUCATION",
@@ -88,7 +90,7 @@ describe("FR-REG-02B profile draft contracts", () => {
   });
 
   it.each([
-    [{ personal: { firstName: "Ada", lastName: "Lovelace" } }, 10],
+    [{ personal: { firstName: "Ada", lastName: "Lovelace" } }, 100 / 21 * 2],
     [
       {
         education: [
@@ -100,7 +102,7 @@ describe("FR-REG-02B profile draft contracts", () => {
           },
         ],
       },
-      20,
+      100 / 21 * 4,
     ],
     [
       {
@@ -112,7 +114,7 @@ describe("FR-REG-02B profile draft contracts", () => {
           },
         ],
       },
-      10,
+      100 / 21 * 2,
     ],
     [
       {
@@ -120,7 +122,7 @@ describe("FR-REG-02B profile draft contracts", () => {
           { languageCode: "en-IN", proficiency: "PROFESSIONAL" },
         ],
       },
-      10,
+      100 / 21 * 2,
     ],
     [
       {
@@ -135,7 +137,7 @@ describe("FR-REG-02B profile draft contracts", () => {
           ],
         },
       },
-      20,
+      100 / 21 * 4,
     ],
     [
       {
@@ -145,15 +147,15 @@ describe("FR-REG-02B profile draft contracts", () => {
           timeZone: "Asia/Kolkata",
         },
       },
-      15,
+      100 / 21 * 3,
     ],
     [
       {
         rate: { amountMinor: 10_000, currencyCode: "INR", unit: "HOUR" },
       },
-      15,
+      100 / 21 * 3,
     ],
-  ])("counts only the fixed twenty required checks in %j", (input, expected) => {
+  ])("counts only the fixed required checks in %j", (input, expected) => {
     const draft = profileDraftSchema.parse(input);
     expect(calculateProfileCompletionPercentage(draft)).toBe(expected);
   });
@@ -184,6 +186,20 @@ describe("FR-REG-02B profile draft contracts", () => {
 
     expect(before).toBe(100);
     expect(after).toBe(before);
+  });
+
+  it("keeps section gaps aligned with the fixed denominator and counts samples", () => {
+    const draft = profileDraftSchema.parse({
+      ...completeDraft(),
+      rate: { amountMinor: 12_500, currencyCode: "GBP" },
+      samples: [],
+    });
+    const gaps = profileCompletionGaps(draft);
+
+    expect(gaps[ProfileSection.RATE]).toEqual(["a rate unit"]);
+    expect(gaps[ProfileSection.SAMPLES]).toEqual(["at least one work sample"]);
+    expect(Object.values(gaps).flat()).toHaveLength(2);
+    expect(calculateProfileCompletionPercentage(draft)).toBeCloseTo(100 / 21 * 19);
   });
 
   it("does not lower a partial 10-of-20 baseline when partial second entries are added", () => {
@@ -231,7 +247,7 @@ describe("FR-REG-02B profile draft contracts", () => {
     const before = calculateProfileCompletionPercentage(tenChecks);
     const after = calculateProfileCompletionPercentage(withAdditionalEntries);
 
-    expect(before).toBe(50);
+    expect(before).toBeCloseTo(100 / 21 * 10);
     expect(after).toBe(before);
   });
 
