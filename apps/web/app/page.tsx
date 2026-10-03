@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     locale: "en",
     images: [
       {
-        url: "/social-preview.jpg",
+        url: "/social-preview.png",
         width: 1200,
         height: 630,
         alt: "eQOURSE+ expert network team",
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     description: HOME_DESCRIPTION,
     images: [
       {
-        url: "/social-preview.jpg",
+        url: "/social-preview.png",
         alt: "eQOURSE+ expert network team",
       },
     ],
