@@ -14,9 +14,9 @@ Section 6.1. Verify existing resources in Sections 2, 4, 5, 6, and 7; treat
 any discrepancy as a configuration issue rather than recreating a resource.
 
 Index parity is currently unresolved. Staging remains valid for application
-testing, including this workflow's deploy and health checks, but it is not a
-valid migration rehearsal until the separately tracked index-ownership and
-index-name reconciliation work is complete.
+testing, including this workflow's deploy and health checks. FR-FND-07
+migrations run through the dedicated workflow job below, which uses the Cloud
+Run VPC/NAT path rather than a developer workstation.
 
 Run read-only checks and the WIF update from a trusted PowerShell terminal.
 Do not display secret values or paste them into chat, tickets, or source control.
@@ -30,6 +30,7 @@ $ArtifactRepository = "eqplus-api"
 $PoolId = "github-actions"
 $ProviderId = "eqourseplus"
 $DeployServiceAccountId = "github-eqplus-deployer"
+$MigrationServiceAccountId = "eqplus-migrator"
 $StagingRuntimeServiceAccountId = "eqplus-api-staging-runtime"
 $ProductionRuntimeServiceAccountId = "eqplus-api-runtime"
 $GitHubRepository = "eQOURSE/eqourseplus"
@@ -37,6 +38,7 @@ $GitHubRepository = "eQOURSE/eqourseplus"
 gcloud config set project $ProjectId
 $ProjectNumber = gcloud projects describe $ProjectId --format="value(projectNumber)"
 $DeployServiceAccount = "$DeployServiceAccountId@$ProjectId.iam.gserviceaccount.com"
+$MigrationServiceAccount = "$MigrationServiceAccountId@$ProjectId.iam.gserviceaccount.com"
 $StagingRuntimeServiceAccount = "$StagingRuntimeServiceAccountId@$ProjectId.iam.gserviceaccount.com"
 $ProductionRuntimeServiceAccount = "$ProductionRuntimeServiceAccountId@$ProjectId.iam.gserviceaccount.com"
 ```
@@ -49,10 +51,29 @@ $ProjectNumber
 
 ## 2. Verify the existing Artifact Registry and service accounts
 
-The repository and all three accounts exist. The deploy identity has
-`roles/run.admin`, Artifact Registry writer, and `roles/iam.serviceAccountUser`
-(`actAs`) on both runtime accounts. Verify those bindings; do not recreate or
-regrant them unless an administrator finds a missing binding.
+The repository, deploy identity, and both API runtime accounts exist. The
+dedicated migration execution identity is:
+
+`eqplus-migrator@eqplus-503212.iam.gserviceaccount.com`
+
+The exact IAM contract is:
+
+| Principal | Scope | Required role | Purpose |
+| --- | --- | --- | --- |
+| `github-eqplus-deployer@eqplus-503212.iam.gserviceaccount.com` | Project `eqplus-503212` | `roles/run.admin` | Deploy and execute the one-shot Cloud Run Job (`run.jobs.run` is included) |
+| `github-eqplus-deployer@eqplus-503212.iam.gserviceaccount.com` | Migration service account | `roles/iam.serviceAccountUser` | `actAs` the migration execution identity when deploying the job |
+| `eqplus-migrator@eqplus-503212.iam.gserviceaccount.com` | Secret `MONGODB_URI_MIGRATOR_STAGING` | `roles/secretmanager.secretAccessor` | Read the staging migrator URI inside the staging job |
+| `eqplus-migrator@eqplus-503212.iam.gserviceaccount.com` | Secret `MONGODB_URI_MIGRATOR` | `roles/secretmanager.secretAccessor` | Read the production migrator URI inside the production job |
+
+Do not grant the migration identity `roles/run.admin` or
+`roles/iam.serviceAccountUser`. Do not grant the deploy identity access to
+either migrator secret. The migration identity is separate from both API
+runtime identities and is the only job execution identity allowed to read
+these database credentials.
+
+Verify the deploy identity's existing `roles/run.admin`, Artifact Registry
+writer, and `roles/iam.serviceAccountUser` (`actAs`) bindings; do not recreate
+or regrant them unless an administrator finds a missing binding.
 
 ```powershell
 gcloud artifacts repositories describe $ArtifactRepository `
@@ -65,11 +86,32 @@ foreach ($RuntimePrincipal in @($StagingRuntimeServiceAccount, $ProductionRuntim
     --filter="bindings.role=roles/iam.serviceAccountUser" `
     --format="value(bindings.members)"
 }
+
+gcloud iam service-accounts get-iam-policy $MigrationServiceAccount `
+  --project=$ProjectId `
+  --flatten="bindings[].members" `
+  --filter="bindings.role=roles/iam.serviceAccountUser" `
+  --format="value(bindings.members)"
 ```
 
 Each runtime account's `actAs` output must include the deploy service account.
-The running API uses its own runtime identity and does not receive deployer
-permissions.
+The migration account's `actAs` output must also include the deploy service
+account. The running API uses its own runtime identity and does not receive
+deployer or migration permissions.
+
+Verify the migration secret grants without reading secret values:
+
+```powershell
+foreach ($SecretName in @("MONGODB_URI_MIGRATOR_STAGING", "MONGODB_URI_MIGRATOR")) {
+  gcloud secrets describe $SecretName --project=$ProjectId
+  gcloud secrets get-iam-policy $SecretName --project=$ProjectId
+}
+```
+
+The workflow maps `environment=staging` to
+`MONGODB_URI_MIGRATOR_STAGING` and runs `db:migrate`; it maps
+`environment=production` to `MONGODB_URI_MIGRATOR` and runs only
+`db:migrate:status`. Neither URI is exposed to the GitHub runner or logs.
 
 ## 3. Extend the existing GitHub Workload Identity Federation provider
 
@@ -140,25 +182,32 @@ change the working URI, user, database name, or network rules to match an old
 runbook example. Never copy production users, documents, or OTP/session data
 into staging.
 
-### 4.2 Verify staging schema and index parity
+### 4.2 Run the FR-FND-07 migration verification workflow
 
-The committed migrations were already run against staging. Do not rerun them
-for this workflow change. Check migration status only if investigating drift,
-using the existing `db:migrate:status` command with the staging URI supplied
-transiently; do not save the URI in a repository file.
+The `workflow_dispatch` input `environment=staging` deploys and waits for the
+one-shot `eqplus-db-migrate-staging` Cloud Run Job. It injects
+`MONGODB_URI_MIGRATOR_STAGING` as `MONGODB_MIGRATION_URI` inside Cloud Run,
+runs `pnpm --filter @eqourse/api db:migrate`, and routes all egress through the
+existing VPC/NAT path. Run it twice; the two successful GitHub workflow logs are
+the idempotency evidence. The URI is never read into GitHub Actions or printed.
 
-Index parity is not a blocker for this application-testing rollout. It is a
-separately tracked migration-safety issue: production was created app-first and
-staging migrations-first, so Mongoose-created and migration-created indexes may
-have equivalent definitions with different names. Until index ownership and
-names are reconciled, staging is not a valid rehearsal for migrations.
+The `environment=production` dispatch uses the protected GitHub `production`
+environment, injects `MONGODB_URI_MIGRATOR`, and runs only
+`pnpm --filter @eqourse/api db:migrate:status`. It is read-only and must be
+approved by the existing production reviewers. The workflow logs the Cloud Run
+execution name and terminal conditions for audit evidence.
 
-The follow-up must set `autoIndex: false` in deployed environments while
-retaining it locally and in tests. It must then use a reviewed, idempotent,
-name-aware `migrate-mongo` migration to reconcile indexes by key definition
-and repair its `down` path. Never use `syncIndexes()` or manually change a
-production index in Atlas. Production migrations remain separately
-approval-gated.
+The migration Cloud Run Job uses the image tagged by the dispatched commit and
+the repository variable `GCP_MIGRATION_SERVICE_ACCOUNT`, whose value must be
+the full service account name above. The IAM contract in Section 2 is
+mandatory; do not infer these grants from the workflow. Keep the existing WIF
+provider and deploy identity; do not create a JSON service-account key.
+
+Index parity remains a separate FR-FND-07 acceptance check: the reviewed,
+idempotent, name-aware migration must compare complete definitions, require a
+write pause before unique-index renames, and never use `syncIndexes()` or
+manually change a production index in Atlas. The API keeps `autoIndex: false` in
+deployed environments while retaining automatic indexes locally and in tests.
 
 
 
@@ -178,8 +227,9 @@ sign remain inside their values.
 `--set-env-vars` replaces the service's complete plain-variable group; keep
 the workflow list complete when adding another variable.
 
-`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_DEPLOY_SERVICE_ACCOUNT`, and
-`OTP_EMAIL_FROM` are existing GitHub repository variables. Verify their
+`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_DEPLOY_SERVICE_ACCOUNT`,
+`GCP_MIGRATION_SERVICE_ACCOUNT`, and `OTP_EMAIL_FROM` are GitHub repository
+variables. Verify their
 presence without replacing them:
 
 ```powershell
