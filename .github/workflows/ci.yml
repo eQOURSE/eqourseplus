@@ -6,6 +6,15 @@ on:
     branches:
       - develop
       - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Database environment to verify
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
 
 permissions:
   contents: read
@@ -63,6 +72,77 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  database-migrate:
+    # FR-FND-07: execute migrations inside Cloud Run so Atlas sees the approved
+    # Cloud Run NAT address. The migration URI is injected by Secret Manager.
+    name: Run ${{ inputs.environment }} database verification
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Authenticate to Google Cloud with Workload Identity Federation
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Select environment-scoped migration command
+        shell: bash
+        run: |
+          if [[ "${{ inputs.environment }}" == "staging" ]]; then
+            echo "MIGRATION_SECRET=MONGODB_URI_MIGRATOR_STAGING" >> "${GITHUB_ENV}"
+            echo "MIGRATION_COMMAND=db:migrate" >> "${GITHUB_ENV}"
+          elif [[ "${{ inputs.environment }}" == "production" ]]; then
+            echo "MIGRATION_SECRET=MONGODB_URI_MIGRATOR" >> "${GITHUB_ENV}"
+            echo "MIGRATION_COMMAND=db:migrate:status" >> "${GITHUB_ENV}"
+          else
+            echo "::error::Unsupported migration environment"
+            exit 1
+          fi
+          echo "Selected ${{ inputs.environment }} migration verification"
+
+      - name: Verify the API image exists
+        run: >-
+          gcloud artifacts docker images describe "${IMAGE_URI}"
+          --project="${PROJECT_ID}"
+          --format='value(image_summary.digest)'
+
+      - name: Deploy the one-shot migration Cloud Run Job
+        run: >-
+          gcloud run jobs deploy "eqplus-db-migrate-${{ inputs.environment }}"
+          --project="${PROJECT_ID}"
+          --region="${REGION}"
+          --image="${IMAGE_URI}"
+          --service-account="${{ vars.GCP_MIGRATION_SERVICE_ACCOUNT }}"
+          --network=default
+          --subnet=default
+          --vpc-egress=all-traffic
+          --max-retries=0
+          --task-timeout=10m
+          --set-env-vars=NODE_ENV=production
+          --set-secrets="MONGODB_MIGRATION_URI=${MIGRATION_SECRET}:latest"
+          --command=pnpm
+          --args="${MIGRATION_COMMAND}"
+          --quiet
+
+      - name: Execute and wait for the migration job
+        run: >-
+          gcloud run jobs execute "eqplus-db-migrate-${{ inputs.environment }}"
+          --project="${PROJECT_ID}"
+          --region="${REGION}"
+          --wait
+          --format='yaml(metadata.name,status.conditions)'
+          --quiet
 
   staging-deploy:
     # FR-FND-05: build once on develop, then promote this immutable image to prod.
