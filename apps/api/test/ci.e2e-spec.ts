@@ -159,6 +159,17 @@ describe("FR-FND-05 API deployment", () => {
     );
   });
 
+  it("passes the Cloud Run migration secret to migrate-mongo", () => {
+    const migrationConfig = readFileSync(
+      path.join(repositoryDirectory, "apps", "api", "migrate-mongo-config.cjs"),
+      "utf8",
+    );
+
+    expect(migrationConfig).toContain(
+      "environment.MONGODB_MIGRATION_URI ?? environment.MONGODB_URI",
+    );
+  });
+
   it("defines a pnpm-aware, multi-stage, non-root production API image", () => {
     const dockerfile = readFileSync(dockerfilePath, "utf8");
     const dockerignore = readFileSync(dockerignorePath, "utf8");
