@@ -62,7 +62,8 @@ execution identity. Its value must be
 
 The IAM contract is explicit: `github-eqplus-deployer@eqplus-503212.iam.gserviceaccount.com`
 has `roles/run.admin` on project `eqplus-503212` for Cloud Run Job deployment
-and execution, plus `roles/iam.serviceAccountUser` on the migration identity
+and execution, `roles/logging.viewer` on project `eqplus-503212` for reading
+Cloud Run Job execution logs, plus `roles/iam.serviceAccountUser` on the migration identity
 for `actAs`; the migration identity has
 `roles/secretmanager.secretAccessor` on
 `MONGODB_URI_MIGRATOR_STAGING` and `MONGODB_URI_MIGRATOR` only. The staging
