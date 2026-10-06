@@ -148,6 +148,7 @@ describe("FR-FND-05 API deployment", () => {
     expect(migrationJob).toContain("gcloud run jobs execute");
     expect(migrationJob).toContain("--wait");
     expect(migrationJob).not.toContain("gcloud run jobs executions wait");
+    expect(migrationJob).toContain("gcloud run jobs executions list");
     expect(migrationJob).toContain("gcloud run jobs executions describe");
     expect(migrationJob).toContain("gcloud logging read");
     expect(migrationJob).not.toContain("gcloud secrets versions access");
