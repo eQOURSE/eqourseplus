@@ -140,13 +140,28 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          execution_name="$(gcloud run jobs execute "eqplus-db-migrate-${{ inputs.environment }}" \
+          set +e
+          execute_output="$(gcloud run jobs execute "eqplus-db-migrate-${{ inputs.environment }}" \
             --project="${PROJECT_ID}" \
             --region="${REGION}" \
             --wait \
             --format='value(metadata.name)' \
-            --quiet)"
+            --quiet 2>&1)"
+          execute_status=$?
+          set -e
+          execution_name="${execute_output}"
+          if [[ "${execute_status}" -ne 0 ]]; then
+            execution_name="$(gcloud run jobs executions list "eqplus-db-migrate-${{ inputs.environment }}" \
+              --project="${PROJECT_ID}" \
+              --region="${REGION}" \
+              --sort-by='~metadata.creationTimestamp' \
+              --limit=1 \
+              --format='value(metadata.name)' \
+              --quiet)"
+            printf '%s\n' "${execute_output}"
+          fi
           echo "execution_name=${execution_name}" >> "${GITHUB_OUTPUT}"
+          exit "${execute_status}"
 
       - name: Diagnose failed migration execution
         if: ${{ failure() && steps.execute-migration.outputs.execution_name != '' }}
