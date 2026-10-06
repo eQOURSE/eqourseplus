@@ -130,8 +130,17 @@ describe("FR-FND-05 API deployment", () => {
     expect(migrationJob).toContain("google-github-actions/setup-gcloud@v3");
     expect(migrationJob).toContain("MONGODB_URI_MIGRATOR_STAGING");
     expect(migrationJob).toContain("MONGODB_URI_MIGRATOR");
-    expect(migrationJob).toContain("db:migrate");
-    expect(migrationJob).toContain("db:migrate:status");
+    expect(migrationJob).toContain(
+      "MIGRATION_ARGS=up,-f,/app/migrate-mongo-config.cjs",
+    );
+    expect(migrationJob).toContain(
+      "MIGRATION_ARGS=status,-f,/app/migrate-mongo-config.cjs",
+    );
+    expect(migrationJob).toContain("--command=node");
+    expect(migrationJob).toContain(
+      "--args=\"/app/node_modules/migrate-mongo/bin/migrate-mongo.js,${MIGRATION_ARGS}\"",
+    );
+    expect(migrationJob).not.toContain("--command=pnpm");
     expect(migrationJob).toContain("--network=default");
     expect(migrationJob).toContain("--subnet=default");
     expect(migrationJob).toContain("--vpc-egress=all-traffic");
@@ -152,6 +161,10 @@ describe("FR-FND-05 API deployment", () => {
     expect(runbook).toContain("roles/run.admin");
     expect(runbook).toContain("roles/iam.serviceAccountUser");
     expect(runbook).toContain("roles/secretmanager.secretAccessor");
+    expect(runbook).toContain("roles/logging.viewer");
+    expect(runbook).toContain(
+      "github-eqplus-deployer@eqplus-503212.iam.gserviceaccount.com",
+    );
     expect(runbook).toContain(
       "MONGODB_URI_MIGRATOR_STAGING",
     );
@@ -524,8 +537,11 @@ describe("FR-FND-05 API deployment", () => {
     expect(runbook).toContain("unsuffixed database and JWT secrets must grant only production");
     expect(runbook).toMatch(/Never copy production users, documents, or OTP\/session data/i);
     expect(runbook).toContain("SCRAM user `eqplus-staging-app`");
-    expect(runbook).toContain("db:migrate:status");
-    expect(runbook).toContain("db:migrate");
+    expect(runbook).toContain("migrate-mongo `status`");
+    expect(runbook).toContain("migrate-mongo `up`");
+    expect(runbook).toContain(
+      "/app/node_modules/migrate-mongo/bin/migrate-mongo.js",
+    );
     expect(runbook).toContain("Staging remains valid for application");
     expect(runbook).toMatch(/FR-FND-07\s+migrations run through the dedicated workflow job/);
     expect(runbook).toContain("GCP_MIGRATION_SERVICE_ACCOUNT");

@@ -61,6 +61,7 @@ The exact IAM contract is:
 | Principal | Scope | Required role | Purpose |
 | --- | --- | --- | --- |
 | `github-eqplus-deployer@eqplus-503212.iam.gserviceaccount.com` | Project `eqplus-503212` | `roles/run.admin` | Deploy and execute the one-shot Cloud Run Job (`run.jobs.run` is included) |
+| `github-eqplus-deployer@eqplus-503212.iam.gserviceaccount.com` | Project `eqplus-503212` | `roles/logging.viewer` | Read Cloud Run Job execution logs for deployment diagnosis and FR-FND-07 evidence |
 | `github-eqplus-deployer@eqplus-503212.iam.gserviceaccount.com` | Migration service account | `roles/iam.serviceAccountUser` | `actAs` the migration execution identity when deploying the job |
 | `eqplus-migrator@eqplus-503212.iam.gserviceaccount.com` | Secret `MONGODB_URI_MIGRATOR_STAGING` | `roles/secretmanager.secretAccessor` | Read the staging migrator URI inside the staging job |
 | `eqplus-migrator@eqplus-503212.iam.gserviceaccount.com` | Secret `MONGODB_URI_MIGRATOR` | `roles/secretmanager.secretAccessor` | Read the production migrator URI inside the production job |
@@ -109,9 +110,9 @@ foreach ($SecretName in @("MONGODB_URI_MIGRATOR_STAGING", "MONGODB_URI_MIGRATOR"
 ```
 
 The workflow maps `environment=staging` to
-`MONGODB_URI_MIGRATOR_STAGING` and runs `db:migrate`; it maps
+`MONGODB_URI_MIGRATOR_STAGING` and runs migrate-mongo `up`; it maps
 `environment=production` to `MONGODB_URI_MIGRATOR` and runs only
-`db:migrate:status`. Neither URI is exposed to the GitHub runner or logs.
+migrate-mongo `status`. Neither URI is exposed to the GitHub runner or logs.
 
 ## 3. Extend the existing GitHub Workload Identity Federation provider
 
@@ -187,13 +188,14 @@ into staging.
 The `workflow_dispatch` input `environment=staging` deploys and waits for the
 one-shot `eqplus-db-migrate-staging` Cloud Run Job. It injects
 `MONGODB_URI_MIGRATOR_STAGING` as `MONGODB_MIGRATION_URI` inside Cloud Run,
-runs `pnpm --filter @eqourse/api db:migrate`, and routes all egress through the
-existing VPC/NAT path. Run it twice; the two successful GitHub workflow logs are
+runs Node directly against `/app/node_modules/migrate-mongo/bin/migrate-mongo.js`
+with `/app/migrate-mongo-config.cjs`, and routes all egress through the existing
+VPC/NAT path. Run it twice; the two successful GitHub workflow logs are
 the idempotency evidence. The URI is never read into GitHub Actions or printed.
 
 The `environment=production` dispatch uses the protected GitHub `production`
 environment, injects `MONGODB_URI_MIGRATOR`, and runs only
-`pnpm --filter @eqourse/api db:migrate:status`. It is read-only and must be
+the migrate-mongo `status` command with the same absolute entrypoint. It is read-only and must be
 approved by the existing production reviewers. The workflow logs the Cloud Run
 execution name and terminal conditions for audit evidence.
 
