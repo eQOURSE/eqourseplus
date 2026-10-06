@@ -151,7 +151,8 @@ jobs:
           set -e
           execution_name="${execute_output}"
           if [[ "${execute_status}" -ne 0 ]]; then
-            execution_name="$(gcloud run jobs executions list "eqplus-db-migrate-${{ inputs.environment }}" \
+            execution_name="$(gcloud run jobs executions list \
+              --job="eqplus-db-migrate-${{ inputs.environment }}" \
               --project="${PROJECT_ID}" \
               --region="${REGION}" \
               --sort-by='~metadata.creationTimestamp' \
