@@ -302,6 +302,8 @@ Normative seed rows (FR-FND-03):
 2. EQOURSE / Content Services / Curriculum / null
 3. TUTRAIN / Tutoring / NEET Biology / null
 
+Approved FR-FND-03A taxonomy extension for the FR-TST-01 assessment categories: EQOURSE / AI Data Services / Image Annotation Quality Assurance / null; EQOURSE / Content Services / Multilingual Content Quality Review / null. These are real service skills in the canonical idempotent seed, bringing its total from 59 to 61. Production promotion is a separately tracked seed operation and is not part of FR-TST-01 shipping.
+
 **users** — one document per platform account.
 ```
 {
