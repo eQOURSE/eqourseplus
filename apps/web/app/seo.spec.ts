@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("next/font/google", () => ({
   Inter: () => ({ variable: "--font-inter" }),
   Plus_Jakarta_Sans: () => ({ variable: "--font-plus-jakarta-sans" }),
+  Inter_Tight: () => ({ variable: "--font-display" }),
+  Instrument_Serif: () => ({ variable: "--font-serif" }),
 }));
 
 import { metadata as layoutMetadata } from "./layout";

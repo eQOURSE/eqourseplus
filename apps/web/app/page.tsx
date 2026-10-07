@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { CalloutBanner } from "../components/home/CalloutBanner";
-import { FeaturesSection } from "../components/home/FeaturesSection";
-import { GlassBoxSection } from "../components/home/GlassBoxSection";
-import { HeroSection } from "../components/home/HeroSection";
-import { HowItWorksSection } from "../components/home/HowItWorksSection";
-import { HomeFaq } from "../components/home/HomeFaq";
 import { HomeFooter, HomeHeader } from "../components/home/HomeChrome";
-import { TrustSection } from "../components/home/TrustSection";
-import styles from "../components/home/home-redesign.module.css";
+import { Faq, FinalCta } from "../components/landing/faq-cta";
+import { Hero } from "../components/landing/hero";
+import { MotionRuntime } from "../components/landing/motion-runtime";
+import { Pillars } from "../components/landing/pillars";
+import { GlassBoxSection, HowItWorks } from "../components/landing/sections";
+import { Trust } from "../components/landing/trust";
+import "../components/landing/sections.css";
+import "../components/landing/cockpit.css";
 import { serializeJsonLd } from "../lib/json-ld";
 import {
   HOME_DESCRIPTION,
@@ -56,15 +56,16 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   return (
-    <main className={`home-shell ${styles.page}`}>
+    <main className="lx lx-home">
+      <MotionRuntime />
       <HomeHeader />
-      <HeroSection />
-      <FeaturesSection />
-      <HowItWorksSection />
+      <Hero />
+      <Pillars />
+      <HowItWorks />
       <GlassBoxSection />
-      <TrustSection />
-      <HomeFaq />
-      <CalloutBanner />
+      <Trust />
+      <Faq />
+      <FinalCta />
       <HomeFooter />
       {structuredData.map((block) => (
         <script

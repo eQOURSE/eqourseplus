@@ -25,6 +25,7 @@ import {
 import VendorRegistrationPage, {
   metadata as vendorMetadata,
 } from "./vendor/page";
+import { PRIMARY_NAV_HREFS, PUBLIC_CHROME_HREFS, inPageBody, primaryNavHrefs } from "../../components/home/chrome-test-utils";
 
 const APPROVED_LINKS = [
   "/",
@@ -234,20 +235,11 @@ describe("FR-PUB-06 registration routes", () => {
       )) {
         const href = link.getAttribute("href") ?? "";
         expect(
-          href.startsWith("#") || APPROVED_LINKS.includes(href as never),
+          href.startsWith("#") || (APPROVED_LINKS.includes(href as never) || PUBLIC_CHROME_HREFS.includes(href)),
           href,
         ).toBe(true);
       }
-      expect(
-        Array.from(
-          container.querySelectorAll<HTMLAnchorElement>(
-            "#site-navigation .home-nav-links a",
-          ),
-          (link) => link.getAttribute("href"),
-        ),
-        ).toEqual(
-          ["#how-it-works", "#categories", "/freelancers", "/vendors", "/about"],
-        );
+      expect(primaryNavHrefs(container)).toEqual(PRIMARY_NAV_HREFS);
       expect(
         container.querySelector("#site-navigation [aria-current]"),
       ).toBeNull();
@@ -319,7 +311,7 @@ describe("FR-PUB-06 registration routes", () => {
 
     expect(container.querySelector("#site-navigation")).toBeInTheDocument();
     expect(container.querySelector("#site-footer")).toBeInTheDocument();
-    expect(container.querySelectorAll('a[href^="/register/"]').length).toBe(3);
+    expect(inPageBody(container, 'a[href^="/register/"]').length).toBe(3);
     expect(registerStyles).toMatch(/repeating-linear-gradient/);
     expect(registerStyles).toMatch(/radial-gradient/);
     expect(registerStyles).toMatch(/\.registrationRoleCard/);

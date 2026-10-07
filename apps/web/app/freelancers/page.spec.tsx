@@ -14,6 +14,7 @@ import {
 } from "../../../../packages/ui/test/contrast-helpers";
 import { freelancerFaq } from "./freelancers-data";
 import FreelancersPage from "./page";
+import { PRIMARY_NAV_HREFS, PUBLIC_CHROME_HREFS, primaryNavHrefs } from "../../components/home/chrome-test-utils";
 
 const pageSource = readFileSync(
   resolve(process.cwd(), "app/freelancers/page.tsx"),
@@ -74,28 +75,11 @@ describe("FR-PUB-03 freelancers page", () => {
     expect(screen.getAllByRole("link", { name: /Create account/ })).toHaveLength(2);
     for (const link of container.querySelectorAll<HTMLAnchorElement>("a[href]")) {
       const href = link.getAttribute("href") ?? "";
-      const isChromeLink =
-        href === "/" ||
-        href === "/freelancers" ||
-        href === "/jobs" ||
-        href === "/vendors" ||
-        href === "/clients" ||
-        href === "/about" ||
-        href === "/login" ||
-        href === "/register" ||
-        href === "/register/freelancer" ||
-        href === "https://www.eqourse.com/";
+      const isChromeLink = href === "/jobs" || PUBLIC_CHROME_HREFS.includes(href);
       expect(href.startsWith("#") || isChromeLink, href).toBe(true);
     }
 
-    expect(
-      Array.from(
-        container.querySelectorAll<HTMLAnchorElement>(
-          "#site-navigation .home-nav-links a",
-        ),
-        (link) => link.getAttribute("href"),
-      ),
-    ).toEqual(["#how-it-works", "#categories", "/freelancers", "/vendors", "/about"]);
+    expect(primaryNavHrefs(container)).toEqual(PRIMARY_NAV_HREFS);
   });
 
   it("uses the HomeChrome shell and renders the visual design sections", () => {
