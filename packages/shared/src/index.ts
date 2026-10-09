@@ -2,6 +2,7 @@ export * from "./auth/role";
 export * from "./auth/token-ttl";
 export * from "./data/vendor-country-registry";
 export * from "./schemas/auth.schemas";
+export * from "./schemas/assessment.schemas";
 export * from "./schemas/client.schemas";
 export * from "./schemas/profile.schemas";
 export * from "./schemas/registration.schemas";

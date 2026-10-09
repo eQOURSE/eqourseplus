@@ -8,6 +8,7 @@ import {
 import { APP_FILTER } from "@nestjs/core";
 
 import { AuthModule } from "./auth/auth.module";
+import { AssessmentModule } from "./assessments/assessment.module";
 import { ClientsModule } from "./clients/clients.module";
 import { CompanyReviewsModule } from "./company-reviews/company-reviews.module";
 import { DatabaseModule } from "./database/database.module";
@@ -23,6 +24,7 @@ import { VendorsModule } from "./vendors/vendors.module";
     DatabaseModule,
     ProfilesModule,
     AuthModule,
+    AssessmentModule,
     ClientsModule,
     CompanyReviewsModule,
     VendorsModule,
