@@ -1,26 +1,33 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { contrast, parseHsl } from "../../../../packages/ui/test/contrast-helpers";
 import { HomeHeader, PUBLIC_CHROME_HREFS } from "../home/HomeChrome";
-import { CockpitPreview } from "./cockpit";
+import { DeliveryBoard } from "./delivery-board";
 import { Faq, FinalCta } from "./faq-cta";
 import { GlassBox } from "./glass-box";
-import { LiquidLens, supportsBackdropRefraction } from "./liquid-lens";
+import { buildRefractionPixels, DEFAULT_OPTICS, displacementProfile, rayDisplacement, squircle } from "./glass-optics";
+import { LiquidGlass, supportsBackdropRefraction } from "./liquid-glass";
+import { Pillars } from "./pillars";
 import { SEGMENTS } from "./segments";
-import { SpecializationTracks } from "./tracks";
+import { SpecializationTracks, trackMatches } from "./tracks";
+import { LAND_COUNT, LAND_MASK } from "./world-dots.data";
+import { landAt, WorldMap } from "./world-map";
 
 const css = (file: string) =>
   readFileSync(resolve(process.cwd(), `components/landing/${file}`), "utf8");
 const landingCss = css("landing.css");
-const sectionsCss = css("sections.css");
 const chromeCss = css("chrome.css");
+const heroCss = css("hero.css");
+const faqCss = css("faq-cta.css");
+const tracksCss = css("tracks.css");
 
 function themeBlock(selector: string) {
-  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // tolerate LF or CRLF checkouts between selector lines
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\n/g, "\\s*");
   return landingCss.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
 }
 
@@ -34,11 +41,12 @@ afterEach(cleanup);
 
 describe("segment CTAs", () => {
   it("defines exactly the three audiences with registration and learn-more routes", () => {
-    expect(SEGMENTS.map((item) => [item.cta, item.href, item.learnMoreHref])).toEqual([
-      ["Apply as an Expert", "/register/freelancer", "/freelancers"],
-      ["Join as a Vendor", "/register/vendor", "/vendors"],
-      ["Deploy Expert Teams", "/register/client", "/clients"],
+    expect(SEGMENTS.map((item) => [item.audience, item.cta, item.href, item.learnMoreHref])).toEqual([
+      ["For Freelance Experts", "Apply as an Expert", "/register/freelancer", "/freelancers"],
+      ["For Vendor Agencies", "Join as an Agency Partner", "/register/vendor", "/vendors"],
+      ["For Enterprise Clients", "Deploy Expert Teams", "/register/client", "/clients"],
     ]);
+    expect(SEGMENTS[0]?.note).toBe("Work Remotely");
   });
 
   it("puts all three segments plus Login in the shared header on every page", () => {
@@ -51,10 +59,16 @@ describe("segment CTAs", () => {
     for (const item of SEGMENTS) expect(PUBLIC_CHROME_HREFS).toContain(item.href);
   });
 
-  it("repeats the same three CTAs in the final call to action", () => {
+  it("closes with the three approved conversion links plus Login", () => {
     render(<FinalCta />);
-    for (const item of SEGMENTS) {
-      expect(screen.getByRole("link", { name: new RegExp(item.cta) })).toHaveAttribute("href", item.href);
+    for (const [label, note, href] of [
+      ["Apply as a Domain Expert", "Flexible, Remote, Verified", "/register/freelancer"],
+      ["Register as a Vendor Partner", "High-Volume Enterprise Pipelines", "/register/vendor"],
+      ["Talk to Our Enterprise Solutions Team", "Deploy Dedicated Talent", "/register/client"],
+    ] as const) {
+      const link = screen.getByRole("link", { name: new RegExp(label) });
+      expect(link).toHaveAttribute("href", href);
+      expect(link).toHaveTextContent(note);
     }
     expect(screen.getByRole("link", { name: "Login" })).toHaveAttribute("href", "/login");
   });
@@ -75,48 +89,125 @@ describe("theme switch", () => {
   });
 });
 
-describe("cockpit preview", () => {
-  it("switches between accessible bar, line, and pie chart panels", async () => {
-    render(<CockpitPreview />);
-    const barTab = screen.getByRole("tab", { name: "Bar chart" });
-    expect(barTab).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tabpanel")).toHaveAccessibleName("Bar chart");
-    await waitFor(() => expect(screen.getByLabelText("Weekly throughput bar chart")).toBeVisible());
-
-    fireEvent.click(screen.getByRole("tab", { name: "Line chart" }));
-    expect(screen.getByRole("tabpanel")).toHaveAccessibleName("Line chart");
-    await waitFor(() => expect(screen.getByLabelText("Weekly throughput line chart")).toBeVisible());
-
-    fireEvent.click(screen.getByRole("tab", { name: "Pie chart" }));
-    expect(screen.getByRole("tabpanel")).toHaveAccessibleName("Pie chart");
-    await waitFor(() => expect(screen.getByLabelText("Project status pie chart")).toBeVisible());
+describe("delivery cockpit preview", () => {
+  it("is exposed as one labelled illustration with the approved display address", () => {
+    render(<DeliveryBoard />);
+    const board = screen.getByRole("img", { name: /Illustrative preview/ });
+    expect(board).toHaveTextContent("plus.eqourse.com/cockpit/telemetry-live");
+    expect(board).toHaveTextContent("Illustrative preview");
   });
 
-  it("supports arrow-key navigation across the chart tabs", () => {
-    render(<CockpitPreview />);
-    const barTab = screen.getByRole("tab", { name: "Bar chart" });
-    fireEvent.keyDown(barTab, { key: "ArrowRight" });
-    expect(screen.getByRole("tab", { name: "Line chart" })).toHaveAttribute("aria-selected", "true");
-    fireEvent.keyDown(barTab, { key: "ArrowLeft" });
-    expect(screen.getByRole("tab", { name: "Pie chart" })).toHaveAttribute("aria-selected", "true");
+  it("shows workflow states only, never invented figures", () => {
+    const { container } = render(<DeliveryBoard />);
+    expect(container.textContent).not.toMatch(/\d/);
   });
 });
 
-describe("specialization orbit", () => {
-  it("selects a track by click and by arrow key and updates the detail panel", async () => {
+describe("specialization domain finder", () => {
+  const searchbox = () => screen.getByRole("searchbox", { name: /search specialization tracks/i });
+
+  it("lists all eight tracks with their approved copy", () => {
+    const { container } = render(<SpecializationTracks />);
+    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(8);
+    expect(container.querySelectorAll('[data-match="all"]')).toHaveLength(8);
+    expect(screen.getByText(/across 30\+ global languages/)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Showing all eight specialization tracks.");
+  });
+
+  it("filters by expertise, moves matches to the front and announces the result", () => {
+    const { container } = render(<SpecializationTracks />);
+    fireEvent.change(searchbox(), { target: { value: "python" } });
+
+    expect(screen.getByRole("status")).toHaveTextContent(/1 of 8 tracks match/);
+    const matches = container.querySelectorAll('[data-match="yes"]');
+    expect(matches).toHaveLength(1);
+    expect(matches[0]).toHaveTextContent("Software Engineering & Code Intelligence");
+    expect(matches[0]).toHaveTextContent("Match");
+    expect(container.querySelector(".q-dom")).toHaveAttribute("data-track", "code");
+    expect(container.querySelectorAll('[data-match="no"]')).toHaveLength(7);
+  });
+
+  it("offers example skills and a clear control", () => {
     render(<SpecializationTracks />);
+    fireEvent.click(screen.getByRole("button", { name: "Radiology" }));
+    expect(screen.getByRole("button", { name: "Radiology" })).toHaveAttribute("aria-pressed", "true");
+    expect(searchbox()).toHaveValue("Radiology");
+    expect(screen.getByRole("status")).toHaveTextContent(/1 of 8 tracks match/);
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(searchbox()).toHaveValue("");
+    expect(screen.getByRole("status")).toHaveTextContent("Showing all eight");
+  });
+
+  it("matches word prefixes from the copy and common job titles", () => {
+    expect(trackMatches("clinical", "radiolog")).toBe(true);
+    expect(trackMatches("language", "Hindi")).toBe(true);
+    expect(trackMatches("stem", "maths")).toBe(true);
+    expect(trackMatches("legal", "contract law")).toBe(true);
+    expect(trackMatches("rlhf", "Red-teaming")).toBe(true);
+    expect(trackMatches("code", "hindi")).toBe(false);
+    expect(trackMatches("robotics", "")).toBe(true);
+  });
+
+  it("explains when nothing matches", () => {
+    render(<SpecializationTracks />);
+    fireEvent.change(searchbox(), { target: { value: "zzzz" } });
+    expect(screen.getByRole("status")).toHaveTextContent(/No track matches/);
+  });
+});
+
+describe("dual-jurisdiction world map", () => {
+  it("is one labelled illustration with India and Singapore pinned", () => {
+    render(<WorldMap />);
+    const map = screen.getByRole("img", { name: /India and Singapore/ });
+    expect(map).toHaveTextContent("India");
+    expect(map).toHaveTextContent("Singapore");
+    expect(map.querySelectorAll("svg[aria-hidden='true']").length).toBeGreaterThan(0);
+  });
+
+  it("draws continents from a land mask in the right places", () => {
+    const bits = atob(LAND_MASK);
+    let count = 0;
+    for (let index = 0; index < bits.length; index += 1) {
+      let byte = bits.charCodeAt(index);
+      while (byte) {
+        count += byte & 1;
+        byte >>= 1;
+      }
+    }
+    expect(count).toBe(LAND_COUNT);
+    expect(landAt(78.96, 20.59)).toBe(true); // central India
+    expect(landAt(133.8, -25.3)).toBe(true); // central Australia
+    expect(landAt(-100, 40)).toBe(true); // central United States
+    expect(landAt(-150, 0)).toBe(false); // central Pacific
+    expect(landAt(-30, 30)).toBe(false); // central Atlantic
+    expect(landAt(80, -10)).toBe(false); // Indian Ocean
+  });
+});
+
+describe("who we empower", () => {
+  it("shows one audience at a time while keeping all three pillars in the page", () => {
+    const { container } = render(<Pillars />);
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(8);
-    expect(tabs[0]).toHaveAttribute("aria-selected", "true");
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["Experts", "Agencies", "Enterprises"]);
+    expect(container.querySelectorAll('[role="tabpanel"]')).toHaveLength(3);
+    expect(container.querySelectorAll("h3")).toHaveLength(3);
+    expect(screen.getByRole("tabpanel")).toHaveTextContent("Work Anywhere, Anytime.");
+    expect(screen.getByRole("tabpanel")).toHaveTextContent("No Algorithmic Bans");
 
-    fireEvent.click(screen.getByRole("tab", { name: /Clinical medicine and healthcare/ }));
-    await waitFor(() =>
-      expect(screen.getByRole("tabpanel")).toHaveTextContent("Diagnostic review, pharmacology evaluation"),
-    );
+    fireEvent.click(screen.getByRole("tab", { name: "Agencies" }));
+    expect(screen.getByRole("tab", { name: "Agencies" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel")).toHaveTextContent("Big Projects from Frontier Labs.");
+    expect(screen.getByRole("link", { name: /Apply for Agency Accreditation/ })).toHaveAttribute("href", "/register/vendor");
 
-    fireEvent.keyDown(screen.getByRole("tab", { name: /Clinical medicine/ }), { key: "ArrowRight" });
-    expect(screen.getByRole("tab", { name: /Curriculum design/ })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tabpanel")).toHaveTextContent("Track 06 of 08");
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Agencies" }), { key: "ArrowRight" });
+    expect(screen.getByRole("tab", { name: "Enterprises" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel")).toHaveTextContent("Deploy Verified Domain Authorities");
+    expect(screen.getByRole("link", { name: /Schedule an Enterprise Consultation/ })).toHaveAttribute("href", "/register/client");
+  });
+
+  it("keeps inactive panels hidden even though panels are laid out as grids", () => {
+    expect(css("pillars.css")).toMatch(/\.q-aud__panel\[hidden\]\s*\{[^}]*display:\s*none/);
   });
 });
 
@@ -134,10 +225,10 @@ describe("glass box comparison", () => {
     const standard = screen.getByRole("button", { name: "eQOURSE+ standard" });
     fireEvent.click(standard);
     expect(standard).toHaveAttribute("aria-pressed", "true");
-    expect(container.querySelector(".lx-gb")).toHaveAttribute("data-mode", "glass");
+    expect(container.querySelector(".q-gb")).toHaveAttribute("data-mode", "glass");
     fireEvent.click(legacy);
     expect(legacy).toHaveAttribute("aria-pressed", "true");
-    expect(container.querySelector(".lx-gb")).toHaveAttribute("data-mode", "legacy");
+    expect(container.querySelector(".q-gb")).toHaveAttribute("data-mode", "legacy");
   });
 });
 
@@ -152,20 +243,59 @@ describe("FAQ", () => {
     expect(screen.getByText(/which countries can experts work from/i)).toBeInTheDocument();
   });
 
+  it("uses the approved answer wording", () => {
+    render(<Faq />);
+    expect(screen.getByText(/Expert opportunities span 30\+ languages/)).toBeInTheDocument();
+    expect(screen.getByText(/milestone-based settlements/)).toBeInTheDocument();
+  });
+
   it("wraps long questions and offsets anchored sections below the floating nav", () => {
-    expect(sectionsCss).toMatch(/\.lx-qa__q\s*\{[^}]*overflow-wrap:\s*anywhere/);
-    expect(sectionsCss).toMatch(/\.lx-home section\[id\]\s*\{[^}]*scroll-margin-top/);
+    expect(faqCss).toMatch(/\.q-qa__q\s*\{[^}]*overflow-wrap:\s*anywhere/);
+    expect(heroCss).toMatch(/\.q-home section\[id\]\s*\{[^}]*scroll-margin-top/);
   });
 });
 
 describe("liquid glass", () => {
   it("falls back to frosted glass where refraction is unsupported", () => {
     expect(supportsBackdropRefraction()).toBe(false);
-    const { container } = render(<LiquidLens className="lx-glass">content</LiquidLens>);
-    const lens = container.firstElementChild!;
-    expect(lens).toHaveAttribute("data-lens", "frosted");
-    expect(lens).not.toHaveClass("lx-refract");
-    expect(lens.querySelector("filter")).toBeNull();
+    const { container } = render(<LiquidGlass tier="focal">content</LiquidGlass>);
+    const glass = container.firstElementChild!;
+    expect(glass).toHaveClass("q-glass");
+    expect(glass).toHaveAttribute("data-glass", "frosted");
+    expect(glass).toHaveAttribute("data-tier", "focal");
+    expect(glass.querySelector("filter")).toBeNull();
+  });
+
+  it("concentrates Snell's-law bending on the squircle rim", () => {
+    expect(squircle(0)).toBe(0);
+    expect(squircle(1)).toBe(1);
+    const { values, max } = displacementProfile(DEFAULT_OPTICS);
+    const mean = (list: Float32Array) => list.reduce((sum, value) => sum + value, 0) / list.length;
+    const third = Math.floor(values.length / 3);
+    expect(max).toBeGreaterThan(0);
+    // the steep outer bezel bends far more than the part near the flat face
+    expect(mean(values.slice(0, third))).toBeGreaterThan(mean(values.slice(-third)) * 2);
+    // where the bezel meets the flat face, rays pass straight through
+    expect(rayDisplacement(0.999, DEFAULT_OPTICS)).toBeLessThan(max * 0.1);
+  });
+
+  it("encodes horizontal bend in R, vertical in G, neutral outside the lens", () => {
+    const width = 200;
+    const height = 100;
+    const { pixels, width: w, height: h, scale } = buildRefractionPixels(width, height, 30);
+    const at = (x: number, y: number) => pixels.slice((y * w + x) * 4, (y * w + x) * 4 + 4);
+    expect(scale).toBeGreaterThan(0);
+    // flat centre is neutral
+    expect(Array.from(at(Math.floor(w / 2), Math.floor(h / 2)).slice(0, 2))).toEqual([128, 128]);
+    // outside the rounded corner is neutral
+    expect(Array.from(at(0, 0).slice(0, 2))).toEqual([128, 128]);
+    // rims sample inward: right edge pulls left (R < 128), left edge pulls right
+    const mid = Math.floor(h / 2);
+    expect(at(w - 3, mid)[0]).toBeLessThan(128);
+    expect(at(2, mid)[0]).toBeGreaterThan(128);
+    expect(at(w - 3, mid)[1]).toBe(128);
+    // bottom edge pulls up through G
+    expect(at(Math.floor(w / 2), h - 3)[1]).toBeLessThan(128);
   });
 });
 
@@ -173,29 +303,34 @@ describe("design system", () => {
   it.each([
     ["light", ':root,\n[data-theme="light"]'],
     ["dark", '[data-theme="dark"]'],
-  ] as const)("keeps %s text tokens AA against the page background", (_theme, selector) => {
+  ] as const)("keeps %s text and brand tokens AA against the page background", (_theme, selector) => {
     const block = themeBlock(selector);
-    const bg = token(block, "lx-bg");
-    expect(contrast(token(block, "lx-ink"), bg)).toBeGreaterThanOrEqual(7);
-    expect(contrast(token(block, "lx-ink-2"), bg)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(token(block, "lx-ink-3"), bg)).toBeGreaterThanOrEqual(4.5);
+    const bg = token(block, "q-bg");
+    expect(contrast(token(block, "q-ink"), bg)).toBeGreaterThanOrEqual(7);
+    expect(contrast(token(block, "q-ink-2"), bg)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(token(block, "q-ink-3"), bg)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(token(block, "q-brand-ink"), bg)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(token(block, "q-on-brand"), token(block, "q-brand"))).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(token(block, "q-on-brand"), token(block, "q-brand-2"))).toBeGreaterThanOrEqual(4.5);
   });
 
   it("rests every animation and reveals all content under reduced motion", () => {
     const reduced = landingCss.slice(landingCss.indexOf("@media (prefers-reduced-motion: reduce)"));
     expect(reduced).toMatch(/animation-duration:\s*0\.001ms\s*!important/);
-    expect(reduced).toMatch(/\.lx-js \.lx-reveal\s*\{[^}]*opacity:\s*1/);
+    expect(reduced).toMatch(/\.q-js \.q-reveal\s*\{[^}]*opacity:\s*1/);
   });
 
   it("only hides reveal content once JavaScript has marked the document", () => {
-    expect(landingCss).toMatch(/\.lx-js \.lx-reveal\s*\{[^}]*opacity:\s*0/);
-    expect(landingCss).not.toMatch(/(^|\n)\.lx-reveal\s*\{[^}]*opacity:\s*0/);
+    expect(landingCss).toMatch(/\.q-js \.q-reveal\s*\{[^}]*opacity:\s*0/);
+    expect(landingCss).not.toMatch(/(^|\n)\.q-reveal\s*\{[^}]*opacity:\s*0/);
   });
 
-  it("keeps 48px touch targets on the nav toggle, theme switch and buttons", () => {
-    expect(chromeCss).toMatch(/\.lx-nav__toggle\s*\{[^}]*width:\s*48px;[^}]*height:\s*48px/);
-    expect(chromeCss).toMatch(/\.lx-theme\s*\{[^}]*height:\s*48px/);
-    expect(landingCss).toMatch(/\.lx-btn\s*\{[^}]*min-height:\s*3rem/);
-    expect(chromeCss).toMatch(/\.lx-footer__cta\s*\{[^}]*min-height:\s*48px/);
+  it("keeps 48px touch targets on the nav toggle, theme switch, buttons and search controls", () => {
+    expect(chromeCss).toMatch(/\.q-nav__toggle\s*\{[^}]*width:\s*48px;[^}]*height:\s*48px/);
+    expect(chromeCss).toMatch(/\.q-theme\s*\{[^}]*height:\s*48px/);
+    expect(landingCss).toMatch(/\.q-btn\s*\{[^}]*min-height:\s*3rem/);
+    expect(chromeCss).toMatch(/\.q-footer__cta\s*\{[^}]*min-height:\s*48px/);
+    expect(tracksCss).toMatch(/\.q-dm__clear\s*\{[^}]*width:\s*48px;[^}]*height:\s*48px/);
+    expect(tracksCss).toMatch(/\.q-dm__example\s*\{[^}]*min-height:\s*40px/);
   });
 });

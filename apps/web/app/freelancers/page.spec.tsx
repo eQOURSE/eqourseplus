@@ -14,7 +14,7 @@ import {
 } from "../../../../packages/ui/test/contrast-helpers";
 import { freelancerFaq } from "./freelancers-data";
 import FreelancersPage from "./page";
-import { PRIMARY_NAV_HREFS, PUBLIC_CHROME_HREFS, primaryNavHrefs } from "../../components/home/chrome-test-utils";
+import { PRIMARY_NAV_HREFS, PUBLIC_CHROME_HREFS, primaryNavHrefs, withoutStandardIds } from "../../components/home/chrome-test-utils";
 
 const pageSource = readFileSync(
   resolve(process.cwd(), "app/freelancers/page.tsx"),
@@ -150,7 +150,7 @@ describe("FR-PUB-03 freelancers page", () => {
     const { container } = render(<FreelancersPage />);
     container.querySelectorAll("script").forEach((script) => script.remove());
 
-    const intentionalStepNumbers = container.textContent?.replace(/[1-8](?=verification|testing|matching|delivery)/gi, "") ?? "";
+    const intentionalStepNumbers = withoutStandardIds(container.textContent ?? "").replace(/[1-8](?=verification|testing|matching|delivery)/gi, "");
     expect(intentionalStepNumbers.match(/\d[\d+]*/g) ?? []).toEqual([]);
     expect(container.textContent).not.toMatch(
       /₹|\$|€|£|\b(?:Razorpay|Cashfree|Stripe|PayPal)\b|\bearn up to\b|\bper (?:hour|task|month)\b/i,

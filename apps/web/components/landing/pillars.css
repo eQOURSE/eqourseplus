@@ -1,0 +1,426 @@
+/* ==========================================================================
+   Who we empower: audience switcher with one focused panel at a time.
+   ========================================================================== */
+
+.q-aud {
+  display: grid;
+  justify-items: center;
+  gap: clamp(1.5rem, 3vw, 2rem);
+}
+
+/* segmented control with a gliding thumb */
+.q-aud__tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 999px;
+  background: hsl(var(--q-surface) / 0.8);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  backdrop-filter: blur(12px) saturate(160%);
+  box-shadow: var(--q-shadow-1), inset 0 1px 0 var(--q-glass-rim), inset 0 0 0 1px hsl(var(--q-line) / 0.08);
+}
+
+.q-aud__tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  font: 650 0.95rem/1 var(--font-display);
+  letter-spacing: -0.01em;
+  color: hsl(var(--q-ink-2));
+  background: none;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.q-aud__tab:hover {
+  color: hsl(var(--q-ink));
+}
+
+.q-aud__tab[aria-selected="true"] {
+  color: hsl(var(--q-on-brand));
+}
+
+.q-aud__tab > svg,
+.q-aud__tab > span:not(.q-aud__thumb) {
+  position: relative;
+  z-index: 1;
+}
+
+.q-aud__tab > svg {
+  width: 18px;
+  height: 18px;
+}
+
+.q-aud__thumb {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, hsl(var(--q-brand-2)), hsl(var(--q-brand)));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28), 0 8px 18px -10px hsl(var(--q-brand));
+}
+
+/* ---------- panel ---------- */
+
+.q-aud__panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  width: 100%;
+  overflow: hidden;
+  border-radius: 32px;
+  background: hsl(var(--q-surface));
+  box-shadow: var(--q-shadow-2), inset 0 0 0 1px hsl(var(--q-line) / 0.07);
+  animation: q-panel-in 0.55s var(--q-ease-out) both;
+}
+
+/* author display:grid would otherwise override the hidden attribute */
+.q-aud__panel[hidden] {
+  display: none;
+}
+
+@keyframes q-panel-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.q-aud__visual {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  min-height: 320px;
+  padding: 2rem;
+}
+
+.q-aud__visual::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+}
+
+.q-aud__panel--expert .q-aud__visual::before {
+  background:
+    radial-gradient(70% 70% at 20% 15%, hsl(var(--q-mint) / 0.85), transparent 70%),
+    radial-gradient(60% 60% at 90% 90%, hsl(var(--q-teal) / 0.35), transparent 70%),
+    hsl(var(--q-tint));
+}
+
+.q-aud__panel--vendor .q-aud__visual::before {
+  background:
+    radial-gradient(70% 70% at 80% 15%, hsl(var(--q-sky) / 0.7), transparent 70%),
+    radial-gradient(60% 60% at 10% 90%, hsl(var(--q-mint) / 0.65), transparent 70%),
+    hsl(var(--q-tint));
+}
+
+.q-aud__panel--enterprise .q-aud__visual::before {
+  background:
+    radial-gradient(70% 70% at 50% 0%, hsl(var(--q-glow) / 0.5), transparent 70%),
+    radial-gradient(60% 60% at 100% 100%, hsl(var(--q-sky) / 0.55), transparent 70%),
+    hsl(var(--q-tint));
+}
+
+[data-theme="dark"] .q-aud__visual::before {
+  opacity: 0.45;
+}
+
+.q-aud__visual > .q-plusgrid {
+  z-index: -1;
+  opacity: 0.7;
+}
+
+.q-aud__body {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(1.5rem, 3vw, 2.75rem);
+  text-align: left;
+}
+
+.q-aud__audience {
+  font: 650 0.76rem/1.3 var(--font-inter), sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--q-brand-ink));
+}
+
+.q-aud__title {
+  margin-top: 0.75rem;
+  font-size: clamp(1.7rem, 2.7vw, 2.35rem);
+  line-height: 1.1;
+}
+
+.q-aud__title span {
+  display: block;
+  margin-top: 0.35em;
+  font-size: 0.6em;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  color: hsl(var(--q-ink-2));
+}
+
+.q-aud__benefits {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 1.75rem;
+}
+
+.q-aud__benefits li {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 16px 18px 18px;
+  border-radius: 20px;
+  background: hsl(var(--q-bg-2));
+  box-shadow: inset 0 0 0 1px hsl(var(--q-line) / 0.05);
+  transition: box-shadow 0.3s ease, translate 0.45s var(--q-ease-spring);
+}
+
+.q-aud__benefits li:hover {
+  translate: 0 -3px;
+  box-shadow: inset 0 0 0 1px hsl(var(--q-glow) / 0.35), var(--q-shadow-1);
+}
+
+.q-aud__icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 6px;
+  border-radius: 11px;
+  color: hsl(var(--q-on-brand));
+  background: linear-gradient(150deg, hsl(var(--q-brand-2)), hsl(var(--q-brand)));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25);
+}
+
+.q-aud__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.q-aud__benefits strong {
+  font: 700 0.98rem/1.3 var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.q-aud__benefits p {
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: hsl(var(--q-ink-2));
+}
+
+.q-aud__ctas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+  margin-top: auto;
+  padding-top: 1.75rem;
+}
+
+/* ---------- frosted product previews ---------- */
+
+.q-pv.q-glass {
+  --q-lg-blur: 12px;
+  display: grid;
+  gap: 12px;
+  width: min(100%, 320px);
+  padding: 16px;
+  border-radius: 22px;
+  text-align: left;
+  animation: q-pv-float 7s ease-in-out infinite;
+}
+
+@keyframes q-pv-float {
+  50% { transform: translateY(-8px); }
+}
+
+.q-pv__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.q-pv__head b {
+  display: block;
+  font: 700 0.95rem/1.2 var(--font-display);
+}
+
+.q-pv__head small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  color: hsl(var(--q-ink-2));
+}
+
+.q-pv__icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  color: hsl(var(--q-on-brand));
+  background: linear-gradient(150deg, hsl(var(--q-brand-2)), hsl(var(--q-brand)));
+}
+
+.q-pv__icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+.q-pv__checks {
+  display: grid;
+  gap: 6px;
+}
+
+.q-pv__checks li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 550;
+  background: hsl(var(--q-surface) / 0.72);
+}
+
+.q-pv__checks svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.4;
+  color: hsl(var(--q-brand-ink));
+}
+
+.q-pv__checks .is-live {
+  color: hsl(var(--q-brand-ink));
+}
+
+.q-pv__pill {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font: 600 0.73rem/1 var(--font-inter), sans-serif;
+  color: hsl(var(--q-ink-fixed));
+  background: hsl(var(--q-mint));
+}
+
+.q-pv__pill svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2.2;
+}
+
+.q-pv__team {
+  display: flex;
+  align-items: center;
+}
+
+.q-pv__team i {
+  width: 30px;
+  height: 30px;
+  margin-right: -8px;
+  border-radius: 50%;
+  background: linear-gradient(150deg, hsl(calc(160 + var(--i) * 8) 60% 78%), hsl(calc(174 + var(--i) * 5) 70% 42%));
+  box-shadow: 0 0 0 2px hsl(var(--q-surface));
+}
+
+.q-pv__team span {
+  margin-left: 18px;
+  font-size: 0.78rem;
+  font-weight: 550;
+  color: hsl(var(--q-ink-2));
+}
+
+.q-pv__progress {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: hsl(var(--q-surface) / 0.72);
+}
+
+.q-pv__progress i {
+  display: block;
+  width: 70%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, hsl(var(--q-brand-2)), hsl(var(--q-mint)));
+  transform-origin: 0 50%;
+  animation: q-fill 3.8s var(--q-ease-io) infinite alternate;
+}
+
+@keyframes q-fill {
+  from { transform: scaleX(0.55); }
+  to { transform: scaleX(1.25); }
+}
+
+.q-pv__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 70px;
+  padding: 8px 10px 0;
+  border-radius: 12px;
+  background: hsl(var(--q-surface) / 0.72);
+}
+
+.q-pv__bars i {
+  flex: 1;
+  height: calc(var(--h) * 100%);
+  border-radius: 5px 5px 0 0;
+  background: linear-gradient(180deg, hsl(var(--q-glow)), hsl(var(--q-brand)));
+  transform-origin: 50% 100%;
+  animation: q-bar 2.6s var(--q-ease-io) infinite alternate;
+  animation-delay: calc(var(--i) * -0.3s);
+}
+
+@keyframes q-bar {
+  from { transform: scaleY(0.7); }
+  to { transform: scaleY(1); }
+}
+
+@media (max-width: 1020px) {
+  .q-aud__panel {
+    grid-template-columns: 1fr;
+  }
+
+  .q-aud__visual {
+    min-height: 250px;
+  }
+}
+
+@media (max-width: 640px) {
+  .q-aud__tabs {
+    display: flex;
+    width: 100%;
+  }
+
+  .q-aud__tab {
+    flex: 1;
+    justify-content: center;
+    padding: 0 10px;
+    font-size: 0.86rem;
+  }
+
+  .q-aud__tab > svg {
+    display: none;
+  }
+
+  .q-aud__benefits {
+    grid-template-columns: 1fr;
+  }
+}

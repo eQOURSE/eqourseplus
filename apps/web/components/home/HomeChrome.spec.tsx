@@ -15,9 +15,15 @@ describe("FR-PUB-00 HomeHeader responsive disclosure", () => {
       "utf8",
     );
 
-    expect(styles).toMatch(/@media\s*\(max-width:\s*768px\)[\s\S]*\.lx-nav__toggle\s*\{\s*display:\s*grid/);
-    expect(styles).toMatch(/\.lx-nav__toggle\s*\{[^}]*width:\s*48px;[^}]*height:\s*48px/);
-    expect(styles).toMatch(/\.lx-sheet\s*\{[^}]*visibility:\s*hidden/);
+    // The toggle must be showing at and below 768px; the header may collapse
+    // earlier (wider breakpoint) to stay on one row.
+    const collapse = styles.match(
+      /@media\s*\(max-width:\s*(\d+)px\)\s*\{[^@]*\.q-nav__toggle\s*\{\s*display:\s*grid/,
+    );
+    expect(collapse, "toggle revealed inside a max-width media query").not.toBeNull();
+    expect(Number(collapse?.[1])).toBeGreaterThanOrEqual(768);
+    expect(styles).toMatch(/\.q-nav__toggle\s*\{[^}]*width:\s*48px;[^}]*height:\s*48px/);
+    expect(styles).toMatch(/\.q-sheet\s*\{[^}]*visibility:\s*hidden/);
   });
 
   it("keeps the mobile menu closed and exposes a labelled 48px toggle", () => {
@@ -32,7 +38,7 @@ describe("FR-PUB-00 HomeHeader responsive disclosure", () => {
   it("opens and closes the hidden navigation options", () => {
     render(<HomeHeader />);
 
-    const toggle = screen.getAllByRole("button", { name: "Open navigation menu" })[0];
+    const toggle = screen.getAllByRole("button", { name: "Open navigation menu" })[0]!;
     const menu = document.getElementById("home-mobile-navigation");
 
     expect(menu).toHaveAttribute("aria-hidden", "true");

@@ -1,14 +1,18 @@
 /**
- * The three eQOURSE+ audiences. Every segment CTA on the public site reads
+ * The three eQOURSE+ audiences. Hero, header menu, FAQ and footer CTAs read
  * from this list so labels and destinations never drift between pages.
+ * Sections with their own approved wording (pillars, final CTA) keep the
+ * same destinations via `href`.
  */
 export type SegmentId = "expert" | "vendor" | "enterprise";
 
 export interface Segment {
   id: SegmentId;
+  /** Who the path is for, as shown on the hero call-to-action bar. */
   audience: string;
-  tagline: string;
   cta: string;
+  /** Short qualifier shown with the CTA, when there is one. */
+  note?: string;
   href: string;
   learnMore: string;
   learnMoreHref: string;
@@ -17,26 +21,24 @@ export interface Segment {
 export const SEGMENTS: readonly Segment[] = [
   {
     id: "expert",
-    audience: "Experts, Freelancers & SMEs",
-    tagline: "Work Anywhere, Anytime.",
+    audience: "For Freelance Experts",
     cta: "Apply as an Expert",
+    note: "Work Remotely",
     href: "/register/freelancer",
     learnMore: "More for freelancers",
     learnMoreHref: "/freelancers",
   },
   {
     id: "vendor",
-    audience: "Vendor Agencies",
-    tagline: "Big Projects from Frontier Labs.",
-    cta: "Join as a Vendor",
+    audience: "For Vendor Agencies",
+    cta: "Join as an Agency Partner",
     href: "/register/vendor",
     learnMore: "More for vendors",
     learnMoreHref: "/vendors",
   },
   {
     id: "enterprise",
-    audience: "Enterprises & AI Labs",
-    tagline: "Deploy Verified Domain Authorities.",
+    audience: "For Enterprise Clients",
     cta: "Deploy Expert Teams",
     href: "/register/client",
     learnMore: "How we work with enterprises",

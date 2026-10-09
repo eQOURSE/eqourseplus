@@ -23,9 +23,18 @@ export function inPageBody<T extends Element>(container: HTMLElement, selector: 
 
 export function primaryNavHrefs(container: HTMLElement): Array<string | null> {
   return Array.from(
-    container.querySelectorAll<HTMLAnchorElement>("#site-navigation .lx-nav__links a"),
+    container.querySelectorAll<HTMLAnchorElement>("#site-navigation .q-nav__links a"),
     (link) => link.getAttribute("href"),
   );
 }
 
 export const PRIMARY_NAV_HREFS = NAV_LINKS.map((link) => link.href);
+
+/**
+ * Drops ISO standard designations (e.g. "ISO 9001:2015", "ISO/IEC 27001")
+ * so "no unsupported numbers" checks still catch every other digit,
+ * including in the shared footer's approved certification notice.
+ */
+export function withoutStandardIds(text: string): string {
+  return text.replace(/\bISO(?:\/IEC)?\s?\d{4,5}(?::\d{4})?/g, "ISO");
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useInView, useReducedMotion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 
 import { IconCheck, IconClose } from "./icons";
 
@@ -15,19 +15,40 @@ const rows = [
 
 type Mode = "legacy" | "glass";
 
-const FACES = ["front", "back", "right", "left", "top", "bottom"] as const;
-
-function Cube({ mode }: { mode: Mode }) {
+/**
+ * Exploded-view stack: five operating layers fused into one opaque block in
+ * "legacy" mode, separated into labelled glass panes in "glass" mode.
+ */
+function LayerStack() {
   return (
-    <div className="lx-cube-scene" data-mode={mode} aria-hidden="true">
-      <div className="lx-cube">
-        {FACES.map((face) => (
-          <span key={face} className={`lx-cube__face lx-cube__face--${face}`} />
-        ))}
-        <span className="lx-cube__orbit" />
-      </div>
-      <span className="lx-cube__core" />
-      <div className="lx-cube-shadow" />
+    <div className="q-stack" aria-hidden="true">
+      <div className="q-stack__shadow" />
+      {rows.map(([area], index) => (
+        <div
+          key={area}
+          className={`q-stack__layer${index === 0 ? " is-top" : ""}`}
+          style={{ "--i": index } as CSSProperties}
+        >
+          <span className="q-stack__pane">
+            {index === 0 ? (
+              <>
+                <span className="q-stack__q">?</span>
+                <span className="q-stack__plus" />
+              </>
+            ) : null}
+          </span>
+        </div>
+      ))}
+      {rows.map(([area], index) => (
+        <span key={`label-${area}`} className="q-stack__label" style={{ "--i": index } as CSSProperties}>
+          <span className="q-stack__tick"><IconCheck /></span>
+          {area}
+        </span>
+      ))}
+      <span className="q-stack__caption q-mono">
+        <span className="q-stack__caption-legacy">Black box · nothing to inspect</span>
+        <span className="q-stack__caption-glass">Glass box · every layer on record</span>
+      </span>
     </div>
   );
 }
@@ -39,7 +60,7 @@ export function GlassBox() {
   const inView = useInView(ref, { margin: "-30% 0px -30% 0px" });
   const reduced = useReducedMotion();
 
-  // The box opens itself the first time the section takes focus on screen.
+  // The box opens itself the first time the section settles on screen.
   useEffect(() => {
     if (touched) return;
     if (reduced) {
@@ -57,15 +78,15 @@ export function GlassBox() {
   };
 
   return (
-    <div ref={ref} className="lx-gb" data-mode={mode}>
-      <div className="lx-gb__visual">
-        <Cube mode={mode} />
-        <div className="lx-switch lx-glass" role="group" aria-label="Compare operating models">
+    <div ref={ref} className="q-gb" data-mode={mode}>
+      <div className="q-gb__visual">
+        <LayerStack />
+        <div className="q-switch" role="group" aria-label="Compare operating models">
           <motion.span
-            className="lx-switch__lens"
+            className="q-switch__thumb"
             initial={false}
             animate={{ x: mode === "legacy" ? "0%" : "100%" }}
-            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            transition={{ type: "spring", stiffness: 380, damping: 32 }}
             aria-hidden="true"
           />
           <button type="button" aria-pressed={mode === "legacy"} onClick={() => choose("legacy")}>
@@ -77,7 +98,8 @@ export function GlassBox() {
         </div>
       </div>
 
-      <table className="lx-gb__table">
+      <table className="q-gb__table">
+        <caption className="sr-only">Legacy crowdsourcing platforms compared with the eQOURSE+ glass-box standard</caption>
         <thead>
           <tr>
             <th scope="col">Operational area</th>
@@ -87,17 +109,17 @@ export function GlassBox() {
         </thead>
         <tbody>
           {rows.map(([area, legacy, standard], index) => (
-            <tr key={area} className="lx-gb__row lx-reveal" style={{ ["--d" as string]: index }}>
+            <tr key={area} className="q-gb__row q-reveal" style={{ "--d": index } as CSSProperties}>
               <th scope="row">
-                <span className="lx-gb__num" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                <span className="q-gb__num q-mono" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
                 {area}
               </th>
-              <td className="lx-gb__legacy" data-label="Legacy platforms">
-                <span className="lx-gb__mark lx-gb__mark--x" aria-hidden="true"><IconClose /></span>
+              <td className="q-gb__legacy" data-label="Legacy platforms">
+                <span className="q-gb__mark q-gb__mark--x" aria-hidden="true"><IconClose /></span>
                 <span>{legacy}</span>
               </td>
-              <td className="lx-gb__standard" data-label="eQOURSE+ standard">
-                <span className="lx-gb__mark" aria-hidden="true"><IconCheck /></span>
+              <td className="q-gb__standard" data-label="eQOURSE+ standard">
+                <span className="q-gb__mark" aria-hidden="true"><IconCheck /></span>
                 <span>{standard}</span>
               </td>
             </tr>

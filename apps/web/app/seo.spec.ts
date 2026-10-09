@@ -5,8 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("next/font/google", () => ({
   Inter: () => ({ variable: "--font-inter" }),
   Plus_Jakarta_Sans: () => ({ variable: "--font-plus-jakarta-sans" }),
-  Inter_Tight: () => ({ variable: "--font-display" }),
-  Instrument_Serif: () => ({ variable: "--font-serif" }),
+  JetBrains_Mono: () => ({ variable: "--font-mono" }),
 }));
 
 import { metadata as layoutMetadata } from "./layout";
@@ -26,14 +25,24 @@ import sitemap from "./sitemap";
 import HomePage from "./page";
 
 describe("FR-PUB-01 metadata", () => {
-  it("keeps keyword-first title and description within Section 18 limits", () => {
-    expect(HOME_TITLE).toBe("eQOURSE+ | Expert Network for AI Training & Content");
+  it("keeps the approved title within Section 18 limits and the approved description", () => {
+    expect(HOME_TITLE).toBe("eQOURSE+ | Partner for World-Class AI and Content");
     expect(HOME_TITLE.length).toBeGreaterThan(0);
     expect(HOME_TITLE.length).toBeLessThanOrEqual(60);
     expect(HOME_DESCRIPTION).toBe(
-      "Remote work on frontier AI and global content projects. Verified specialists, partner agencies and enterprise clients in one transparent, audited ecosystem.",
+      "Work from anywhere, anytime on frontier AI and global content projects. eQOURSE+ connects verified domain specialists, partner agencies, and leading AI labs in a fully transparent, ISO-certified ecosystem with guaranteed milestone payouts.",
     );
     expect(HOME_DESCRIPTION.length).toBeGreaterThan(0);
+  });
+
+  it("declares the contributor, agency and enterprise search-intent keywords", () => {
+    expect(pageMetadata.keywords).toEqual(
+      expect.arrayContaining([
+        "remote AI training jobs",
+        "AI data vendor partnership",
+        "hire domain experts for AI",
+      ]),
+    );
   });
 
   it("sets canonical and language alternates", () => {

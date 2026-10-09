@@ -14,7 +14,7 @@ import {
 } from "../../../../packages/ui/test/contrast-helpers";
 import { vendorFaq } from "./vendors-data";
 import VendorsPage from "./page";
-import { PRIMARY_NAV_HREFS, PUBLIC_CHROME_HREFS, pageBodyText, primaryNavHrefs } from "../../components/home/chrome-test-utils";
+import { PRIMARY_NAV_HREFS, PUBLIC_CHROME_HREFS, pageBodyText, primaryNavHrefs, withoutStandardIds } from "../../components/home/chrome-test-utils";
 
 const pageSource = readFileSync(
   resolve(process.cwd(), "app/vendors/page.tsx"),
@@ -205,7 +205,7 @@ describe("FR-PUB-04 vendors page", () => {
     const { container } = render(<VendorsPage />);
     container.querySelectorAll("script").forEach((script) => script.remove());
 
-    expect(container.textContent?.match(/\d[\d+]*/g) ?? []).toEqual([]);
+    expect(withoutStandardIds(container.textContent ?? "").match(/\d[\d+]*/g) ?? []).toEqual([]);
     expect(container.textContent).not.toMatch(
       /₹|\$|€|£|\b(?:Razorpay|Cashfree|Stripe|PayPal|DocuSign|Dropbox Sign|Digio|Leegality|IDfy|HyperVerge|Sumsub|Onfido|Persona|Veriff)\b|\b(?:commission|take[- ]?rate|margin|fee percentage|settlement|turnaround|SLA|headcount|capacity)\b|\bearn\b|\bper (?:hour|task)\b/i,
     );

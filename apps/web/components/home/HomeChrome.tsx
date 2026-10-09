@@ -14,7 +14,7 @@ import {
   IconSun,
   SEGMENT_ICONS,
 } from "../landing/icons";
-import { LiquidLens } from "../landing/liquid-lens";
+import { LiquidGlass } from "../landing/liquid-glass";
 import { ACCESS, LOGIN, SEGMENTS } from "../landing/segments";
 
 export const NAV_LINKS = [
@@ -26,13 +26,14 @@ export const NAV_LINKS = [
 
 type ActivePage = "about" | "vendors" | "freelancers" | "clients";
 
-function BrandMark({ footer = false }: { footer?: boolean }) {
+function BrandMark({ onDark = false }: { onDark?: boolean }) {
   return (
-    <span className={`lx-brand${footer ? " lx-brand--footer" : ""}`}>
+    <span className={`q-brand${onDark ? " q-brand--on-dark" : ""}`}>
+      {/* Cropped copies of the brand artwork: the originals carry ~15% empty margin. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className="lx-brand__light" src="/brand/eqourse-plus.svg" alt="eQOURSE Logo" width={271} height={109} />
+      <img className="q-brand__light" src="/brand/eqourse-plus-tight.svg" alt="eQOURSE Logo" width={226} height={79} />
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className="lx-brand__dark" src="/brand/eqourse-plus-on-dark.svg" alt="" aria-hidden="true" width={271} height={109} />
+      <img className="q-brand__dark" src="/brand/eqourse-plus-on-dark-tight.svg" alt="" aria-hidden="true" width={226} height={79} />
     </span>
   );
 }
@@ -52,7 +53,7 @@ export function ThemeSwitch() {
     try {
       persistTheme(window.localStorage, next);
     } catch {
-      /* storage unavailable — theme still applies for this visit */
+      /* storage unavailable: the theme still applies for this visit */
     }
   };
 
@@ -62,13 +63,14 @@ export function ThemeSwitch() {
       role="switch"
       aria-checked={theme === "dark"}
       aria-label="Dark theme"
-      className="lx-theme"
+      className="q-theme"
       data-theme-state={theme}
       onClick={toggle}
     >
-      <span className="lx-theme__thumb" aria-hidden="true">
-        <IconSun className="lx-theme__sun" />
-        <IconMoon className="lx-theme__moon" />
+      <span className="q-theme__track" aria-hidden="true">
+        <IconSun className="q-theme__sun" />
+        <IconMoon className="q-theme__moon" />
+        <span className="q-theme__thumb" />
       </span>
     </button>
   );
@@ -76,18 +78,18 @@ export function ThemeSwitch() {
 
 function SegmentMenu({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <ul className="lx-segmenu" aria-label="Choose how you join eQOURSE+">
+    <ul className="q-segmenu" aria-label="Choose how you join eQOURSE+">
       {SEGMENTS.map((item) => {
         const Icon = SEGMENT_ICONS[item.id];
         return (
           <li key={item.id}>
-            <Link href={item.href} className="lx-segmenu__item" onClick={onNavigate}>
-              <span className={`lx-segmenu__icon lx-seg-${item.id}`}><Icon /></span>
-              <span className="lx-segmenu__text">
+            <Link href={item.href} className={`q-segmenu__item q-segmenu__item--${item.id}`} onClick={onNavigate}>
+              <span className="q-segmenu__icon"><Icon /></span>
+              <span className="q-segmenu__text">
                 <small>{item.audience}</small>
                 <strong>{item.cta}</strong>
               </span>
-              <IconArrowUpRight className="lx-segmenu__go" />
+              <IconArrowUpRight className="q-segmenu__go" />
             </Link>
           </li>
         );
@@ -118,28 +120,36 @@ export function HomeHeader({ brandHref = "/", activePage, ...auth }: HomeHeaderP
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
+  const sheetTab = open ? undefined : -1;
+
   return (
-    <header className="lx-header lx" data-scrolled={scrolled} data-open={open}>
-      <LiquidLens
+    <header className="q-header q" data-scrolled={scrolled} data-open={open}>
+      <LiquidGlass
         as="nav"
         id="site-navigation"
-        className="lx-nav lx-glass"
+        className="q-nav"
+        tier="focal"
+        radius={33}
+        bezel={18}
+        thickness={20}
         data-home-region
         aria-labelledby="site-navigation-title"
-        radius={999}
-        bezel={18}
-        strength={38}
       >
         <span id="site-navigation-title" className="sr-only">Primary navigation</span>
-        <a className="lx-nav__brand" href={brandHref} aria-label="eQOURSE+">
+        <a className="q-nav__brand" href={brandHref} aria-label="eQOURSE+">
           <BrandMark />
         </a>
 
-        <div className="lx-nav__links">
+        <div className="q-nav__links">
           {NAV_LINKS.map((link) => (
             <a key={link.href} href={link.href} aria-current={activePage === link.page ? "page" : undefined}>
               {link.label}
@@ -147,23 +157,23 @@ export function HomeHeader({ brandHref = "/", activePage, ...auth }: HomeHeaderP
           ))}
         </div>
 
-        <div className="lx-nav__actions">
+        <div className="q-nav__actions">
           <ThemeSwitch />
           {authenticated ? (
             <>
-              <span className="lx-nav__user" aria-label="Signed in user">{session?.email}</span>
-              <button type="button" className="lx-btn lx-btn--glass" onClick={onSignOut}>Sign out</button>
+              <span className="q-nav__user" aria-label="Signed in user">{session?.email}</span>
+              <button type="button" className="q-btn q-btn--outline q-nav__signout" onClick={onSignOut}>Sign out</button>
             </>
           ) : (
             <>
-              <Link className="lx-btn lx-btn--ghost lx-nav__login" href={LOGIN.href}>{LOGIN.label}</Link>
-              <div className="lx-nav__access">
-                <Link className="lx-btn lx-btn--primary" href={ACCESS.href} aria-haspopup="true">
+              <Link className="q-btn q-btn--ghost q-nav__login" href={LOGIN.href}>{LOGIN.label}</Link>
+              <div className="q-nav__access">
+                <Link className="q-btn q-btn--primary" href={ACCESS.href}>
                   {ACCESS.label}
-                  <span className="lx-btn__arrow"><IconArrow /></span>
+                  <span className="q-btn__icon"><IconArrow /><IconArrow /></span>
                 </Link>
-                <div className="lx-nav__panel lx-glass">
-                  <p className="lx-nav__panel-title">Choose your path</p>
+                <div className="q-nav__panel">
+                  <p className="q-nav__panel-title q-mono">Choose your path</p>
                   <SegmentMenu />
                 </div>
               </div>
@@ -171,7 +181,7 @@ export function HomeHeader({ brandHref = "/", activePage, ...auth }: HomeHeaderP
           )}
           <button
             type="button"
-            className="lx-nav__toggle"
+            className="q-nav__toggle"
             aria-label={open ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={open}
             aria-controls="home-mobile-navigation"
@@ -180,19 +190,26 @@ export function HomeHeader({ brandHref = "/", activePage, ...auth }: HomeHeaderP
             {open ? <IconClose /> : <IconMenu />}
           </button>
         </div>
-      </LiquidLens>
+      </LiquidGlass>
 
       <div
         id="home-mobile-navigation"
-        className="lx-sheet lx-glass"
+        className="q-sheet"
         aria-hidden={!open}
         onClick={(event) => {
           if ((event.target as Element).closest("a")) setOpen(false);
         }}
       >
-        <div className="lx-sheet__links">
+        <div className="q-sheet__links">
           {NAV_LINKS.map((link, index) => (
-            <a key={link.href} href={link.href} style={{ ["--i" as string]: index }} tabIndex={open ? undefined : -1}>
+            <a
+              key={link.href}
+              href={link.href}
+              className="q-display"
+              style={{ ["--i" as string]: index }}
+              tabIndex={sheetTab}
+              aria-current={activePage === link.page ? "page" : undefined}
+            >
               {link.label}
               <IconArrowUpRight />
             </a>
@@ -200,17 +217,25 @@ export function HomeHeader({ brandHref = "/", activePage, ...auth }: HomeHeaderP
         </div>
         {!authenticated ? (
           <>
-            <div className="lx-sheet__segments">
-              {SEGMENTS.map((item) => (
-                <a key={item.id} className="lx-btn lx-btn--glass" href={item.href} tabIndex={open ? undefined : -1}>
-                  {item.cta}
-                  <span className="lx-btn__arrow"><IconArrow /></span>
-                </a>
-              ))}
+            <p className="q-sheet__label q-mono">Choose your path</p>
+            <div className="q-sheet__segments">
+              {SEGMENTS.map((item) => {
+                const Icon = SEGMENT_ICONS[item.id];
+                return (
+                  <a key={item.id} className={`q-sheet__segment q-sheet__segment--${item.id}`} href={item.href} tabIndex={sheetTab}>
+                    <span className="q-sheet__segment-icon"><Icon /></span>
+                    <span>
+                      <small>{item.audience}</small>
+                      {item.cta}
+                    </span>
+                    <IconArrow />
+                  </a>
+                );
+              })}
             </div>
-            <div className="lx-sheet__auth">
-              <a className="lx-btn lx-btn--ghost" href={LOGIN.href} tabIndex={open ? undefined : -1}>{LOGIN.label}</a>
-              <a className="lx-btn lx-btn--primary" href={ACCESS.href} tabIndex={open ? undefined : -1}>{ACCESS.label}</a>
+            <div className="q-sheet__auth">
+              <a className="q-btn q-btn--outline" href={LOGIN.href} tabIndex={sheetTab}>{LOGIN.label}</a>
+              <a className="q-btn q-btn--primary" href={ACCESS.href} tabIndex={sheetTab}>{ACCESS.label}</a>
             </div>
           </>
         ) : null}
@@ -221,7 +246,7 @@ export function HomeHeader({ brandHref = "/", activePage, ...auth }: HomeHeaderP
 
 export const FOOTER_COLUMNS: ReadonlyArray<readonly [string, ReadonlyArray<readonly [string, string | null]>]> = [
   [
-    "PLATFORM",
+    "Platform",
     [
       ["About eQOURSE+", "/about"],
       ["How It Works", "/#how-it-works"],
@@ -232,7 +257,7 @@ export const FOOTER_COLUMNS: ReadonlyArray<readonly [string, ReadonlyArray<reado
     ],
   ],
   [
-    "SPECIALISTS",
+    "Experts",
     [
       ["Join as a Specialist", "/register/freelancer"],
       ["Specialist Pathways", "/freelancers"],
@@ -242,7 +267,7 @@ export const FOOTER_COLUMNS: ReadonlyArray<readonly [string, ReadonlyArray<reado
     ],
   ],
   [
-    "VENDORS",
+    "Vendors",
     [
       ["Join as a Vendor", "/register/vendor"],
       ["Vendor Network", "/vendors"],
@@ -252,15 +277,7 @@ export const FOOTER_COLUMNS: ReadonlyArray<readonly [string, ReadonlyArray<reado
     ],
   ],
   [
-    "ENTERPRISE",
-    [
-      ["Deploy Expert Teams", "/register/client"],
-      ["Solutions", "/clients"],
-      ["How we work with enterprises", "/clients"],
-    ],
-  ],
-  [
-    "LEGAL",
+    "Legal",
     [
       ["Privacy Policy", null],
       ["Terms of Service", null],
@@ -273,36 +290,38 @@ export const FOOTER_COLUMNS: ReadonlyArray<readonly [string, ReadonlyArray<reado
 
 export function HomeFooter() {
   return (
-    <footer id="site-footer" className="lx-footer lx" data-home-region aria-labelledby="footer-title">
-      <div className="lx-footer__glow" aria-hidden="true" />
-      <div className="lx-container">
-        <div className="lx-footer__top">
-          <div className="lx-footer__brand">
-            <BrandMark footer />
-            <h2 id="footer-title" className="lx-footer__title">
-              eQOURSE+ — the talent platform by <span className="lx-serif">eQOURSE</span>
+    <footer id="site-footer" className="q-footer q q-scope-dark" data-home-region aria-labelledby="footer-title">
+      <div className="q-footer__glow" aria-hidden="true" />
+      <div className="q-footer__grid" aria-hidden="true"><span className="q-plusgrid" /></div>
+      <div className="q-container">
+        <div className="q-footer__top">
+          <div className="q-footer__brand">
+            <BrandMark onDark />
+            <h2 id="footer-title" className="q-display q-footer__title">
+              eQOURSE+ — the talent platform by <span className="q-footer__accent">eQOURSE</span>
             </h2>
-            <p>
+            <p className="q-footer__lede">
               Connecting verified specialists, partner agencies and enterprise
               teams for AI training and global content projects.
             </p>
-            <div className="lx-footer__ctas">
+            <div className="q-footer__ctas">
               {SEGMENTS.map((item) => (
-                <Link key={item.id} href={item.href} className="lx-footer__cta">
+                <Link key={item.id} href={item.href} className={`q-footer__cta q-footer__cta--${item.id}`}>
                   <span>{item.cta}</span>
                   <IconArrowUpRight />
                 </Link>
               ))}
-              <Link href={LOGIN.href} className="lx-footer__cta lx-footer__cta--quiet">
+              <Link href={LOGIN.href} className="q-footer__cta q-footer__cta--quiet">
                 <span>{LOGIN.label}</span>
                 <IconArrowUpRight />
               </Link>
             </div>
           </div>
-          <nav className="lx-footer__cols" aria-label="Footer">
+
+          <nav className="q-footer__cols" aria-label="Footer">
             {FOOTER_COLUMNS.map(([heading, items]) => (
-              <div className="lx-footer__col" key={heading}>
-                <h3>{heading}</h3>
+              <div className="q-footer__col" key={heading}>
+                <h3 className="q-mono">{heading}</h3>
                 <ul>
                   {items.map(([label, href]) => (
                     <li key={label}>
@@ -315,21 +334,19 @@ export function HomeFooter() {
           </nav>
         </div>
 
-        <div className="lx-footer__bottom">
+        <div className="q-footer__bottom">
           <p>
-            eQOURSE+ is an enterprise division of EQOURSE ONLINE EDUCATIONERS LLP.
-            Operating across Singapore and India.
+            eQOURSE+ is an enterprise division of eQOURSE. Certified ISO 9001:2015 &amp; ISO 27001:2013.
+            Operating across Singapore &amp; India.
           </p>
-          <p className="lx-footer__status">
-            <span className="lx-footer__dot" aria-hidden="true" />
-            Transparent project delivery
-          </p>
-          <a className="lx-footer__parent" href="https://www.eqourse.com/" aria-label="Visit eQOURSE">
+          <a className="q-footer__parent" href="https://www.eqourse.com/" aria-label="Visit eQOURSE">
             Visit eQOURSE <IconArrowUpRight />
           </a>
         </div>
       </div>
-      <div className="lx-footer__word" aria-hidden="true">eQOURSE+</div>
+      <div className="q-footer__word q-display" aria-hidden="true">
+        eQOURSE<span>+</span>
+      </div>
     </footer>
   );
 }

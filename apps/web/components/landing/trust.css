@@ -1,0 +1,525 @@
+/* ==========================================================================
+   Trust bento: governance, certifications and track record.
+   ========================================================================== */
+
+.q-bento {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: clamp(0.75rem, 1.6vw, 1.25rem);
+}
+
+.q-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.5rem;
+  min-height: 310px;
+  overflow: hidden;
+  padding: clamp(1.25rem, 2.4vw, 1.9rem);
+  border-radius: 30px;
+  background: hsl(var(--q-surface));
+  box-shadow: var(--q-shadow-1), inset 0 0 0 1px hsl(var(--q-line) / 0.07);
+}
+
+.q-tile--jur {
+  grid-column: span 4;
+}
+
+.q-tile--years,
+.q-tile--seal,
+.q-tile--shield,
+.q-tile--proctor {
+  grid-column: span 2;
+}
+
+.q-tile--years {
+  color: hsl(0 0% 100%);
+  background:
+    radial-gradient(80% 70% at 100% 0%, hsl(var(--q-glow) / 0.75), transparent 70%),
+    linear-gradient(160deg, hsl(174 82% 27%), hsl(180 80% 16%));
+}
+
+.q-tile--shield {
+  background:
+    radial-gradient(70% 60% at 50% 0%, hsl(172 70% 30% / 0.45), transparent 70%),
+    hsl(186 46% 8%);
+}
+
+.q-tile--proctor {
+  color: hsl(var(--q-ink-fixed));
+  background:
+    radial-gradient(80% 70% at 0% 100%, hsl(0 0% 100% / 0.45), transparent 70%),
+    hsl(var(--q-mint));
+}
+
+.q-tile__text h3 {
+  font-size: clamp(1.25rem, 1.7vw, 1.5rem);
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.q-tile__text p {
+  max-width: 32rem;
+  margin-top: 0.6rem;
+  font-size: 0.93rem;
+  line-height: 1.55;
+  color: hsl(var(--q-ink-2));
+}
+
+.q-tile--years .q-tile__text p {
+  color: hsl(160 60% 92%);
+}
+
+.q-tile--proctor .q-tile__text p {
+  color: hsl(var(--q-ink-fixed) / 0.8);
+}
+
+.q-tile__art {
+  display: block;
+  width: 100%;
+  max-width: 170px;
+  height: auto;
+  overflow: visible;
+}
+
+/* ---------- dual-jurisdiction world map ---------- */
+
+.q-tile.q-tile--jur {
+  justify-content: flex-start;
+  gap: 0;
+  padding: 0;
+  background:
+    radial-gradient(70% 80% at 60% 20%, hsl(172 70% 22% / 0.55), transparent 70%),
+    hsl(186 46% 6%);
+}
+
+.q-tile--jur .q-tile__text {
+  padding: clamp(1rem, 2vw, 1.5rem) clamp(1.25rem, 2.4vw, 1.9rem) clamp(1.25rem, 2.4vw, 1.9rem);
+}
+
+.q-map {
+  --q-dot: 2.3px;
+  --q-dot-zoom: 3.9px;
+  position: relative;
+  aspect-ratio: 2.4;
+  overflow: hidden;
+  -webkit-mask: linear-gradient(180deg, #000 78%, transparent);
+  mask: linear-gradient(180deg, #000 78%, transparent);
+}
+
+.q-map__svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* camera: the server HTML is already framed on the corridor; with JS the
+   map starts on the whole world and flies in when it scrolls into view */
+.q-map__zoom {
+  transform: var(--q-map-zoom);
+  transition: transform 2.4s cubic-bezier(0.7, 0, 0.25, 1) 0.2s;
+}
+
+.q-map__land {
+  fill: none;
+  stroke-width: var(--q-dot-zoom);
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  transition: stroke-width 2.4s cubic-bezier(0.7, 0, 0.25, 1) 0.2s;
+}
+
+.q-map__grid line {
+  stroke: hsl(170 40% 70% / 0.08);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.q-map__grid .q-map__equator {
+  stroke: hsl(170 50% 70% / 0.16);
+  stroke-dasharray: 3 5;
+}
+
+.q-js .q-map[data-inview="false"] .q-map__zoom {
+  transform: var(--q-map-world);
+}
+
+.q-js .q-map[data-inview="false"] .q-map__land {
+  stroke-width: var(--q-dot);
+}
+
+/* overlay: arc, packets, pins and labels arrive once the camera lands */
+.q-map__overlay,
+.q-map__layer {
+  transition: opacity 0.6s ease 2.3s;
+}
+
+.q-js .q-map[data-inview="false"] .q-map__overlay,
+.q-js .q-map[data-inview="false"] .q-map__layer {
+  opacity: 0;
+  transition: none;
+}
+
+.q-map__arc-base {
+  fill: none;
+  stroke: hsl(163 70% 70% / 0.18);
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+.q-map__arc {
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  filter: drop-shadow(0 0 3px hsl(163 70% 70% / 0.8));
+  transition: stroke-dashoffset 1.4s var(--q-ease-out) 2.5s;
+}
+
+.q-js .q-map[data-inview="false"] .q-map__arc {
+  stroke-dashoffset: 1;
+  transition: none;
+}
+
+.q-map__arc-flow {
+  fill: none;
+  stroke: hsl(0 0% 100% / 0.7);
+  stroke-width: 1;
+  stroke-linecap: round;
+  stroke-dasharray: 1.2 5;
+  animation: q-map-flow 1.6s linear infinite;
+}
+
+@keyframes q-map-flow {
+  to { stroke-dashoffset: -12.4; }
+}
+
+.q-map__packet {
+  fill: hsl(0 0% 100%);
+  filter: drop-shadow(0 0 4px hsl(163 70% 70%)) drop-shadow(0 0 10px hsl(163 70% 60% / 0.8));
+}
+
+.q-map__packet--back {
+  fill: hsl(199 88% 82%);
+  filter: drop-shadow(0 0 4px hsl(199 88% 72%));
+}
+
+/* radar sweep across the map */
+.q-map__scan {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 22%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, hsl(163 70% 70% / 0.09) 70%, hsl(163 70% 75% / 0.22) 98%, transparent);
+  animation: q-map-scan 7s linear infinite;
+}
+
+@keyframes q-map-scan {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(560%); }
+}
+
+.q-map__layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.q-map__pin {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.q-map__pin > i {
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: hsl(var(--q-mint));
+  box-shadow: 0 0 0 3px hsl(186 46% 6%), 0 0 0 5px hsl(var(--q-mint) / 0.55), 0 0 22px 4px hsl(var(--q-mint) / 0.7);
+  transform: scale(1);
+  transition: transform 0.7s var(--q-ease-spring) 2.2s;
+}
+
+.q-map__pin--sg > i {
+  background: hsl(var(--q-sky));
+  box-shadow: 0 0 0 3px hsl(186 46% 6%), 0 0 0 5px hsl(var(--q-sky) / 0.55), 0 0 22px 4px hsl(var(--q-sky) / 0.7);
+  transition-delay: 2.45s;
+}
+
+.q-js .q-map[data-inview="false"] .q-map__pin > i {
+  transform: scale(0);
+  transition: none;
+}
+
+/* sonar rings */
+.q-map__pin > i::before,
+.q-map__pin > i::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  color: hsl(var(--q-mint));
+  animation: q-map-sonar 2.6s var(--q-ease-out) infinite;
+}
+
+.q-map__pin--sg > i::before,
+.q-map__pin--sg > i::after {
+  color: hsl(var(--q-sky));
+}
+
+.q-map__pin > i::after {
+  animation-delay: 1.3s;
+}
+
+@keyframes q-map-sonar {
+  from { transform: scale(0.6); opacity: 0.9; }
+  to { transform: scale(3.6); opacity: 0; }
+}
+
+.q-map__label {
+  position: absolute;
+  top: -15px;
+  display: grid;
+  gap: 2px;
+  padding: 7px 11px;
+  border-radius: 12px;
+  white-space: nowrap;
+  color: hsl(160 40% 97%);
+  background: hsl(186 40% 10% / 0.78);
+  box-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.12), 0 10px 24px -12px hsl(0 0% 0% / 0.7);
+}
+
+.q-map__label--left {
+  right: 18px;
+  text-align: right;
+}
+
+.q-map__label--right {
+  left: 18px;
+}
+
+.q-map__label b {
+  font: 700 0.92rem/1.1 var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.q-map__label small {
+  font: 500 0.66rem/1.2 var(--font-inter), sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: hsl(var(--q-mint));
+}
+
+.q-map__pin--sg .q-map__label small {
+  color: hsl(var(--q-sky));
+}
+
+.q-map__chip {
+  position: absolute;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font: 650 0.68rem/1 var(--font-inter), sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: hsl(var(--q-ink-fixed));
+  background: linear-gradient(90deg, hsl(var(--q-mint)), hsl(var(--q-sky)));
+  box-shadow: 0 8px 20px -8px hsl(var(--q-mint));
+  /* just outside the arc's bow, clear of both pins and labels */
+  translate: 16px -50%;
+}
+
+/* reduced motion: the framed corridor appears at once, nothing loops */
+@media (prefers-reduced-motion: reduce) {
+  .q-map *,
+  .q-map__overlay,
+  .q-map__layer {
+    transition-delay: 0s !important;
+  }
+
+  .q-map__packet,
+  .q-map__scan,
+  .q-map__arc-flow {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .q-map {
+    --q-dot: 1.4px;
+    --q-dot-zoom: 2.6px;
+  }
+
+  .q-map__label {
+    padding: 5px 8px;
+  }
+
+  .q-map__label small {
+    display: none;
+  }
+
+  .q-map__chip {
+    display: none;
+  }
+}
+
+/* 20+ years */
+.q-years {
+  display: grid;
+  gap: 8px;
+}
+
+.q-years__num {
+  display: block;
+  font-size: clamp(5rem, 9vw, 8rem);
+  font-weight: 800;
+  line-height: 0.85;
+  letter-spacing: -0.06em;
+}
+
+.q-years__unit {
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: hsl(var(--q-mint));
+}
+
+/* ISO 9001 seal */
+.q-seal {
+  max-width: 150px;
+}
+
+.q-seal__ring {
+  transform-origin: 80px 80px;
+  animation: q-rotate 26s linear infinite;
+}
+
+.q-seal__ring text {
+  font: 600 10px var(--font-mono), monospace;
+  letter-spacing: 0.1em;
+  fill: hsl(var(--q-ink-2));
+}
+
+.q-seal__core {
+  fill: hsl(var(--q-mint));
+}
+
+.q-seal__tick,
+.q-shield__arc {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.q-seal__tick {
+  stroke: hsl(var(--q-ink-fixed));
+  stroke-width: 5;
+}
+
+/* ISO 27001 shield */
+.q-shield__body {
+  fill: hsl(var(--q-teal) / 0.2);
+  stroke: hsl(var(--q-mint));
+  stroke-width: 2;
+}
+
+.q-shield__grid {
+  stroke: hsl(var(--q-mint) / 0.22);
+  stroke-width: 1;
+}
+
+.q-shield__scan {
+  fill: hsl(var(--q-mint) / 0.32);
+  animation: q-scan 3s var(--q-ease-io) infinite alternate;
+}
+
+@keyframes q-scan {
+  from { transform: translateY(10px); }
+  to { transform: translateY(128px); }
+}
+
+.q-shield__lock {
+  fill: hsl(var(--q-mint));
+}
+
+.q-shield__arc {
+  stroke: hsl(var(--q-mint));
+  stroke-width: 4;
+}
+
+/* proctored testing */
+.q-proctor__corner,
+.q-proctor__face {
+  fill: none;
+  stroke: hsl(var(--q-ink-fixed));
+  stroke-linecap: round;
+}
+
+.q-proctor__corner {
+  stroke-width: 4;
+}
+
+.q-proctor__face {
+  stroke-width: 3.5;
+}
+
+.q-proctor__scan {
+  stroke: hsl(var(--q-ink-fixed) / 0.5);
+  stroke-width: 2;
+  animation: q-scan-line 2.6s var(--q-ease-io) infinite alternate;
+}
+
+@keyframes q-scan-line {
+  from { transform: translateY(0); }
+  to { transform: translateY(80px); }
+}
+
+.q-proctor__rec {
+  fill: hsl(var(--q-brand));
+  animation: q-blink 1.2s steps(2, jump-none) infinite;
+}
+
+@keyframes q-blink {
+  50% { opacity: 0.15; }
+}
+
+@media (max-width: 1020px) {
+  .q-bento {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .q-tile--jur {
+    grid-column: span 2;
+  }
+
+  .q-tile--years,
+  .q-tile--seal,
+  .q-tile--shield,
+  .q-tile--proctor {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .q-bento {
+    grid-template-columns: 1fr;
+  }
+
+  .q-tile,
+  .q-tile--jur,
+  .q-tile--years,
+  .q-tile--seal,
+  .q-tile--shield,
+  .q-tile--proctor {
+    grid-column: auto;
+    min-height: 0;
+  }
+}

@@ -2,6 +2,7 @@ import type { SVGProps } from "react";
 
 type IconProps = SVGProps<SVGSVGElement>;
 
+/** 24px stroke icon. Always decorative: labels live on the parent control. */
 function Svg({ children, ...props }: IconProps) {
   return (
     <svg
@@ -64,14 +65,59 @@ export const IconSeal = (p: IconProps) => (
 export const IconScan = (p: IconProps) => (
   <Svg {...p}><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16" /><circle cx="12" cy="10.5" r="2.5" /><path d="M8 17a4 4 0 0 1 8 0" /></Svg>
 );
-export const IconHourglass = (p: IconProps) => (
-  <Svg {...p}><path d="M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9" /></Svg>
-);
 export const IconSpark = (p: IconProps) => (
   <Svg {...p}><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6z" /></Svg>
 );
+export const IconSparkle = (p: IconProps) => (
+  <Svg {...p}><path d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5Z" /><path d="M19 16.5c.2 1.6 1 2.3 2.5 2.5-1.6.2-2.3 1-2.5 2.5-.2-1.6-1-2.3-2.5-2.5 1.6-.2 2.3-1 2.5-2.5Z" /></Svg>
+);
 export const IconPlus = (p: IconProps) => (
   <Svg {...p}><path d="M12 5v14M5 12h14" /></Svg>
+);
+export const IconSearch = (p: IconProps) => (
+  <Svg {...p}><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.4-4.4" /></Svg>
+);
+export const IconLanguage = (p: IconProps) => (
+  <Svg {...p}><path d="M4 5h9M8.5 3v2M6 5c.6 3.4 2.6 6 5.5 7.5M11 5c-.8 4.3-3.4 7.3-7 8.5" /><path d="m12.5 21 4-9.5 4 9.5M14 17.5h5" /></Svg>
+);
+export const IconAtom = (p: IconProps) => (
+  <Svg {...p}><circle cx="12" cy="12" r="1.6" /><ellipse cx="12" cy="12" rx="9.5" ry="3.8" /><ellipse cx="12" cy="12" rx="9.5" ry="3.8" transform="rotate(60 12 12)" /><ellipse cx="12" cy="12" rx="9.5" ry="3.8" transform="rotate(120 12 12)" /></Svg>
+);
+export const IconCode = (p: IconProps) => (
+  <Svg {...p}><path d="m8 7-5 5 5 5M16 7l5 5-5 5M13.5 4.5l-3 15" /></Svg>
+);
+export const IconScale = (p: IconProps) => (
+  <Svg {...p}><path d="M12 4v16M8 20h8M5 7h14M12 4l-1 3h2z" /><path d="m5 7-3 6a3 3 0 0 0 6 0zM19 7l-3 6a3 3 0 0 0 6 0z" /></Svg>
+);
+export const IconPulse = (p: IconProps) => (
+  <Svg {...p}><path d="M3 12h4l2-5 4 10 2-5h6" /></Svg>
+);
+export const IconBook = (p: IconProps) => (
+  <Svg {...p}><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z" /><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5M9 7.5h7" /></Svg>
+);
+export const IconRadar = (p: IconProps) => (
+  <Svg {...p}><path d="M12 12 19 5" /><circle cx="12" cy="12" r="9" /><path d="M12 7a5 5 0 1 0 5 5" /><circle cx="12" cy="12" r="1.2" /></Svg>
+);
+export const IconRank = (p: IconProps) => (
+  <Svg {...p}><path d="M4 20V11M10 20V5M16 20v-6M22 20H2" /><path d="m14 7 2-2 2 2M16 5v5" /></Svg>
+);
+export const IconLock = (p: IconProps) => (
+  <Svg {...p}><rect x="4.5" y="10.5" width="15" height="10" rx="2.5" /><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3M12 14.5v2" /></Svg>
+);
+export const IconCamera = (p: IconProps) => (
+  <Svg {...p}><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.8l1.4-2h6.6l1.4 2h1.8A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z" /><circle cx="12" cy="13" r="3.5" /></Svg>
+);
+export const IconLedger = (p: IconProps) => (
+  <Svg {...p}><path d="M6 3h12v18l-2.5-1.6L13 21l-2.5-1.6L8 21l-2-1.3z" /><path d="M9 8h6M9 11.5h6M9 15h3.5" /></Svg>
+);
+export const IconEye = (p: IconProps) => (
+  <Svg {...p}><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" /><circle cx="12" cy="12" r="3" /></Svg>
+);
+export const IconLayers = (p: IconProps) => (
+  <Svg {...p}><path d="m12 3 9 5-9 5-9-5z" /><path d="m3 13 9 5 9-5" /></Svg>
+);
+export const IconClock = (p: IconProps) => (
+  <Svg {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Svg>
 );
 
 export const SEGMENT_ICONS = {

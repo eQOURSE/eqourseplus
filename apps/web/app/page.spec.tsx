@@ -28,7 +28,7 @@ const heroSource = readFileSync(
   "utf8",
 );
 const cockpitSource = readFileSync(
-  resolve(process.cwd(), "components/landing/cockpit.tsx"),
+  resolve(process.cwd(), "components/landing/delivery-board.tsx"),
   "utf8",
 );
 
@@ -45,18 +45,23 @@ describe("FR-PUB-01 home page", () => {
     expect(nav.getByRole("link", { name: "Vendors" })).toBeInTheDocument();
     expect(nav.getByRole("link", { name: "Access eQOURSE+" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Join the expert network powering AI and world-class content.",
+      "Partner for World-Class AI and Content",
     );
     expect(screen.getByRole("heading", { name: 'The Antidote to the "Black-Box" Industry' })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Frequently Asked Questions" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Ready to Power the Next Frontier of AI and Content?" })).toBeInTheDocument();
-    expect(screen.getByText("PLATFORM")).toBeInTheDocument();
-    expect(screen.getByText(/Transparent project delivery/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Built for the Three Pillars of Modern AI & Content Delivery" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Find the Projects That Match Your Specialized Domain" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Institutional Governance You Can Rely On" })).toBeInTheDocument();
+    for (const column of ["Platform", "Experts", "Vendors", "Legal"]) {
+      expect(within(container.querySelector<HTMLElement>("#site-footer")!).getByRole("heading", { name: column })).toBeInTheDocument();
+    }
+    expect(screen.getByText(/Certified ISO 9001:2015 & ISO 27001:2013/)).toBeInTheDocument();
   });
 
   it("keeps the approved hero sentence and cockpit display address", () => {
     expect(heroSource).toContain(
-      "Whether you are a specialist, an agency or an enterprise, eQOURSE+ delivers operational clarity.",
+      "Join a global network of domain experts training frontier AI models and crafting high-impact content.",
     );
     expect(cockpitSource).toContain(
       "plus.eqourse.com/cockpit/telemetry-live",
@@ -64,11 +69,13 @@ describe("FR-PUB-01 home page", () => {
     expect(cockpitSource).not.toContain("telementry-live");
   });
 
-  it("loads the display and editorial serif typefaces used by the design system", () => {
-    expect(layoutSource).toMatch(/Inter_Tight\(/);
-    expect(layoutSource).toMatch(/Instrument_Serif\(/);
-    expect(landingStyles).toMatch(/\.lx-display\s*\{[^}]*var\(--font-display\)/);
-    expect(landingStyles).toMatch(/\.lx-serif\s*\{[^}]*var\(--font-serif\)/);
+  it("loads the heading, body and mono typefaces used by the design system", () => {
+    expect(layoutSource).toMatch(/Plus_Jakarta_Sans\(/);
+    expect(layoutSource).toMatch(/\bInter\(/);
+    expect(layoutSource).toMatch(/JetBrains_Mono\(/);
+    expect(landingStyles).toMatch(/--font-display:\s*var\(--font-plus-jakarta-sans\)/);
+    expect(landingStyles).toMatch(/\.q-display\s*\{[^}]*var\(--font-display\)/);
+    expect(landingStyles).toMatch(/\.q-mono\s*\{[^}]*var\(--font-mono\)/);
   });
 
   it("renders one h1 with an unbroken heading hierarchy", () => {
@@ -184,48 +191,85 @@ describe("FR-PUB-01 home page", () => {
   it("numbers every specialization track", () => {
     const { container } = render(<HomePage />);
     const numbers = Array.from(
-      container.querySelectorAll("#how-it-works .lx-node__num"),
+      container.querySelectorAll("#how-it-works .q-dom__num"),
       (node) => node.textContent,
     );
     expect(numbers).toEqual(["01", "02", "03", "04", "05", "06", "07", "08"]);
   });
 
   it("enforces 48px buttons and links in the shared chrome", () => {
-    expect(landingStyles).toMatch(/\.lx-btn\s*\{[^}]*min-height:\s*3rem/);
-    expect(landingStyles).toMatch(/\.lx-link\s*\{[^}]*min-height:\s*2\.75rem/);
+    expect(landingStyles).toMatch(/\.q-btn\s*\{[^}]*min-height:\s*3rem/);
+    expect(landingStyles).toMatch(/\.q-link\s*\{[^}]*min-height:\s*2\.75rem/);
   });
 
-  it("offers the same three segment CTAs in the hero, pillars and final call to action", () => {
+  it("offers all three audience paths in the hero, pillars and final call to action", () => {
     const { container } = render(<HomePage />);
+    // Each section uses its approved wording, but always the same destinations.
     for (const region of ["#hero", "#categories", "#final-cta"]) {
-      const scope = within(container.querySelector<HTMLElement>(region)!);
       for (const item of SEGMENTS) {
         expect(
-          scope.getByRole("link", { name: new RegExp(item.cta) }),
-          `${region} ${item.cta}`,
-        ).toHaveAttribute("href", item.href);
+          container.querySelector(`${region} a[href="${item.href}"]`),
+          `${region} -> ${item.href}`,
+        ).not.toBeNull();
       }
     }
-    expect(landingStyles).toMatch(/\.lx-btn--primary\s*\{[^}]*color:\s*hsl\(var\(--lx-on-emerald\)\)/);
-    expect(landingStyles).toMatch(/\.lx-btn:active\s*\{[^}]*--lx-press:\s*0\.96/);
+
+    const hero = within(container.querySelector<HTMLElement>("#hero")!);
+    for (const item of SEGMENTS) {
+      expect(hero.getByRole("link", { name: new RegExp(item.cta) })).toHaveAttribute("href", item.href);
+    }
+
+    const pillarLinks = Array.from(
+      container.querySelectorAll<HTMLAnchorElement>("#categories a"),
+      (link) => [link.textContent?.trim(), link.getAttribute("href")],
+    );
+    expect(pillarLinks).toEqual(
+      expect.arrayContaining([
+        ["Start Your Expert Application", "/register/freelancer"],
+        ["Apply for Agency Accreditation", "/register/vendor"],
+        ["Schedule an Enterprise Consultation", "/register/client"],
+      ]),
+    );
+
+    const final = within(container.querySelector<HTMLElement>("#final-cta")!);
+    for (const [label, href] of [
+      ["Apply as a Domain Expert", "/register/freelancer"],
+      ["Register as a Vendor Partner", "/register/vendor"],
+      ["Talk to Our Enterprise Solutions Team", "/register/client"],
+    ] as const) {
+      expect(final.getByRole("link", { name: new RegExp(label) })).toHaveAttribute("href", href);
+    }
+    expect(landingStyles).toMatch(/\.q-btn--primary\s*\{[^}]*color:\s*hsl\(var\(--q-on-brand\)\)/);
+    expect(landingStyles).toMatch(/\.q-btn:active\s*\{[^}]*--q-press:\s*0\.96/);
   });
 
   it("uses the confirmed Singapore and ISO wording without verification markers", () => {
     render(<HomePage />);
 
-    expect(screen.getByText(/Singapore & India · ISO 9001 and ISO\/IEC 27001 certified/)).toBeInTheDocument();
+    expect(screen.getByText(/Dual Governance: Singapore & India · ISO 9001 & ISO 27001 Certified/)).toBeInTheDocument();
     expect(screen.getByText("ISO 9001:2015 Certified")).toBeInTheDocument();
-    expect(screen.getByText("ISO/IEC 27001 Certified")).toBeInTheDocument();
+    expect(screen.getByText("ISO 27001:2013 Certified")).toBeInTheDocument();
     expect(screen.queryByText(/⚠ VERIFY/)).not.toBeInTheDocument();
   });
 
   it("renders the hero segment dock and navigation as liquid glass", () => {
     const { container } = render(<HomePage />);
+    const nav = container.querySelector("#site-navigation");
+    const dock = container.querySelector(".q-dock");
 
-    expect(container.querySelector("#site-navigation")).toHaveClass("lx-glass");
-    expect(container.querySelector(".lx-hero__dock")).toHaveAttribute("data-lens");
-    expect(container.querySelector(".cockpit")).not.toBeNull();
-    expect(heroSource).toContain("LiquidLens");
+    expect(nav).toHaveClass("q-glass");
+    expect(nav).toHaveAttribute("data-tier", "focal");
+    expect(dock).toHaveClass("q-glass");
+    expect(dock).toHaveAttribute("data-tier", "focal");
+    // jsdom has no SVG backdrop filters, so every surface starts frosted
+    expect(dock).toHaveAttribute("data-glass", "frosted");
+    expect(container.querySelector(".q-board")).not.toBeNull();
+    expect(heroSource).toContain("LiquidGlass");
+  });
+
+  it("spends no more than the three-element refraction budget on the home page", () => {
+    const { container } = render(<HomePage />);
+    expect(container.querySelectorAll('[data-tier="focal"]').length).toBeLessThanOrEqual(3);
   });
 
   it.each(["light", "dark"] as const)(

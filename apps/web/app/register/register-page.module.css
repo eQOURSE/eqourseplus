@@ -10,7 +10,7 @@
   isolation: isolate;
   min-height: 39rem;
   overflow: hidden;
-  padding: 7rem 1.5rem 6rem;
+  padding: 9rem 1.5rem 6rem;
   background:
     radial-gradient(circle at 82% 42%, hsl(var(--accent) / 0.22), transparent 25rem),
     hsl(var(--background));
@@ -205,7 +205,7 @@
 
 @media (max-width: 760px) {
   .registrationSection {
-    padding-block: 5.5rem 5rem;
+    padding-block: 7rem 5rem;
   }
 
   .registrationSection::after {

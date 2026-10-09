@@ -25,7 +25,7 @@ import {
 import VendorRegistrationPage, {
   metadata as vendorMetadata,
 } from "./vendor/page";
-import { PRIMARY_NAV_HREFS, PUBLIC_CHROME_HREFS, inPageBody, primaryNavHrefs } from "../../components/home/chrome-test-utils";
+import { PRIMARY_NAV_HREFS, PUBLIC_CHROME_HREFS, inPageBody, primaryNavHrefs, withoutStandardIds } from "../../components/home/chrome-test-utils";
 
 const APPROVED_LINKS = [
   "/",
@@ -202,7 +202,7 @@ describe("FR-PUB-06 registration routes", () => {
       const visibleText = container.textContent ?? "";
 
       if (name === "register") {
-        expect(visibleText.match(/\d[\d+]*/g) ?? []).toEqual([]);
+        expect(withoutStandardIds(visibleText).match(/\d[\d+]*/g) ?? []).toEqual([]);
       }
       expect(visibleText).not.toMatch(/\b(?:wizard|placeholder|preview)\b/i);
       expect(visibleText).not.toMatch(
