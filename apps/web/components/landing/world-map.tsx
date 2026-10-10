@@ -3,6 +3,7 @@
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 
 import { LAND_COLS, LAND_MASK, LAND_ROWS } from "./world-dots.data";
+import { INDIA_OUTLINE_PATH, WORLD_COAST_PATH } from "./world-vector.data";
 
 /*
  * Equirectangular world map, 2 viewBox units per degree:
@@ -65,11 +66,11 @@ const SINGAPORE = { lon: 103.8198, lat: 1.3521 };
 
 // Camera: start on the whole world, then settle on the India–Singapore corridor.
 const S_WORLD = 0.86;
-// Frames roughly 8°E–159°E and 40°N–22°S: Africa's horn to northern Australia.
-const S_ZOOM = 2.1;
+// The close frame retains India's northern extent and Singapore's southern position.
+const S_ZOOM = 2.65;
 const MID = project((INDIA.lon + SINGAPORE.lon) / 2, (INDIA.lat + SINGAPORE.lat) / 2);
 const ZOOM_X = VISIBLE_LEFT + VISIBLE_W * 0.55 - S_ZOOM * MID[0];
-const ZOOM_Y = H * 0.47 - S_ZOOM * MID[1];
+const ZOOM_Y = H * 0.57 - S_ZOOM * MID[1];
 const WORLD_X = (W - W * S_WORLD) / 2;
 const WORLD_Y = (H - H * S_WORLD) / 2;
 
@@ -160,7 +161,9 @@ export function WorldMap() {
             })}
             <line className="q-map__equator" x1={0} x2={W} y1={project(0, 0)[1]} y2={project(0, 0)[1]} />
           </g>
+          <path className="q-map__coast" d={WORLD_COAST_PATH} />
           <path className="q-map__land" d={LAND} stroke="url(#q-map-land)" />
+          <path className="q-map__india" d={INDIA_OUTLINE_PATH} />
         </g>
       </svg>
 

@@ -1,10 +1,10 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
+import Image from "next/image";
 import Link from "next/link";
 import {
   type ComponentType,
-  type CSSProperties,
   type RefObject,
   type SVGProps,
   useEffect,
@@ -40,11 +40,13 @@ interface Track {
   icon: Icon;
   /** Extra search terms people use for this kind of expertise. */
   keywords: readonly string[];
+  thumbnail: string;
 }
 
 const TRACKS: readonly Track[] = [
   {
     id: "language",
+    thumbnail: "/images/tracks/language.png",
     title: "Language, Dialects & Multilingual AI",
     body: "Dialectical nuances, localization, transcription, and cultural safety across 30+ global languages.",
     icon: IconLanguage,
@@ -52,6 +54,7 @@ const TRACKS: readonly Track[] = [
   },
   {
     id: "stem",
+    thumbnail: "/images/tracks/stem.png",
     title: "Advanced STEM & Scientific Reasoning",
     body: "Hallucination detection, paper critiques, mathematical proofs, and physical science verification.",
     icon: IconAtom,
@@ -59,6 +62,7 @@ const TRACKS: readonly Track[] = [
   },
   {
     id: "code",
+    thumbnail: "/images/tracks/code.png",
     title: "Software Engineering & Code Intelligence",
     body: "LLM code benchmarking, unit test debugging, repository evaluations, and architecture reviews.",
     icon: IconCode,
@@ -66,6 +70,7 @@ const TRACKS: readonly Track[] = [
   },
   {
     id: "legal",
+    thumbnail: "/images/tracks/legal.png",
     title: "Quantitative Finance & Legal Analysis",
     body: "Statutory compliance interpretation, financial audits, risk logic assessment, and fiscal modeling.",
     icon: IconScale,
@@ -73,6 +78,7 @@ const TRACKS: readonly Track[] = [
   },
   {
     id: "clinical",
+    thumbnail: "/images/tracks/clinical.png",
     title: "Clinical Medicine & Healthcare",
     body: "Diagnostic reviews, pharmacology evaluations, literature synthesis, and patient safety guardrails.",
     icon: IconPulse,
@@ -80,6 +86,7 @@ const TRACKS: readonly Track[] = [
   },
   {
     id: "curriculum",
+    thumbnail: "/images/tracks/curriculum.png",
     title: "Curriculum Design & Enterprise Content",
     body: "K-12 and higher-ed modules, corporate training, assessments, and technical instructional design.",
     icon: IconBook,
@@ -87,6 +94,7 @@ const TRACKS: readonly Track[] = [
   },
   {
     id: "robotics",
+    thumbnail: "/images/tracks/robotics.png",
     title: "Robotics, Perception & Physical AI",
     body: "Sensor annotation (LiDAR, Radar, Video), scenario evaluation, edge-case tagging, and spatial data.",
     icon: IconRadar,
@@ -94,6 +102,7 @@ const TRACKS: readonly Track[] = [
   },
   {
     id: "rlhf",
+    thumbnail: "/images/tracks/rlhf.png",
     title: "RLHF, Preference Ranking & Red-Teaming",
     body: "Human feedback ranking, adversarial prompt crafting, bias mitigation, and safety rubric enforcement.",
     icon: IconRank,
@@ -130,117 +139,6 @@ export function trackMatches(id: TrackId, query: string): boolean {
   if (terms.length === 0) return true;
   const words = INDEX.get(id) ?? [];
   return terms.every((term) => words.some((word) => word.startsWith(term)));
-}
-
-/* ---------- live task previews, sized for the cards ---------- */
-
-const WAVE = [0.35, 0.6, 0.9, 0.5, 0.75, 1, 0.55, 0.3, 0.65, 0.85, 0.45, 0.7, 0.95, 0.4, 0.6, 0.8, 0.5, 0.35, 0.7, 0.55, 0.9, 0.4, 0.65, 0.3, 0.5, 0.8, 0.6, 0.45];
-
-// Deterministic "point cloud" so server and client render identically.
-const CLOUD = Array.from({ length: 70 }, (_, index) => {
-  const x = (index * 37 + 11) % 97;
-  const y = (index * 53 + 7) % 89;
-  return { x: 3 + x * 0.94, y: 5 + y * 0.97, s: 2 + ((index * 7) % 3) };
-});
-
-function Vignette({ id }: { id: TrackId }) {
-  switch (id) {
-    case "language":
-      return (
-        <div className="q-vg q-vg--language">
-          <div className="q-vg__wave">
-            {WAVE.map((height, index) => (
-              <i key={index} style={{ "--h": height, "--i": index } as CSSProperties} />
-            ))}
-          </div>
-          <div className="q-vg__lines">
-            <p><b className="q-mono">HI</b><span>नमस्ते, आज का पाठ शुरू करते हैं</span></p>
-            <p><b className="q-mono">EN</b><span>Hello, let&apos;s begin today&apos;s lesson</span><mark>Reviewed</mark></p>
-          </div>
-        </div>
-      );
-    case "stem":
-      return (
-        <div className="q-vg q-vg--stem">
-          <div className="q-vg__eq">
-            <span>∇ · E = ρ / ε₀</span>
-            <small className="q-mono">Derivation · step check</small>
-          </div>
-          <span className="q-vg__tag"><IconCheck />Step verified</span>
-        </div>
-      );
-    case "code":
-      return (
-        <div className="q-vg q-vg--code">
-          <pre className="q-mono">
-            <span className="k">def</span> <span className="f">evaluate</span>(answer):{"\n"}
-            {"  "}<span className="k">assert</span> passes(answer){"\n"}
-            {"  "}<span className="k">return</span> rubric(answer)
-          </pre>
-          <span className="q-vg__tag"><IconCheck />Tests passing</span>
-        </div>
-      );
-    case "legal":
-      return (
-        <div className="q-vg q-vg--legal">
-          <div className="q-vg__doc">
-            <i /><i /><i className="is-hl" /><i /><i className="is-short" />
-          </div>
-          <span className="q-vg__tag q-vg__tag--sky">Clause flagged · statute cited</span>
-        </div>
-      );
-    case "clinical":
-      return (
-        <div className="q-vg q-vg--clinical">
-          <div className="q-vg__case">
-            <b>Case review</b>
-            <svg viewBox="0 0 160 36" aria-hidden="true" focusable="false">
-              <path className="q-ecg" d="M0 20h38l8-14 10 26 9-18 6 6h89" />
-              <path className="q-ecg q-ecg--pulse" d="M0 20h38l8-14 10 26 9-18 6 6h89" pathLength={100} />
-            </svg>
-          </div>
-          <span className="q-vg__tag"><IconCheck />Safety guardrail applied</span>
-        </div>
-      );
-    case "curriculum":
-      return (
-        <div className="q-vg q-vg--curriculum">
-          <ol className="q-vg__outline">
-            <li data-done="true">Module overview</li>
-            <li data-done="true">Lesson plan</li>
-            <li>Assessment items</li>
-          </ol>
-          <span className="q-vg__tag"><IconCheck />Outcomes mapped</span>
-        </div>
-      );
-    case "robotics":
-      return (
-        <div className="q-vg q-vg--robotics">
-          <div className="q-vg__cloud">
-            {CLOUD.map((dot, index) => (
-              <i key={index} style={{ left: `${dot.x}%`, top: `${dot.y}%`, width: dot.s, height: dot.s }} />
-            ))}
-            <span className="q-vg__box"><b className="q-mono">Pedestrian · occluded</b></span>
-            <span className="q-vg__sweep" />
-          </div>
-        </div>
-      );
-    case "rlhf":
-      return (
-        <div className="q-vg q-vg--rlhf">
-          <div className="q-vg__resp is-pick">
-            <b>Response A</b>
-            <i /><i /><i className="is-short" />
-            <span className="q-chip q-chip--mint"><IconCheck />Preferred</span>
-          </div>
-          <div className="q-vg__resp">
-            <b>Response B</b>
-            <i /><i /><i className="is-short" />
-            <span className="q-chip q-chip--line">Bias flagged</span>
-          </div>
-        </div>
-      );
-  }
 }
 
 function prefersReducedMotion() {
@@ -426,7 +324,7 @@ export function SpecializationTracks() {
               <div className="q-dom__card q-spot" data-tilt>
                 {hit ? <span className="q-dom__beam" aria-hidden="true" /> : null}
                 <div className="q-dom__visual" aria-hidden="true">
-                  <Vignette id={track.id} />
+                  <Image src={track.thumbnail} alt="" fill sizes="(max-width: 720px) 100vw, (max-width: 1100px) 50vw, 25vw" className="q-dom__thumbnail" />
                 </div>
                 <div className="q-dom__body">
                   <div className="q-dom__meta">

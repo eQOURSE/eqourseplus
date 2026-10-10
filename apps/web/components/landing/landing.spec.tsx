@@ -183,9 +183,93 @@ describe("dual-jurisdiction world map", () => {
     expect(landAt(-30, 30)).toBe(false); // central Atlantic
     expect(landAt(80, -10)).toBe(false); // Indian Ocean
   });
+
+  it("renders sourced vector coastlines and a clear India focus without a raster map", () => {
+    const { container } = render(<WorldMap />);
+    const coast = container.querySelector<SVGPathElement>(".q-map__coast");
+    const india = container.querySelector<SVGPathElement>(".q-map__india");
+    expect(coast?.getAttribute("d")?.length).toBeGreaterThan(10000);
+    expect(india?.getAttribute("d")?.length).toBeGreaterThan(1000);
+    expect(container.querySelector(".q-map img")).toBeNull();
+    const map = container.querySelector<HTMLElement>(".q-map")!;
+    expect(map.style.getPropertyValue("--q-map-world")).not.toBe(map.style.getPropertyValue("--q-map-zoom"));
+  });
+
+  it("includes the India-viewpoint boundary around PoK and Aksai Chin", () => {
+    const { container } = render(<WorldMap />);
+    const outline = container.querySelector<SVGPathElement>(".q-map__india")!.getAttribute("d")!;
+    const contains = (lon: number, lat: number) => {
+      const x = (lon + 180) * 2;
+      const y = (75 - lat) * 2;
+      return Array.from(outline.matchAll(/M([^Z]+)Z/g)).some((ring) => {
+        const numbers = Array.from(ring[1].matchAll(/-?\d+(?:\.\d+)?/g), (match) => Number(match[0]));
+        let inside = false;
+        for (let i = 0, j = numbers.length - 2; i < numbers.length; j = i, i += 2) {
+          const xi = numbers[i], yi = numbers[i + 1];
+          const xj = numbers[j], yj = numbers[j + 1];
+          if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+        }
+        return inside;
+      });
+    };
+
+    expect(contains(73.47, 34.37)).toBe(true); // Muzaffarabad, PoK
+    expect(contains(74.31, 35.92)).toBe(true); // Gilgit-Baltistan, PoK
+    expect(contains(79.5, 35)).toBe(true); // Aksai Chin
+    expect(contains(77.2, 28.6)).toBe(true); // Delhi
+    expect(contains(69, 31)).toBe(false); // Pakistan outside the claim boundary
+  });
 });
 
 describe("who we empower", () => {
+  it("shows distinct artwork for experts, agencies and enterprises", () => {
+    const { container } = render(<Pillars />);
+    const artwork = Array.from(container.querySelectorAll<HTMLImageElement>(".q-aud__artwork"));
+
+    for (const [index, path] of [
+      "/images/pillars/expert.png",
+      "/images/pillars/agency.png",
+      "/images/pillars/enterprise.png",
+    ].entries()) {
+      expect(decodeURIComponent(artwork[index]?.getAttribute("src") ?? "")).toContain(path);
+    }
+    expect(artwork.map((image) => image.getAttribute("alt"))).toEqual([
+      "Independent expert working on a digital project",
+      "Agency team collaborating on a shared delivery project",
+      "Enterprise team reviewing project delivery",
+    ]);
+    expect(container.querySelectorAll(".q-pv")).toHaveLength(0);
+  });
+
+  it("uses a distinct theme-ready illustration thumbnail for each specialization track", () => {
+    const { container } = render(<SpecializationTracks />);
+    const thumbnails = container.querySelectorAll(".q-dom__thumbnail");
+    expect(thumbnails).toHaveLength(8);
+    for (const id of ["language", "stem", "code", "legal", "clinical", "curriculum", "robotics", "rlhf"]) {
+      expect(container.querySelector(`.q-dom[data-track="${id}"] .q-dom__thumbnail`)).toHaveAttribute("src", expect.stringContaining(`${id}.png`));
+    }
+    expect(screen.getByRole("heading", { name: "Language, Dialects & Multilingual AI" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Quantitative Finance & Legal Analysis" })).toBeInTheDocument();
+  });
+
+  it("gives every audience benefit card its own illustrated thumbnail", () => {
+    const { container } = render(<Pillars />);
+    const thumbnails = Array.from(container.querySelectorAll<HTMLImageElement>(".q-aud__benefit-artwork"));
+    const expected = [
+      "expert-location", "expert-rubrics", "expert-payouts", "expert-feedback",
+      "agency-contracts", "agency-batches", "agency-settlements", "agency-workspace",
+      "enterprise-authorities", "enterprise-observability", "enterprise-timelines", "enterprise-value",
+    ];
+
+    expect(thumbnails).toHaveLength(expected.length);
+    for (const [index, name] of expected.entries()) {
+      expect(decodeURIComponent(thumbnails[index]?.getAttribute("src") ?? ""))
+        .toContain(`/images/benefits/${name}.png`);
+      expect(thumbnails[index]?.getAttribute("alt")).toBe("");
+    }
+    expect(container.querySelectorAll(".q-aud__benefits .q-aud__icon")).toHaveLength(0);
+  });
+
   it("shows one audience at a time while keeping all three pillars in the page", () => {
     const { container } = render(<Pillars />);
     const tabs = screen.getAllByRole("tab");

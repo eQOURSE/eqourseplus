@@ -99,13 +99,13 @@
 }
 
 .q-map {
-  --q-dot: 2.3px;
-  --q-dot-zoom: 3.9px;
+  --q-dot: 1.4px;
+  --q-dot-zoom: 2px;
   position: relative;
   aspect-ratio: 2.4;
   overflow: hidden;
-  -webkit-mask: linear-gradient(180deg, #000 78%, transparent);
-  mask: linear-gradient(180deg, #000 78%, transparent);
+  -webkit-mask: linear-gradient(180deg, #000 88%, transparent);
+  mask: linear-gradient(180deg, #000 88%, transparent);
 }
 
 .q-map__svg {
@@ -123,8 +123,30 @@
   transition: transform 2.4s cubic-bezier(0.7, 0, 0.25, 1) 0.2s;
 }
 
+.q-map__coast {
+  fill: hsl(172 40% 43% / 0.24);
+  fill-rule: evenodd;
+  stroke: hsl(165 63% 71% / 0.66);
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.q-map__india {
+  fill: hsl(var(--q-mint) / 0.22);
+  fill-rule: evenodd;
+  stroke: hsl(var(--q-mint) / 0.92);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 3px hsl(var(--q-mint) / 0.42));
+  opacity: 1;
+  transition: opacity 0.7s ease 1.8s;
+}
+
 .q-map__land {
   fill: none;
+  opacity: 0.4;
   stroke-width: var(--q-dot-zoom);
   stroke-linecap: round;
   vector-effect: non-scaling-stroke;
@@ -148,6 +170,11 @@
 
 .q-js .q-map[data-inview="false"] .q-map__land {
   stroke-width: var(--q-dot);
+}
+
+.q-js .q-map[data-inview="false"] .q-map__india {
+  opacity: 0;
+  transition: none;
 }
 
 /* overlay: arc, packets, pins and labels arrive once the camera lands */
@@ -350,12 +377,36 @@
   .q-map__arc-flow {
     display: none;
   }
+
+  .q-map__pin > i::before,
+  .q-map__pin > i::after {
+    animation: none;
+  }
+
+  .q-js .q-map[data-inview="false"] .q-map__zoom {
+    transform: var(--q-map-zoom);
+    transition: none;
+  }
+
+  .q-js .q-map[data-inview="false"] .q-map__india,
+  .q-js .q-map[data-inview="false"] .q-map__overlay,
+  .q-js .q-map[data-inview="false"] .q-map__layer {
+    opacity: 1;
+  }
+
+  .q-js .q-map[data-inview="false"] .q-map__pin > i {
+    transform: scale(1);
+  }
+
+  .q-js .q-map[data-inview="false"] .q-map__arc {
+    stroke-dashoffset: 0;
+  }
 }
 
 @media (max-width: 640px) {
   .q-map {
-    --q-dot: 1.4px;
-    --q-dot-zoom: 2.6px;
+    --q-dot: 1px;
+    --q-dot-zoom: 1.4px;
   }
 
   .q-map__label {
