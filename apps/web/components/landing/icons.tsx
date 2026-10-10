@@ -62,15 +62,6 @@ export const IconShield = (p: IconProps) => (
 export const IconSeal = (p: IconProps) => (
   <Svg {...p}><circle cx="12" cy="10" r="6" /><path d="m8.5 14.8-1.5 6.2 5-2.6 5 2.6-1.5-6.2" /><path d="m9.5 10 1.7 1.7 3.3-3.4" /></Svg>
 );
-export const IconScan = (p: IconProps) => (
-  <Svg {...p}><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16" /><circle cx="12" cy="10.5" r="2.5" /><path d="M8 17a4 4 0 0 1 8 0" /></Svg>
-);
-export const IconSpark = (p: IconProps) => (
-  <Svg {...p}><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6z" /></Svg>
-);
-export const IconSparkle = (p: IconProps) => (
-  <Svg {...p}><path d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5Z" /><path d="M19 16.5c.2 1.6 1 2.3 2.5 2.5-1.6.2-2.3 1-2.5 2.5-.2-1.6-1-2.3-2.5-2.5 1.6-.2 2.3-1 2.5-2.5Z" /></Svg>
-);
 export const IconPlus = (p: IconProps) => (
   <Svg {...p}><path d="M12 5v14M5 12h14" /></Svg>
 );
@@ -101,12 +92,6 @@ export const IconRadar = (p: IconProps) => (
 export const IconRank = (p: IconProps) => (
   <Svg {...p}><path d="M4 20V11M10 20V5M16 20v-6M22 20H2" /><path d="m14 7 2-2 2 2M16 5v5" /></Svg>
 );
-export const IconLock = (p: IconProps) => (
-  <Svg {...p}><rect x="4.5" y="10.5" width="15" height="10" rx="2.5" /><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3M12 14.5v2" /></Svg>
-);
-export const IconCamera = (p: IconProps) => (
-  <Svg {...p}><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.8l1.4-2h6.6l1.4 2h1.8A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z" /><circle cx="12" cy="13" r="3.5" /></Svg>
-);
 export const IconLedger = (p: IconProps) => (
   <Svg {...p}><path d="M6 3h12v18l-2.5-1.6L13 21l-2.5-1.6L8 21l-2-1.3z" /><path d="M9 8h6M9 11.5h6M9 15h3.5" /></Svg>
 );
@@ -116,10 +101,6 @@ export const IconEye = (p: IconProps) => (
 export const IconLayers = (p: IconProps) => (
   <Svg {...p}><path d="m12 3 9 5-9 5-9-5z" /><path d="m3 13 9 5 9-5" /></Svg>
 );
-export const IconClock = (p: IconProps) => (
-  <Svg {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Svg>
-);
-
 export const SEGMENT_ICONS = {
   expert: IconExpert,
   vendor: IconVendor,

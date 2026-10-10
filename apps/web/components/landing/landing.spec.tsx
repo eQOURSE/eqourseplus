@@ -202,11 +202,11 @@ describe("dual-jurisdiction world map", () => {
       const x = (lon + 180) * 2;
       const y = (75 - lat) * 2;
       return Array.from(outline.matchAll(/M([^Z]+)Z/g)).some((ring) => {
-        const numbers = Array.from(ring[1].matchAll(/-?\d+(?:\.\d+)?/g), (match) => Number(match[0]));
+        const numbers = Array.from((ring[1] ?? "").matchAll(/-?\d+(?:\.\d+)?/g), (match) => Number(match[0]));
         let inside = false;
         for (let i = 0, j = numbers.length - 2; i < numbers.length; j = i, i += 2) {
-          const xi = numbers[i], yi = numbers[i + 1];
-          const xj = numbers[j], yj = numbers[j + 1];
+          const xi = numbers[i]!, yi = numbers[i + 1]!;
+          const xj = numbers[j]!, yj = numbers[j + 1]!;
           if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
         }
         return inside;
