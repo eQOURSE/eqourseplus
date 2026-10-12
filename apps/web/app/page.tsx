@@ -1,16 +1,22 @@
 import type { Metadata } from "next";
-import { CalloutBanner } from "../components/home/CalloutBanner";
-import { FeaturesSection } from "../components/home/FeaturesSection";
-import { GlassBoxSection } from "../components/home/GlassBoxSection";
-import { HeroSection } from "../components/home/HeroSection";
-import { HowItWorksSection } from "../components/home/HowItWorksSection";
-import { HomeFaq } from "../components/home/HomeFaq";
 import { HomeFooter, HomeHeader } from "../components/home/HomeChrome";
-import { TrustSection } from "../components/home/TrustSection";
-import styles from "../components/home/home-redesign.module.css";
+import { Faq, FinalCta } from "../components/landing/faq-cta";
+import { Hero } from "../components/landing/hero";
+import { MotionRuntime } from "../components/landing/motion-runtime";
+import { Pillars } from "../components/landing/pillars";
+import { DomainStrip, GlassBoxSection, HowItWorks } from "../components/landing/sections";
+import { Trust } from "../components/landing/trust";
+import "../components/landing/hero.css";
+import "../components/landing/board.css";
+import "../components/landing/pillars.css";
+import "../components/landing/tracks.css";
+import "../components/landing/glass-box.css";
+import "../components/landing/trust.css";
+import "../components/landing/faq-cta.css";
 import { serializeJsonLd } from "../lib/json-ld";
 import {
   HOME_DESCRIPTION,
+  HOME_KEYWORDS,
   HOME_TITLE,
   structuredData,
 } from "./home-data";
@@ -18,6 +24,7 @@ import {
 export const metadata: Metadata = {
   title: HOME_TITLE,
   description: HOME_DESCRIPTION,
+  keywords: [...HOME_KEYWORDS],
   alternates: {
     canonical: "/",
     languages: {
@@ -56,15 +63,20 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   return (
-    <main className={`home-shell ${styles.page}`}>
+    <div className="q q-page q-home">
+      <a className="q-skip" href="#main-content">Skip to content</a>
+      <MotionRuntime />
       <HomeHeader />
-      <HeroSection />
-      <FeaturesSection />
-      <HowItWorksSection />
-      <GlassBoxSection />
-      <TrustSection />
-      <HomeFaq />
-      <CalloutBanner />
+      <main id="main-content">
+        <Hero />
+        <DomainStrip />
+        <Pillars />
+        <HowItWorks />
+        <GlassBoxSection />
+        <Trust />
+        <Faq />
+        <FinalCta />
+      </main>
       <HomeFooter />
       {structuredData.map((block) => (
         <script
@@ -73,6 +85,6 @@ export default function HomePage() {
           dangerouslySetInnerHTML={{ __html: serializeJsonLd(block) }}
         />
       ))}
-    </main>
+    </div>
   );
 }

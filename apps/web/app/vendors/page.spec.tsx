@@ -14,6 +14,7 @@ import {
 } from "../../../../packages/ui/test/contrast-helpers";
 import { vendorFaq } from "./vendors-data";
 import VendorsPage from "./page";
+import { PRIMARY_NAV_HREFS, PUBLIC_CHROME_HREFS, pageBodyText, primaryNavHrefs, withoutStandardIds } from "../../components/home/chrome-test-utils";
 
 const pageSource = readFileSync(
   resolve(process.cwd(), "app/vendors/page.tsx"),
@@ -120,7 +121,7 @@ describe("FR-PUB-04 vendors page", () => {
         "Vendor registration is not open yet. eQOURSE+ is being built. This page exists so agencies know what to expect from the verification, member, RFP, and invoicing flows.",
       ),
     ).toBeInTheDocument();
-    expect(container.textContent).not.toMatch(
+    expect(pageBodyText(container)).not.toMatch(
       /\b(sign up|join now|apply|get started|request access|waitlist|partner with us|contact us|submit a bid|become a vendor)\b/i,
     );
 
@@ -137,18 +138,11 @@ describe("FR-PUB-04 vendors page", () => {
         "/register",
         "https://www.eqourse.com/",
         "https://www.eqourse.com/casestudy",
-      ].includes(href);
+      ].includes(href) || PUBLIC_CHROME_HREFS.includes(href);
       expect(href.startsWith("#") || isChromeOrSourceLink, href).toBe(true);
     }
 
-    expect(
-      Array.from(
-        container.querySelectorAll<HTMLAnchorElement>(
-          "#site-navigation .home-nav-links a",
-        ),
-        (link) => link.getAttribute("href"),
-      ),
-    ).toEqual(["#how-it-works", "#categories", "/freelancers", "/vendors", "/about"]);
+    expect(primaryNavHrefs(container)).toEqual(PRIMARY_NAV_HREFS);
   });
 
   it("uses one FAQ source for visible disclosures and matching schema", () => {
@@ -211,7 +205,7 @@ describe("FR-PUB-04 vendors page", () => {
     const { container } = render(<VendorsPage />);
     container.querySelectorAll("script").forEach((script) => script.remove());
 
-    expect(container.textContent?.match(/\d[\d+]*/g) ?? []).toEqual([]);
+    expect(withoutStandardIds(container.textContent ?? "").match(/\d[\d+]*/g) ?? []).toEqual([]);
     expect(container.textContent).not.toMatch(
       /₹|\$|€|£|\b(?:Razorpay|Cashfree|Stripe|PayPal|DocuSign|Dropbox Sign|Digio|Leegality|IDfy|HyperVerge|Sumsub|Onfido|Persona|Veriff)\b|\b(?:commission|take[- ]?rate|margin|fee percentage|settlement|turnaround|SLA|headcount|capacity)\b|\bearn\b|\bper (?:hour|task)\b/i,
     );
