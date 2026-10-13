@@ -1,6 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { withoutStandardIds } from "../../components/home/chrome-test-utils";
 import JobsPage, { metadata } from "./page";
 
 afterEach(cleanup);
@@ -17,7 +18,7 @@ function expectNoUnsupportedJobContent(container: HTMLElement): void {
   expect(text).not.toMatch(
     /\b(?:Razorpay|Cashfree|Stripe|PayPal|DocuSign|Dropbox Sign|Digio|Leegality|IDfy|HyperVerge|Sumsub|Onfido|Persona|Veriff)\b/i,
   );
-  expect(textWithoutDates.match(/\d[\d+]*/g) ?? []).toEqual([]);
+  expect(withoutStandardIds(textWithoutDates).match(/\d[\d+]*/g) ?? []).toEqual([]);
 }
 
 describe("FR-PUB-02 jobs listing", () => {
@@ -61,8 +62,6 @@ describe("FR-PUB-02 jobs listing", () => {
   it("contains no unsupported claims, providers, or non-date numbers", async () => {
     const { container } = render(await JobsPage({ searchParams: {} }));
 
-    const listing = container.querySelector("#main-content");
-    expect(listing).not.toBeNull();
-    expectNoUnsupportedJobContent(listing as HTMLElement);
+    expectNoUnsupportedJobContent(container);
   });
 });
