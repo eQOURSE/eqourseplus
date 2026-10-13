@@ -148,38 +148,45 @@ jobs:
             --format='value(metadata.name)' \
             --quiet 2>&1)"
           execute_status=$?
-          set -e
-          execution_name="${execute_output}"
+          printf '%s\n' "${execute_output}"
+          execution_name=""
           if [[ "${execute_status}" -ne 0 ]]; then
-            execution_name="$(gcloud run jobs executions list "eqplus-db-migrate-${{ inputs.environment }}" \
+            set +e
+            execution_name="$(gcloud run jobs executions list \
+              --job="eqplus-db-migrate-${{ inputs.environment }}" \
               --project="${PROJECT_ID}" \
               --region="${REGION}" \
               --sort-by='~metadata.creationTimestamp' \
               --limit=1 \
               --format='value(metadata.name)' \
-              --quiet)"
-            printf '%s\n' "${execute_output}"
+              --quiet 2>/dev/null)" || true
+          else
+            execution_name="${execute_output}"
           fi
-          echo "execution_name=${execution_name}" >> "${GITHUB_OUTPUT}"
+          printf 'execution_name=%s\n' "${execution_name}" >> "${GITHUB_OUTPUT}" || true
           exit "${execute_status}"
 
       - name: Diagnose failed migration execution
-        if: ${{ failure() && steps.execute-migration.outputs.execution_name != '' }}
+        if: ${{ failure() }}
         shell: bash
         run: |
           set +e
           execution_name="${{ steps.execute-migration.outputs.execution_name }}"
-          gcloud run jobs executions describe "${execution_name}" \
-            --project="${PROJECT_ID}" \
-            --region="${REGION}" \
-            --format='yaml(metadata.name,status)' \
-            --quiet
-          gcloud logging read \
-            "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"eqplus-db-migrate-${{ inputs.environment }}\" AND labels.\"run.googleapis.com/execution_name\"=\"${execution_name}\"" \
+          if [[ -n "${execution_name}" ]]; then
+            gcloud run jobs executions describe "${execution_name}" \
+              --project="${PROJECT_ID}" \
+              --region="${REGION}" \
+              --format='yaml(metadata.name,status)' \
+              --quiet || true
+            log_filter="resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"eqplus-db-migrate-${{ inputs.environment }}\" AND labels.\"run.googleapis.com/execution_name\"=\"${execution_name}\""
+          else
+            log_filter="resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"eqplus-db-migrate-${{ inputs.environment }}\""
+          fi
+          gcloud logging read "${log_filter}" \
             --project="${PROJECT_ID}" \
             --limit=50 \
             --format='value(timestamp,severity,textPayload,jsonPayload.message)' \
-            --order=desc
+            --order=desc || true
 
   staging-deploy:
     # FR-FND-05: build once on develop, then promote this immutable image to prod.
