@@ -1,13 +1,16 @@
-import { Body, Controller, Get, Header, HttpCode, Inject, Patch, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, Header, HttpCode, Inject, Param, Patch, Post, Req } from "@nestjs/common";
 import {
   profileDraftSchema,
+  profileReviewDecisionSchema,
   profileSampleUploadRequestSchema,
   type ProfileDraftInput,
+  type ProfileReviewDecisionInput,
   type ProfileSampleUploadRequest,
 } from "@eqourse/shared";
 
 import type { AuthenticatedRequest } from "../auth/auth.types";
 import { ZodBodyPipe } from "../auth/zod-body.pipe";
+import { CompanyVerifier } from "../auth/roles.decorator";
 import { ProfileService } from "./profile.service";
 
 @Controller("api/v1/profiles")
@@ -44,6 +47,29 @@ export class ProfileController {
   @HttpCode(200)
   submit(@Req() request: AuthenticatedRequest) {
     return this.profiles.submit(this.userId(request));
+  }
+
+  @Get("reviews")
+  @CompanyVerifier()
+  reviewQueue() {
+    return this.profiles.reviewQueue();
+  }
+
+  @Get("reviews/:id")
+  @CompanyVerifier()
+  reviewDetail(@Param("id") id: string) {
+    return this.profiles.reviewDetail(id);
+  }
+
+  @Post("reviews/:id/decisions")
+  @CompanyVerifier()
+  @HttpCode(201)
+  decideReview(
+    @Param("id") id: string,
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodBodyPipe(profileReviewDecisionSchema)) input: ProfileReviewDecisionInput,
+  ) {
+    return this.profiles.decideReview(id, this.userId(request), input);
   }
 
   private userId(request: AuthenticatedRequest): string {

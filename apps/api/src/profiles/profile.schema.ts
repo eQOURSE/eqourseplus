@@ -11,6 +11,7 @@ import {
 export interface ProfileRecord {
   userId: Types.ObjectId;
   state: ProfileState;
+  submittedAt?: Date;
   resumeSection?: ProfileSection;
   personal?: Record<string, unknown>;
   education?: Array<Record<string, unknown>>;
@@ -134,6 +135,7 @@ export const profileSchema = new Schema<ProfileRecord>(
       required: true,
       default: ProfileState.DRAFT,
     },
+    submittedAt: { type: Date },
     resumeSection: { type: String, enum: Object.values(ProfileSection) },
     personal: { type: personalSchema },
     education: optionalArray(educationSchema),
@@ -155,7 +157,7 @@ export const profileSchema = new Schema<ProfileRecord>(
 profileSchema.index({ userId: 1 }, { unique: true });
 profileSchema.index({ state: 1 });
 profileSchema.index({ "skills.taxonomySlug": 1 });
-profileSchema.index({ state: 1, updatedAt: 1 });
+profileSchema.index({ state: 1, submittedAt: 1 });
 
 export const ProfileModel =
   (models.Profile as Model<ProfileRecord> | undefined) ??

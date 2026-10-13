@@ -178,6 +178,7 @@ export function CompanyReviewConsole() {
         <p className="company-review-eyebrow">Compliance workspace</p>
         <h1 id="company-review-title">Company verification</h1>
         <p>Review submitted client and vendor evidence. Identifying details appear only after you open a case.</p>
+        <p><a href="/profile-reviews">Review freelancer profiles</a></p>
       </header>
 
       <div className="company-review-layout">

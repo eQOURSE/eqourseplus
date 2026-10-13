@@ -25,3 +25,6 @@ export const companyReviewDecisionSchema = z
 export type CompanyReviewDecisionInput = z.infer<
   typeof companyReviewDecisionSchema
 >;
+
+export const profileReviewDecisionSchema = companyReviewDecisionSchema;
+export type ProfileReviewDecisionInput = CompanyReviewDecisionInput;
