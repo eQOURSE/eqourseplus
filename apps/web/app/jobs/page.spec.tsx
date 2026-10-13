@@ -26,7 +26,7 @@ describe("FR-PUB-02 jobs listing", () => {
   });
 
   it("renders an SSR-friendly jobs heading, filters, and seeded job links", async () => {
-    render(await JobsPage({ searchParams: {} }));
+    const { container } = render(await JobsPage({ searchParams: {} }));
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       "Find work that values proof and quality",
@@ -34,6 +34,10 @@ describe("FR-PUB-02 jobs listing", () => {
     expect(screen.getByLabelText("Category")).toBeInTheDocument();
     expect(screen.getByLabelText("Language")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /view job/i }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Footer" })).toBeInTheDocument();
+    expect(container.querySelector(".q-page")).toBeInTheDocument();
+    expect(container.querySelector(".jobs-shell, .jobs-card, .freelancer-hero")).toBeNull();
   });
 
   it("applies category and language query filters", async () => {
@@ -47,9 +51,18 @@ describe("FR-PUB-02 jobs listing", () => {
     expect(screen.queryByText("English curriculum reviewer")).not.toBeInTheDocument();
   });
 
+  it("offers a way back to all jobs when filters match nothing", async () => {
+    render(await JobsPage({ searchParams: { category: "Unknown" } }));
+
+    expect(screen.getByRole("status")).toHaveTextContent("No jobs match these filters.");
+    expect(screen.getByRole("link", { name: /clear filters/i })).toHaveAttribute("href", "/jobs");
+  });
+
   it("contains no unsupported claims, providers, or non-date numbers", async () => {
     const { container } = render(await JobsPage({ searchParams: {} }));
 
-    expectNoUnsupportedJobContent(container);
+    const listing = container.querySelector("#main-content");
+    expect(listing).not.toBeNull();
+    expectNoUnsupportedJobContent(listing as HTMLElement);
   });
 });
