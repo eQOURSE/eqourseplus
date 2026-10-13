@@ -72,7 +72,7 @@ export class MongooseProfileStore implements ProfileStore {
     return ProfileModel.find({
       state: { $in: [ProfileState.SUBMITTED, ProfileState.UNDER_REVIEW] },
     })
-      .select({ _id: 1, state: 1, submittedAt: 1 })
+      .select({ _id: 1, state: 1, submittedAt: 1, updatedAt: 1, createdAt: 1 })
       .sort({ submittedAt: 1, _id: 1 })
       .exec() as Promise<ProfileDocument[]>;
   }

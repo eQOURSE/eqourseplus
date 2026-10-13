@@ -132,13 +132,13 @@ export class ProfileService {
 
   async reviewQueue() {
     return (await this.store.findReviewQueue()).map((profile) => {
-      if (!profile.submittedAt) {
-        throw new ServiceUnavailableException("Submitted profile is missing submission time");
-      }
+      // Legacy submitted profiles may predate submittedAt. updatedAt is the migration's
+      // documented proxy; createdAt keeps the queue usable if both fields are legacy-missing.
+      const submittedAt = profile.submittedAt ?? profile.updatedAt ?? profile.createdAt;
       return {
         id: profile._id.toHexString(),
         state: profile.state,
-        submittedAt: profile.submittedAt.toISOString(),
+        submittedAt: submittedAt.toISOString(),
       };
     });
   }
@@ -247,7 +247,7 @@ export class ProfileService {
       throw new BadRequestException("Reason must not contain a phone number");
     }
     const normalizedReason = normalize(reason);
-    if (collectProfileStrings(profile.toObject()).some((value) => {
+    if (collectReviewedIdentifiers(profile.toObject()).some((value) => {
       const normalizedValue = normalize(value);
       return normalizedValue.length >= 5 && normalizedReason.includes(normalizedValue);
     })) {
@@ -260,11 +260,13 @@ function normalize(value: string): string {
   return value.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 }
 
-function collectProfileStrings(value: unknown): string[] {
-  if (typeof value === "string") return [value];
-  if (Array.isArray(value)) return value.flatMap(collectProfileStrings);
+function collectReviewedIdentifiers(value: unknown, key = ""): string[] {
+  if (typeof value === "string") {
+    return /firstName|lastName|email|phone|address|objectKey|fileName|filename/i.test(key) ? [value] : [];
+  }
+  if (Array.isArray(value)) return value.flatMap((entry) => collectReviewedIdentifiers(entry, key));
   if (value !== null && typeof value === "object" && !(value instanceof Date) && !(value instanceof Types.ObjectId)) {
-    return Object.entries(value).flatMap(([key, entry]) => key === "state" || key === "submittedAt" ? [] : collectProfileStrings(entry));
+    return Object.entries(value).flatMap(([entryKey, entry]) => collectReviewedIdentifiers(entry, entryKey));
   }
   return [];
 }

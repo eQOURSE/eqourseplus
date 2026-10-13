@@ -89,7 +89,11 @@ export function ProfileReviewConsole() {
       if (!response.ok) throw new Error(await response.text());
       const updated = (await response.json()) as ProfileDetail;
       setDetail(updated);
-      setQueue((items) => updated.state === "UNDER_REVIEW" ? items.map((item) => item.id === selected.id ? updated : item) : items.filter((item) => item.id !== selected.id));
+      setQueue((items) => updated.state === "UNDER_REVIEW"
+        ? items.map((item) => item.id === selected.id
+          ? { ...item, state: updated.state, submittedAt: updated.submittedAt ?? item.submittedAt }
+          : item)
+        : items.filter((item) => item.id !== selected.id));
       setReason("");
       setNotice(`Status updated: ${labels[updated.state]}`);
     } catch {

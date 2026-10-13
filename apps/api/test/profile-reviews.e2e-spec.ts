@@ -98,6 +98,29 @@ describe("FR-REG-07 freelancer verifier console API", () => {
     await request(app.getHttpServer()).get("/api/v1/profiles/reviews").set(auth(ordinary.token)).expect(403);
   });
 
+  it("uses updatedAt as the legacy submission-time proxy without failing the queue", async () => {
+    const verifier = await user(Role.VERIFIER);
+    const id = new Types.ObjectId();
+    const updatedAt = new Date("2026-10-11T08:00:00.000Z");
+    await connection.collection("profiles").insertOne({
+      _id: id,
+      userId: new Types.ObjectId(),
+      state: ProfileState.SUBMITTED,
+      personal: { firstName: "Legacy", lastName: "Profile" },
+      updatedAt,
+      createdAt: new Date("2026-10-01T08:00:00.000Z"),
+    });
+    const queue = await request(app.getHttpServer())
+      .get("/api/v1/profiles/reviews")
+      .set(auth(verifier.token))
+      .expect(200);
+    expect(queue.body).toEqual([{
+      id: id.toHexString(),
+      state: ProfileState.SUBMITTED,
+      submittedAt: updatedAt.toISOString(),
+    }]);
+  });
+
   it("opens the submitted profile and records approve-for-testing with an audit entry", async () => {
     const verifier = await user(Role.VERIFIER);
     const submitted = await profile();
@@ -119,7 +142,7 @@ describe("FR-REG-07 freelancer verifier console API", () => {
     await request(app.getHttpServer())
       .post(`/api/v1/profiles/reviews/${submitted.id}/decisions`)
       .set(auth(verifier.token))
-      .send({ decision: "APPROVE", reason: "Profile evidence passed initial checks" })
+      .send({ decision: "APPROVE", reason: "Degree evidence passed initial checks" })
       .expect(201);
     expect((await connection.collection("profiles").findOne({ _id: submitted.id }))?.state).toBe(ProfileState.TEST_PENDING);
     expect(await connection.collection("auditLogs").countDocuments({ subjectId: submitted.id })).toBe(2);
