@@ -1,9 +1,11 @@
 const path = require("node:path");
 
 function requireMongoUri(environment) {
-  const uri = environment.MONGODB_URI;
+  const uri = environment.MONGODB_MIGRATION_URI ?? environment.MONGODB_URI;
   if (!uri) {
-    throw new Error("MONGODB_URI is required for database migrations");
+    throw new Error(
+      "MONGODB_MIGRATION_URI is required for deployed database migrations",
+    );
   }
   return uri;
 }

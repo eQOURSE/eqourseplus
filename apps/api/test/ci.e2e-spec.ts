@@ -52,7 +52,7 @@ describe("FR-FND-04 CI workflow", () => {
     const workflow = readFileSync(workflowPath, "utf8");
     const ciJob = workflow.slice(
       workflow.indexOf("  ci:"),
-      workflow.indexOf("  staging-deploy:"),
+      workflow.indexOf("  database-migrate:"),
     );
     const rootPackage = JSON.parse(readFileSync(packagePath, "utf8")) as {
       engines: { node: string };
@@ -105,6 +105,89 @@ describe("FR-FND-04 CI workflow", () => {
 });
 
 describe("FR-FND-05 API deployment", () => {
+  it("provides an approved Cloud Run migration runner for FR-FND-07", () => {
+    const workflow = readFileSync(workflowPath, "utf8");
+    const migrationJob = workflow.slice(workflow.indexOf("  database-migrate:"));
+
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toMatch(
+      /workflow_dispatch:[\s\S]+environment:[\s\S]+type:\s*choice[\s\S]+staging[\s\S]+production/,
+    );
+    expect(workflow).toMatch(
+      /database-migrate:[\s\S]+if:\s*\$\{\{ github\.event_name == 'workflow_dispatch' \}\}/,
+    );
+    expect(migrationJob).toMatch(
+      /environment:\s*\n\s+name:\s*\$\{\{ inputs\.environment \}\}/,
+    );
+    expect(migrationJob).toContain("id-token: write");
+    expect(migrationJob).toContain("google-github-actions/auth@v3");
+    expect(migrationJob).toContain(
+      "workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}",
+    );
+    expect(migrationJob).toContain(
+      "service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}",
+    );
+    expect(migrationJob).toContain("google-github-actions/setup-gcloud@v3");
+    expect(migrationJob).toContain("MONGODB_URI_MIGRATOR_STAGING");
+    expect(migrationJob).toContain("MONGODB_URI_MIGRATOR");
+    expect(migrationJob).toContain(
+      "MIGRATION_ARGS=up,-f,/app/migrate-mongo-config.cjs",
+    );
+    expect(migrationJob).toContain(
+      "MIGRATION_ARGS=status,-f,/app/migrate-mongo-config.cjs",
+    );
+    expect(migrationJob).toContain("--command=node");
+    expect(migrationJob).toContain(
+      "--args=\"/app/node_modules/migrate-mongo/bin/migrate-mongo.js,${MIGRATION_ARGS}\"",
+    );
+    expect(migrationJob).not.toContain("--command=pnpm");
+    expect(migrationJob).toContain("--network=default");
+    expect(migrationJob).toContain("--subnet=default");
+    expect(migrationJob).toContain("--vpc-egress=all-traffic");
+    expect(migrationJob).toContain("--set-secrets");
+    expect(migrationJob).toContain("gcloud run jobs execute");
+    expect(migrationJob).toContain("--wait");
+    expect(migrationJob).not.toContain("gcloud run jobs executions wait");
+    expect(migrationJob).toContain("gcloud run jobs executions list");
+    expect(migrationJob).toContain("gcloud run jobs executions describe");
+    expect(migrationJob).toContain("gcloud logging read");
+    expect(migrationJob).not.toContain("gcloud secrets versions access");
+    expect(migrationJob).not.toContain("echo $MONGODB_MIGRATION_URI");
+  });
+
+  it("documents the migration identity, IAM contract, and environment secrets", () => {
+    const runbook = readFileSync(deploymentRunbookPath, "utf8");
+
+    expect(runbook).toContain(
+      "eqplus-migrator@eqplus-503212.iam.gserviceaccount.com",
+    );
+    expect(runbook).toContain("roles/run.admin");
+    expect(runbook).toContain("roles/iam.serviceAccountUser");
+    expect(runbook).toContain("roles/secretmanager.secretAccessor");
+    expect(runbook).toContain("roles/logging.viewer");
+    expect(runbook).toContain(
+      "github-eqplus-deployer@eqplus-503212.iam.gserviceaccount.com",
+    );
+    expect(runbook).toContain(
+      "MONGODB_URI_MIGRATOR_STAGING",
+    );
+    expect(runbook).toContain("MONGODB_URI_MIGRATOR");
+    expect(runbook).toMatch(
+      /staging[\s\S]+MONGODB_URI_MIGRATOR_STAGING[\s\S]+production[\s\S]+MONGODB_URI_MIGRATOR/,
+    );
+  });
+
+  it("passes the Cloud Run migration secret to migrate-mongo", () => {
+    const migrationConfig = readFileSync(
+      path.join(repositoryDirectory, "apps", "api", "migrate-mongo-config.cjs"),
+      "utf8",
+    );
+
+    expect(migrationConfig).toContain(
+      "environment.MONGODB_MIGRATION_URI ?? environment.MONGODB_URI",
+    );
+  });
+
   it("defines a pnpm-aware, multi-stage, non-root production API image", () => {
     const dockerfile = readFileSync(dockerfilePath, "utf8");
     const dockerignore = readFileSync(dockerignorePath, "utf8");
@@ -457,11 +540,15 @@ describe("FR-FND-05 API deployment", () => {
     expect(runbook).toContain("unsuffixed database and JWT secrets must grant only production");
     expect(runbook).toMatch(/Never copy production users, documents, or OTP\/session data/i);
     expect(runbook).toContain("SCRAM user `eqplus-staging-app`");
-    expect(runbook).toContain("db:migrate:status");
-    expect(runbook).toContain("db:migrate");
+    expect(runbook).toContain("migrate-mongo `status`");
+    expect(runbook).toContain("migrate-mongo `up`");
+    expect(runbook).toContain(
+      "/app/node_modules/migrate-mongo/bin/migrate-mongo.js",
+    );
     expect(runbook).toContain("Staging remains valid for application");
-    expect(runbook).toContain("not a\nvalid migration rehearsal");
-    expect(runbook).toContain("`autoIndex: false` in deployed environments");
+    expect(runbook).toMatch(/FR-FND-07\s+migrations run through the dedicated workflow job/);
+    expect(runbook).toContain("GCP_MIGRATION_SERVICE_ACCOUNT");
+    expect(runbook).toMatch(/`autoIndex: false` in\s+deployed environments/);
     expect(runbook).toContain("eqplus-staging-app");
     expect(runbook).toContain("/eqplus");
     expect(runbook).not.toContain("eqplus-staging-api");
