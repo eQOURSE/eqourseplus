@@ -149,6 +149,15 @@ describe("FR-FND-05 API deployment", () => {
     expect(migrationJob).toContain("--wait");
     expect(migrationJob).not.toContain("gcloud run jobs executions wait");
     expect(migrationJob).toContain("gcloud run jobs executions list");
+    expect(migrationJob).toContain(
+      "execution_name=\"$(printf '%s' \"${execution_name}\" | tail -n 1 | tr -d '\\r\\n')\"",
+    );
+    expect(migrationJob).toContain(
+      'if [[ -n "${execution_name}" && "${execution_name}" != *[[:space:]]* ]]; then',
+    );
+    expect(migrationJob).toContain(
+      `printf 'execution_name=%s\\n' "\${execution_name}" >> "\${GITHUB_OUTPUT}"`,
+    );
     expect(migrationJob).toContain("gcloud run jobs executions describe");
     expect(migrationJob).toContain("gcloud logging read");
     expect(migrationJob).not.toContain("gcloud secrets versions access");
