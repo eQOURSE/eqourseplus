@@ -114,7 +114,7 @@ describe("FR-FND-05 API deployment", () => {
       /workflow_dispatch:[\s\S]+environment:[\s\S]+type:\s*choice[\s\S]+staging[\s\S]+production/,
     );
     expect(workflow).toMatch(
-      /action:[\s\S]+type:\s*choice[\s\S]+default:\s*status[\s\S]+options:[\s\S]+status[\s\S]+apply/,
+      /action:[\s\S]+type:\s*choice[\s\S]+default:\s*status[\s\S]+options:[\s\S]+status[\s\S]+apply[\s\S]+seed/,
     );
     expect(workflow).toMatch(
       /database-migrate:[\s\S]+if:\s*\$\{\{ github\.event_name == 'workflow_dispatch' \}\}/,
@@ -123,10 +123,10 @@ describe("FR-FND-05 API deployment", () => {
       /environment:\s*\n\s+name:\s*\$\{\{ inputs\.environment \}\}/,
     );
     expect(migrationJob).toContain(
-      "name: Run ${{ inputs.environment }} ${{ inputs.environment == 'staging' && 'apply' || inputs.action }} database migration",
+      "name: Run ${{ inputs.environment }} ${{ inputs.environment == 'staging' && inputs.action == 'seed' && 'seed' || inputs.environment == 'staging' && 'apply' || inputs.action }} database operation",
     );
     expect(migrationJob).toContain(
-      "MIGRATION_JOB=\"eqplus-db-migrate-${{ inputs.environment }}-${{ inputs.environment == 'staging' && 'apply' || inputs.action }}\"",
+      "MIGRATION_JOB=\"eqplus-db-migrate-${{ inputs.environment }}-${{ inputs.action == 'seed' && 'seed' || inputs.environment == 'staging' && 'apply' || inputs.action }}\"",
     );
     expect(migrationJob).toContain('gcloud run jobs deploy "${MIGRATION_JOB}"');
     expect(migrationJob).toContain('gcloud run jobs execute "${MIGRATION_JOB}"');
@@ -141,6 +141,8 @@ describe("FR-FND-05 API deployment", () => {
     expect(migrationJob).toContain("google-github-actions/setup-gcloud@v3");
     expect(migrationJob).toContain("MONGODB_URI_MIGRATOR_STAGING");
     expect(migrationJob).toContain("MONGODB_URI_MIGRATOR");
+    expect(migrationJob).toContain('if [[ "${{ inputs.action }}" == "seed" ]]; then');
+    expect(migrationJob).toContain("MIGRATION_ACTION=seed");
     expect(migrationJob).toContain("MIGRATION_ACTION=apply");
     expect(migrationJob).toContain("MIGRATION_ACTION=${{ inputs.action }}");
     expect(migrationJob).toContain("--command=node");
@@ -148,7 +150,7 @@ describe("FR-FND-05 API deployment", () => {
       "--args=/app/scripts/run-migration.cjs",
     );
     expect(migrationJob).toContain("MIGRATION_ACTION=${MIGRATION_ACTION}");
-    expect(migrationJob).toContain("prints status, applies, then prints status again");
+    expect(migrationJob).toContain("actions execute the idempotent taxonomy seed");
     const migrationRunner = readFileSync(
       path.join(repositoryDirectory, "apps", "api", "scripts", "run-migration.cjs"),
       "utf8",
@@ -156,6 +158,8 @@ describe("FR-FND-05 API deployment", () => {
     expect(migrationRunner).toContain('run("status");');
     expect(migrationRunner).toContain('run("up");');
     expect(migrationRunner).toMatch(/run\("status"\);[\s\S]+run\("up"\);[\s\S]+run\("status"\);/);
+    expect(migrationRunner).toContain('"seed"');
+    expect(migrationRunner).toContain("skill-taxonomy.cjs");
     expect(migrationJob).not.toContain("--command=pnpm");
     expect(migrationJob).toContain("--network=default");
     expect(migrationJob).toContain("--subnet=default");
