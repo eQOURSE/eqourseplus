@@ -186,18 +186,29 @@ into staging.
 ### 4.2 Run the FR-FND-07 migration verification workflow
 
 The `workflow_dispatch` input `environment=staging` deploys and waits for the
-one-shot `eqplus-db-migrate-staging` Cloud Run Job. It injects
+one-shot `eqplus-db-migrate-staging-apply` Cloud Run Job. It injects
 `MONGODB_URI_MIGRATOR_STAGING` as `MONGODB_MIGRATION_URI` inside Cloud Run,
-runs Node directly against `/app/node_modules/migrate-mongo/bin/migrate-mongo.js`
-with `/app/migrate-mongo-config.cjs`, and routes all egress through the existing
+runs `/app/scripts/run-migration.cjs` (which invokes the pinned
+`/app/node_modules/migrate-mongo/bin/migrate-mongo.js` entrypoint with
+`/app/migrate-mongo-config.cjs`), and routes all egress through the existing
 VPC/NAT path. Run it twice; the two successful GitHub workflow logs are
 the idempotency evidence. The URI is never read into GitHub Actions or printed.
 
-The `environment=production` dispatch uses the protected GitHub `production`
-environment, injects `MONGODB_URI_MIGRATOR`, and runs only
-the migrate-mongo `status` command with the same absolute entrypoint. It is read-only and must be
-approved by the existing production reviewers. The workflow logs the Cloud Run
-execution name and terminal conditions for audit evidence.
+The dispatch also has an `action` input. Production defaults to `status`, uses
+the protected GitHub `production` environment, injects `MONGODB_URI_MIGRATOR`,
+and names the job `eqplus-db-migrate-production-status` or
+`eqplus-db-migrate-production-apply` so the approval dialog is unambiguous.
+`status` is read-only. `apply` runs `status`, then `up`, then `status` again in
+the Cloud Run job; the log therefore proves what was pending and the resulting
+changelog. Every production action remains behind the existing reviewer gate,
+and the migration job never runs on a push.
+
+The production migration must be dispatched from `develop` at the exact commit
+being promoted, because the migration job verifies the SHA-tagged image built
+by the `develop` push. The ordering is: first promote `develop` to `main` as a
+two-parent merge commit; then dispatch `environment=production` with
+`action=apply` from `develop` at that same promoted commit. Do not dispatch
+from the `main` merge commit: that commit has no separately built image tag.
 
 The migration Cloud Run Job uses the image tagged by the dispatched commit and
 the repository variable `GCP_MIGRATION_SERVICE_ACCOUNT`, whose value must be
@@ -250,7 +261,9 @@ job continues to declare `environment: production`.
 ### 6.1 Use reviewed PRs and a merge commit for releases
 
 Require reviewed PRs and the `Lint, test, and build` check for both protected
-branches, and block direct pushes to `main`. Squash feature-to-develop PRs as
+branches, and block direct pushes to `main`. Any merge into `main` must be a
+two-parent merge commit; the production guard blocks squash merges, including
+workflow-only changes that are not promotions. Squash feature-to-develop PRs as
 usual. After the `develop` push has passed staging deployment and health, open
 a reviewed PR with base `main` and head `develop`. For that release PR, choose
 **Create a merge commit**. Do not squash or rebase that specific PR: production
