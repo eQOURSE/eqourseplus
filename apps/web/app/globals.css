@@ -2274,7 +2274,7 @@ body {
 
 .profile-refresh .onboarding-hero h1,
 .profile-review-heading h1,
-.profile-submitted h1 {
+.profile-status h1 {
   color: hsl(var(--q-ink));
   font-family: var(--font-display);
   font-size: clamp(2.8rem, 5.5vw, 5.25rem);
@@ -2316,7 +2316,7 @@ body {
   color: hsl(var(--q-brand-ink));
 }
 
-.profile-submitted {
+.profile-status {
   display: grid;
   align-content: center;
   justify-items: start;
@@ -2329,7 +2329,7 @@ body {
   animation: foundation-enter 0.7s var(--q-ease-out) both;
 }
 
-.profile-submitted-mark,
+.profile-status-mark,
 .profile-review-empty > span {
   display: grid;
   place-items: center;
@@ -2342,11 +2342,11 @@ body {
   font-size: 2rem;
 }
 
-.profile-submitted h1 {
+.profile-status h1 {
   margin: 0.8rem 0 0;
 }
 
-.profile-submitted-lead {
+.profile-status-lead {
   max-width: 38rem;
   margin: 1.25rem 0 0;
   color: hsl(var(--q-ink-2));
@@ -2354,14 +2354,14 @@ body {
   line-height: 1.65;
 }
 
-.profile-submitted-next {
+.profile-status-next {
   width: min(100%, 38rem);
   margin-top: 3rem;
   padding-top: 1.5rem;
   border-top: 1px solid hsl(var(--q-line) / 0.18);
 }
 
-.profile-submitted-next > p:last-child {
+.profile-status-next > p:last-child {
   margin: 0.7rem 0 0;
   color: hsl(var(--q-ink-2));
   line-height: 1.65;
@@ -2609,7 +2609,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .profile-submitted {
+  .profile-status {
     animation: none;
   }
 

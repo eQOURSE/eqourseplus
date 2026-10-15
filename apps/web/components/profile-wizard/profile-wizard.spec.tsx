@@ -286,6 +286,33 @@ describe("FR-REG-02B profile wizard", () => {
     expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH" || init?.method === "POST")).toBe(false);
   });
 
+  it.each([
+    ["SUBMITTED", "Profile received", "under review"],
+    ["UNDER_REVIEW", "Review in progress", "reviewing your profile"],
+    ["TEST_PENDING", "Ready for testing", "testing is next"],
+    ["TEST_PASSED", "Assessment passed", "final approval"],
+    ["APPROVED", "Profile approved", "review is complete"],
+    ["REJECTED", "Profile not approved", "not approved after review"],
+  ])("shows the %s status panel instead of the wizard", async (state, heading, detail) => {
+    installFetch(profile({ state, completionPercentage: 100 }));
+    render(<ProfileWizard />);
+
+    expect(await screen.findByRole("heading", { name: heading })).toBeVisible();
+    expect(screen.getByText(new RegExp(detail, "i"))).toBeVisible();
+    expect(screen.queryByRole("navigation", { name: "Profile sections" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save draft" })).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH" || init?.method === "POST")).toBe(false);
+  });
+
+  it("keeps MORE_INFO_NEEDED editable", async () => {
+    installFetch(profile({ state: "MORE_INFO_NEEDED" }));
+    render(<ProfileWizard />);
+
+    expect(await screen.findByRole("heading", { name: "Build your profile" })).toBeVisible();
+    expect(screen.getByRole("navigation", { name: "Profile sections" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Save draft" })).toBeEnabled();
+  });
+
   it("supports adding another sample row without writing a storage path", async () => {
     installFetch(profile({ resumeSection: "SAMPLES" }));
     render(<ProfileWizard />);
