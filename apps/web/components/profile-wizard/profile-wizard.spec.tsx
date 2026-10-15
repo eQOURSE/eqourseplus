@@ -258,7 +258,7 @@ describe("FR-REG-02B profile wizard", () => {
     });
   });
 
-  it("shows the submit action at 100% and makes the wizard read-only after submission", async () => {
+  it("replaces the wizard with a confirmation after submission", async () => {
     installFetch(profile({
       completionPercentage: 100,
       personal: { firstName: "Ada", lastName: "Lovelace" },
@@ -269,10 +269,48 @@ describe("FR-REG-02B profile wizard", () => {
     expect(await screen.findByRole("button", { name: "Submit profile for review" })).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Submit profile for review" }));
 
-    expect(await screen.findByText(/submitted for review/i)).toBeVisible();
-    expect(screen.getByText(/state: submitted/i)).toBeVisible();
-    expect(screen.getByLabelText("School or university")).toBeDisabled();
+    expect(await screen.findByRole("heading", { name: "Profile received" })).toBeVisible();
+    expect(screen.getByText(/under review/i)).toBeVisible();
+    expect(screen.getByText(/what happens next/i)).toBeVisible();
+    expect(screen.queryByRole("navigation", { name: "Profile sections" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Submit profile for review" })).not.toBeInTheDocument();
+  });
+
+  it("shows the confirmation on a fresh visit to an already submitted profile", async () => {
+    installFetch(profile({ state: "SUBMITTED", completionPercentage: 100 }));
+    render(<ProfileWizard />);
+
+    expect(await screen.findByRole("heading", { name: "Profile received" })).toBeVisible();
+    expect(screen.queryByRole("navigation", { name: "Profile sections" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save draft" })).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH" || init?.method === "POST")).toBe(false);
+  });
+
+  it.each([
+    ["SUBMITTED", "Profile received", "under review"],
+    ["UNDER_REVIEW", "Review in progress", "reviewing your profile"],
+    ["TEST_PENDING", "Ready for testing", "testing is next"],
+    ["TEST_PASSED", "Assessment passed", "final approval"],
+    ["APPROVED", "Profile approved", "review is complete"],
+    ["REJECTED", "Profile not approved", "not approved after review"],
+  ])("shows the %s status panel instead of the wizard", async (state, heading, detail) => {
+    installFetch(profile({ state, completionPercentage: 100 }));
+    render(<ProfileWizard />);
+
+    expect(await screen.findByRole("heading", { name: heading })).toBeVisible();
+    expect(screen.getByText(new RegExp(detail, "i"))).toBeVisible();
+    expect(screen.queryByRole("navigation", { name: "Profile sections" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save draft" })).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH" || init?.method === "POST")).toBe(false);
+  });
+
+  it("keeps MORE_INFO_NEEDED editable", async () => {
+    installFetch(profile({ state: "MORE_INFO_NEEDED" }));
+    render(<ProfileWizard />);
+
+    expect(await screen.findByRole("heading", { name: "Build your profile" })).toBeVisible();
+    expect(screen.getByRole("navigation", { name: "Profile sections" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Save draft" })).toBeEnabled();
   });
 
   it("supports adding another sample row without writing a storage path", async () => {

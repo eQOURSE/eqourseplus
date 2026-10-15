@@ -104,66 +104,77 @@ export function ProfileReviewConsole() {
   }
 
   return (
-    <section className="company-review-console" aria-labelledby="profile-review-title">
-      <header>
-        <p>Verification workspace</p>
+    <section className="profile-review-console" aria-labelledby="profile-review-title">
+      <header className="profile-review-heading">
+        <p className="profile-refresh-kicker">Verification / freelancer profiles</p>
         <h1 id="profile-review-title">Freelancer profile review</h1>
-        <p>Open a submitted profile, review its application data, and record the next state with an audit reason.</p>
+        <p>Review submitted profiles and record each decision with an audit reason.</p>
       </header>
-      <div className="company-review-layout">
-        <FrostedSurface className="company-review-queue" variant="panel">
-          <h2>Pending profiles</h2>
+      <div className="profile-review-layout">
+        <FrostedSurface className="profile-review-queue" variant="panel">
+          <div className="profile-review-panel-heading">
+            <div>
+              <p className="profile-refresh-kicker">Queue</p>
+              <h2>Pending profiles</h2>
+            </div>
+            {status === "ready" && <span className="profile-review-count" aria-label={`${queue.length} pending profiles`}>{queue.length}</span>}
+          </div>
           {status === "loading" && <p role="status">Loading profiles…</p>}
-          {status === "error" && <p role="alert">We could not load the review queue.</p>}
-          {status === "forbidden" && <p role="alert">This workspace is available only to an assigned Verifier.</p>}
-          {status === "ready" && queue.length === 0 && <p>No freelancer profiles are waiting for review.</p>}
+          {status === "error" && <p className="profile-review-alert" role="alert">We could not load the review queue.</p>}
+          {status === "forbidden" && <p className="profile-review-alert" role="alert">This workspace is available only to an assigned Verifier.</p>}
+          {status === "ready" && queue.length === 0 && <div className="profile-review-empty"><span aria-hidden="true">◇</span><p>No freelancer profiles are waiting for review.</p><GlassButton onClick={() => void loadQueue()}>Refresh queue</GlassButton></div>}
           {status === "ready" && queue.length > 0 && (
-            <ul aria-label="Freelancer profile review queue">
+            <ul className="profile-review-list" aria-label="Freelancer profile review queue">
               {queue.map((item) => (
                 <li key={item.id}>
-                  <button type="button" onClick={() => void openProfile(item)} aria-label={`Open freelancer profile ${item.id}`}>
-                    <strong>{labels[item.state]}</strong> <code>{item.id}</code>
+                  <button type="button" className={selected?.id === item.id ? "is-selected" : undefined} onClick={() => void openProfile(item)} aria-label={`Open freelancer profile ${item.id}`}>
+                    <span className="profile-review-list-top"><strong>{labels[item.state]}</strong><span aria-hidden="true">↗</span></span>
+                    <code>{item.id}</code>
                     <time dateTime={item.submittedAt}>{new Date(item.submittedAt).toLocaleString("en-GB")}</time>
                   </button>
                 </li>
               ))}
             </ul>
           )}
-          {status === "ready" && <GlassButton onClick={() => void loadQueue()}>Refresh queue</GlassButton>}
+          {status === "ready" && queue.length > 0 && <GlassButton onClick={() => void loadQueue()}>Refresh queue</GlassButton>}
         </FrostedSurface>
-        <FrostedSurface className="company-review-detail" variant="panel">
-          {!selected && <p>Select a profile to inspect its submitted data.</p>}
+        <FrostedSurface className="profile-review-detail" variant="panel">
+          {!selected && <div className="profile-review-empty"><span aria-hidden="true">↗</span><h2>Profile details</h2><p>Select a profile to inspect its submitted data.</p></div>}
           {selected && detailStatus === "loading" && <p role="status">Opening profile…</p>}
-          {selected && detailStatus === "error" && <p role="alert">This profile could not be opened.</p>}
+          {selected && detailStatus === "error" && <p className="profile-review-alert" role="alert">This profile could not be opened.</p>}
           {detailStatus === "ready" && detail && (
-            <article>
-              <p>{labels[detail.state]}</p>
-              <h2>{[detail.personal?.firstName, detail.personal?.lastName].filter(Boolean).join(" ") || "Freelancer profile"}</h2>
-              <dl>
-                <dt>Headline</dt><dd>{detail.personal?.headline || "Not supplied"}</dd>
-                <dt>City</dt><dd>{detail.personal?.city || "Not supplied"}</dd>
-                <dt>Education</dt><dd>{detail.education?.length ?? 0} entries</dd>
-                <dt>Skills</dt><dd>{detail.skills?.length ?? 0} selected</dd>
-                <dt>Languages</dt><dd>{detail.languages?.length ?? 0} supplied</dd>
-                <dt>Experience</dt><dd>{String(detail.experience?.totalMonths ?? 0)} months</dd>
-                <dt>Samples</dt><dd>{detail.samples?.length ?? 0} uploaded</dd>
-                <dt>Availability</dt><dd>{String(detail.availability?.weeklyHours ?? "Not supplied")} hours/week</dd>
-                <dt>Rate</dt><dd>{detail.rate ? `${String(detail.rate.amountMinor)} ${String(detail.rate.currencyCode)} / ${String(detail.rate.unit)}` : "Not supplied"}</dd>
+            <article className="profile-review-record">
+              <header className="profile-review-record-heading">
+                <p className="profile-refresh-kicker">{labels[detail.state]}</p>
+                <h2>{[detail.personal?.firstName, detail.personal?.lastName].filter(Boolean).join(" ") || "Freelancer profile"}</h2>
+              </header>
+              <dl className="profile-review-facts">
+                <div><dt>Headline</dt><dd>{detail.personal?.headline || "Not supplied"}</dd></div>
+                <div><dt>City</dt><dd>{detail.personal?.city || "Not supplied"}</dd></div>
+                <div><dt>Education</dt><dd>{detail.education?.length ?? 0} entries</dd></div>
+                <div><dt>Skills</dt><dd>{detail.skills?.length ?? 0} selected</dd></div>
+                <div><dt>Languages</dt><dd>{detail.languages?.length ?? 0} supplied</dd></div>
+                <div><dt>Experience</dt><dd>{String(detail.experience?.totalMonths ?? 0)} months</dd></div>
+                <div><dt>Samples</dt><dd>{detail.samples?.length ?? 0} uploaded</dd></div>
+                <div><dt>Availability</dt><dd>{String(detail.availability?.weeklyHours ?? "Not supplied")} hours/week</dd></div>
+                <div><dt>Rate</dt><dd>{detail.rate ? `${String(detail.rate.amountMinor)} ${String(detail.rate.currencyCode)} / ${String(detail.rate.unit)}` : "Not supplied"}</dd></div>
               </dl>
               {detail.state === "SUBMITTED" || detail.state === "UNDER_REVIEW" ? (
-                <section aria-labelledby="profile-decision-title">
+                <section className="profile-review-decision" aria-labelledby="profile-decision-title">
                   <h3 id="profile-decision-title">Record a decision</h3>
                   <label htmlFor="profile-review-reason">Reason</label>
                   <textarea id="profile-review-reason" value={reason} maxLength={1_000} onChange={(event) => setReason(event.target.value)} />
                   <p>Use a concise note without names, emails, phone numbers, or identifiers.</p>
-                  {error && <p role="alert">{error}</p>}
-                  {notice && <p role="status">{notice}</p>}
-                  {detail.state === "SUBMITTED" && <GlassButton disabled={!reason.trim() || busy !== null} onClick={() => void decide("START_REVIEW")}>Start review</GlassButton>}
-                  {detail.state === "UNDER_REVIEW" && <>
+                  {error && <p className="profile-review-alert" role="alert">{error}</p>}
+                  {notice && <p className="profile-review-notice" role="status">{notice}</p>}
+                  <div className="profile-review-actions">
+                    {detail.state === "SUBMITTED" && <GlassButton disabled={!reason.trim() || busy !== null} onClick={() => void decide("START_REVIEW")}>Start review</GlassButton>}
+                    {detail.state === "UNDER_REVIEW" && <>
                     <GlassButton disabled={!reason.trim() || busy !== null} onClick={() => void decide("APPROVE")}>Approve for testing</GlassButton>
                     <GlassButton disabled={!reason.trim() || busy !== null} onClick={() => void decide("REQUEST_MORE_INFO")}>Request more information</GlassButton>
                     <GlassButton disabled={!reason.trim() || busy !== null} onClick={() => void decide("REJECT")}>Reject</GlassButton>
-                  </>}
+                    </>}
+                  </div>
                 </section>
               ) : null}
             </article>

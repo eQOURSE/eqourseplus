@@ -116,6 +116,57 @@ const SECTION_LABELS: Readonly<Record<ProfileSection, string>> = {
   [ProfileSection.RATE]: "Rate",
 };
 
+const PROFILE_STATUS_COPY: Partial<Readonly<Record<ProfileState, {
+  label: string;
+  mark: string;
+  title: string;
+  lead: string;
+  next: string;
+}>>> = {
+  [ProfileState.SUBMITTED]: {
+    label: "Submitted",
+    mark: "✓",
+    title: "Profile received",
+    lead: "Your profile was submitted successfully and is under review.",
+    next: "A verifier will review your profile. If more information is needed, return here to update it.",
+  },
+  [ProfileState.UNDER_REVIEW]: {
+    label: "Under review",
+    mark: "◌",
+    title: "Review in progress",
+    lead: "A verifier is now reviewing your profile.",
+    next: "If more information is needed, you can return here to update your profile.",
+  },
+  [ProfileState.TEST_PENDING]: {
+    label: "Testing next",
+    mark: "↗",
+    title: "Ready for testing",
+    lead: "Your profile passed initial review. Testing is next.",
+    next: "Return here to check your profile status after testing.",
+  },
+  [ProfileState.TEST_PASSED]: {
+    label: "Test passed",
+    mark: "✓",
+    title: "Assessment passed",
+    lead: "Your assessment result has been recorded. Final approval is pending.",
+    next: "Return here to check when your profile moves to the next stage.",
+  },
+  [ProfileState.APPROVED]: {
+    label: "Approved",
+    mark: "✓",
+    title: "Profile approved",
+    lead: "Your profile has been approved. Review is complete.",
+    next: "You can continue from your workspace.",
+  },
+  [ProfileState.REJECTED]: {
+    label: "Not approved",
+    mark: "×",
+    title: "Profile not approved",
+    lead: "Your profile was not approved after review.",
+    next: "There are no further steps in this profile wizard right now.",
+  },
+};
+
 function text(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
@@ -853,14 +904,29 @@ export function ProfileWizard() {
   }
 
   const editable = profileState === ProfileState.DRAFT || profileState === ProfileState.MORE_INFO_NEEDED;
+  const statusCopy = PROFILE_STATUS_COPY[profileState];
+  if (!editable && statusCopy) {
+    return (
+      <section className="profile-status" aria-labelledby="profile-status-title">
+        <div className="profile-status-mark" aria-hidden="true">{statusCopy.mark}</div>
+        <p className="profile-refresh-kicker">Profile / {statusCopy.label}</p>
+        <h1 id="profile-status-title">{statusCopy.title}</h1>
+        <p className="profile-status-lead">{statusCopy.lead}</p>
+        <div className="profile-status-next">
+          <p className="profile-refresh-kicker">What happens next</p>
+          <p>{statusCopy.next}</p>
+        </div>
+      </section>
+    );
+  }
   const completionGaps = profileCompletionGaps(Object.assign({},
     ...WIZARD_SECTIONS.map((item) => sectionPatch(item, form)),
   ));
 
   return (
-    <FrostedSurface className="company-onboarding-shell onboarding-surface" variant="panel" aria-labelledby="profile-wizard-title">
+    <FrostedSurface className="company-onboarding-shell onboarding-surface profile-refresh" variant="panel" aria-labelledby="profile-wizard-title">
       <header className="onboarding-hero">
-        <p className="home-eyebrow">Your eQOURSE+ workspace</p>
+        <p className="home-eyebrow">Profile / {editable ? "in progress" : "view"}</p>
         <h1 id="profile-wizard-title">Build your profile</h1>
         <p className="company-onboarding-copy">Show the work you do best. Your draft is saved as you go, and you can return whenever you need.</p>
         <div className="onboarding-progress">
