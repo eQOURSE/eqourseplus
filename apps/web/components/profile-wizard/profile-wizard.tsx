@@ -853,14 +853,28 @@ export function ProfileWizard() {
   }
 
   const editable = profileState === ProfileState.DRAFT || profileState === ProfileState.MORE_INFO_NEEDED;
+  if (profileState === ProfileState.SUBMITTED) {
+    return (
+      <section className="profile-submitted" aria-labelledby="profile-submitted-title">
+        <div className="profile-submitted-mark" aria-hidden="true">✓</div>
+        <p className="profile-refresh-kicker">Profile / submitted</p>
+        <h1 id="profile-submitted-title">Profile received</h1>
+        <p className="profile-submitted-lead">Your profile was submitted successfully and is under review.</p>
+        <div className="profile-submitted-next">
+          <p className="profile-refresh-kicker">What happens next</p>
+          <p>A verifier will review your profile. If more information is needed, return here to update it.</p>
+        </div>
+      </section>
+    );
+  }
   const completionGaps = profileCompletionGaps(Object.assign({},
     ...WIZARD_SECTIONS.map((item) => sectionPatch(item, form)),
   ));
 
   return (
-    <FrostedSurface className="company-onboarding-shell onboarding-surface" variant="panel" aria-labelledby="profile-wizard-title">
+    <FrostedSurface className="company-onboarding-shell onboarding-surface profile-refresh" variant="panel" aria-labelledby="profile-wizard-title">
       <header className="onboarding-hero">
-        <p className="home-eyebrow">Your eQOURSE+ workspace</p>
+        <p className="home-eyebrow">Profile / {editable ? "in progress" : "view"}</p>
         <h1 id="profile-wizard-title">Build your profile</h1>
         <p className="company-onboarding-copy">Show the work you do best. Your draft is saved as you go, and you can return whenever you need.</p>
         <div className="onboarding-progress">

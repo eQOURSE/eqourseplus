@@ -258,7 +258,7 @@ describe("FR-REG-02B profile wizard", () => {
     });
   });
 
-  it("shows the submit action at 100% and makes the wizard read-only after submission", async () => {
+  it("replaces the wizard with a confirmation after submission", async () => {
     installFetch(profile({
       completionPercentage: 100,
       personal: { firstName: "Ada", lastName: "Lovelace" },
@@ -269,10 +269,21 @@ describe("FR-REG-02B profile wizard", () => {
     expect(await screen.findByRole("button", { name: "Submit profile for review" })).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Submit profile for review" }));
 
-    expect(await screen.findByText(/submitted for review/i)).toBeVisible();
-    expect(screen.getByText(/state: submitted/i)).toBeVisible();
-    expect(screen.getByLabelText("School or university")).toBeDisabled();
+    expect(await screen.findByRole("heading", { name: "Profile received" })).toBeVisible();
+    expect(screen.getByText(/under review/i)).toBeVisible();
+    expect(screen.getByText(/what happens next/i)).toBeVisible();
+    expect(screen.queryByRole("navigation", { name: "Profile sections" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Submit profile for review" })).not.toBeInTheDocument();
+  });
+
+  it("shows the confirmation on a fresh visit to an already submitted profile", async () => {
+    installFetch(profile({ state: "SUBMITTED", completionPercentage: 100 }));
+    render(<ProfileWizard />);
+
+    expect(await screen.findByRole("heading", { name: "Profile received" })).toBeVisible();
+    expect(screen.queryByRole("navigation", { name: "Profile sections" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save draft" })).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH" || init?.method === "POST")).toBe(false);
   });
 
   it("supports adding another sample row without writing a storage path", async () => {

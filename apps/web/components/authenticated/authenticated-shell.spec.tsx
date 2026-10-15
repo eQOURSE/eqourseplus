@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthenticatedShell } from "./authenticated-shell";
 
+vi.mock("next/navigation", () => ({ usePathname: () => window.location.pathname }));
+
 const fetchMock = vi.fn<typeof fetch>();
 
 beforeEach(() => {
@@ -13,6 +15,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  window.history.replaceState({}, "", "/");
 });
 
 function response(body: unknown, status = 200): Response {
@@ -23,6 +26,25 @@ function response(body: unknown, status = 200): Response {
 }
 
 describe("authenticated application shell", () => {
+  it.each(["/profile", "/profile-reviews"])("uses the shared public chrome on %s", (pathname) => {
+    window.history.replaceState({}, "", pathname);
+    render(
+      <AuthenticatedShell initialSession={{
+        userId: "user-1",
+        email: "owner@example.com",
+        roleAssignments: [],
+        profileState: "DRAFT",
+      }}>
+        <p>Private content</p>
+      </AuthenticatedShell>,
+    );
+
+    expect(screen.getByRole("banner")).toHaveClass("q-header");
+    expect(screen.getByRole("main")).toHaveAttribute("id", "main-content");
+    expect(screen.getByRole("link", { name: "Skip to content" })).toHaveAttribute("href", "#main-content");
+    expect(screen.getByText("Private content")).toBeVisible();
+  });
+
   it("uses an already-resolved session without requesting it again", () => {
     render(
       <AuthenticatedShell
