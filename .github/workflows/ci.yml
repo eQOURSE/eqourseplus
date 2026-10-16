@@ -15,6 +15,15 @@ on:
         options:
           - staging
           - production
+      action:
+        description: Database operation to run in the selected environment
+        required: true
+        type: choice
+        default: status
+        options:
+          - status
+          - apply
+          - seed
 
 permissions:
   contents: read
@@ -76,7 +85,7 @@ jobs:
   database-migrate:
     # FR-FND-07: execute migrations inside Cloud Run so Atlas sees the approved
     # Cloud Run NAT address. The migration URI is injected by Secret Manager.
-    name: Run ${{ inputs.environment }} database verification
+    name: Run ${{ inputs.environment }} ${{ inputs.environment == 'staging' && inputs.action == 'seed' && 'seed' || inputs.environment == 'staging' && 'apply' || inputs.action }} database operation
     if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     environment:
@@ -96,20 +105,29 @@ jobs:
       - name: Set up Google Cloud CLI
         uses: google-github-actions/setup-gcloud@v3
 
-      - name: Select environment-scoped migration command
+      - name: Select environment-scoped database operation
         shell: bash
         run: |
           if [[ "${{ inputs.environment }}" == "staging" ]]; then
-            echo "MIGRATION_SECRET=MONGODB_URI_MIGRATOR_STAGING" >> "${GITHUB_ENV}"
-            echo "MIGRATION_ARGS=up,-f,/app/migrate-mongo-config.cjs" >> "${GITHUB_ENV}"
+            MIGRATION_SECRET=MONGODB_URI_MIGRATOR_STAGING
+            if [[ "${{ inputs.action }}" == "seed" ]]; then
+              MIGRATION_ACTION=seed
+            else
+              MIGRATION_ACTION=apply
+            fi
           elif [[ "${{ inputs.environment }}" == "production" ]]; then
-            echo "MIGRATION_SECRET=MONGODB_URI_MIGRATOR" >> "${GITHUB_ENV}"
-            echo "MIGRATION_ARGS=status,-f,/app/migrate-mongo-config.cjs" >> "${GITHUB_ENV}"
+            MIGRATION_SECRET=MONGODB_URI_MIGRATOR
+            MIGRATION_ACTION=${{ inputs.action }}
           else
-            echo "::error::Unsupported migration environment"
+            echo "::error::Unsupported database environment"
             exit 1
           fi
-          echo "Selected ${{ inputs.environment }} migration verification"
+          MIGRATION_JOB="eqplus-db-migrate-${{ inputs.environment }}-${{ inputs.action == 'seed' && 'seed' || inputs.environment == 'staging' && 'apply' || inputs.action }}"
+          echo "MIGRATION_SECRET=${MIGRATION_SECRET}" >> "${GITHUB_ENV}"
+          echo "MIGRATION_ACTION=${MIGRATION_ACTION}" >> "${GITHUB_ENV}"
+          echo "MIGRATION_JOB=${MIGRATION_JOB}" >> "${GITHUB_ENV}"
+          echo "Selected ${{ inputs.environment }} migration action: ${MIGRATION_ACTION}"
+          echo "Migration Cloud Run Job: ${MIGRATION_JOB}"
 
       - name: Verify the API image exists
         run: >-
@@ -119,7 +137,7 @@ jobs:
 
       - name: Deploy the one-shot migration Cloud Run Job
         run: >-
-          gcloud run jobs deploy "eqplus-db-migrate-${{ inputs.environment }}"
+          gcloud run jobs deploy "${MIGRATION_JOB}"
           --project="${PROJECT_ID}"
           --region="${REGION}"
           --image="${IMAGE_URI}"
@@ -129,11 +147,15 @@ jobs:
           --vpc-egress=all-traffic
           --max-retries=0
           --task-timeout=10m
-          --set-env-vars=NODE_ENV=production
+          --set-env-vars=NODE_ENV=production,MIGRATION_ACTION=${MIGRATION_ACTION}
           --set-secrets="MONGODB_MIGRATION_URI=${MIGRATION_SECRET}:latest"
           --command=node
-          --args="/app/node_modules/migrate-mongo/bin/migrate-mongo.js,${MIGRATION_ARGS}"
+          --args=/app/scripts/run-migration.cjs
           --quiet
+
+      # The runner prints the migration status before and after apply. Seed
+      # actions execute the idempotent taxonomy seed and verify its dynamic row
+      # count. The selected environment's approval gate remains on this job.
 
       - name: Execute and wait for the migration job
         id: execute-migration
@@ -141,7 +163,7 @@ jobs:
         run: |
           set -euo pipefail
           set +e
-          execute_output="$(gcloud run jobs execute "eqplus-db-migrate-${{ inputs.environment }}" \
+          execute_output="$(gcloud run jobs execute "${MIGRATION_JOB}" \
             --project="${PROJECT_ID}" \
             --region="${REGION}" \
             --wait \
@@ -153,7 +175,7 @@ jobs:
           if [[ "${execute_status}" -ne 0 ]]; then
             set +e
             execution_name="$(gcloud run jobs executions list \
-              --job="eqplus-db-migrate-${{ inputs.environment }}" \
+              --job="${MIGRATION_JOB}" \
               --project="${PROJECT_ID}" \
               --region="${REGION}" \
               --sort-by='~metadata.creationTimestamp' \
@@ -181,9 +203,9 @@ jobs:
               --region="${REGION}" \
               --format='yaml(metadata.name,status)' \
               --quiet || true
-            log_filter="resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"eqplus-db-migrate-${{ inputs.environment }}\" AND labels.\"run.googleapis.com/execution_name\"=\"${execution_name}\""
+          log_filter="resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"${MIGRATION_JOB}\" AND labels.\"run.googleapis.com/execution_name\"=\"${execution_name}\""
           else
-            log_filter="resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"eqplus-db-migrate-${{ inputs.environment }}\""
+            log_filter="resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"${MIGRATION_JOB}\""
           fi
           gcloud logging read "${log_filter}" \
             --project="${PROJECT_ID}" \
