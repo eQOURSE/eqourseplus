@@ -26,6 +26,7 @@ if (action === "seed") {
   const result = spawnSync(process.execPath, [seedPath], {
     stdio: "inherit",
     env: process.env,
+    cwd: path.resolve(__dirname, ".."),
   });
   if (result.error) throw result.error;
   process.exit(result.status ?? 1);

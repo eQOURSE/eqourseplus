@@ -160,6 +160,7 @@ describe("FR-FND-05 API deployment", () => {
     expect(migrationRunner).toMatch(/run\("status"\);[\s\S]+run\("up"\);[\s\S]+run\("status"\);/);
     expect(migrationRunner).toContain('"seed"');
     expect(migrationRunner).toContain("skill-taxonomy.cjs");
+    expect(migrationRunner).toContain('cwd: path.resolve(__dirname, "..")');
     expect(migrationJob).not.toContain("--command=pnpm");
     expect(migrationJob).toContain("--network=default");
     expect(migrationJob).toContain("--subnet=default");
