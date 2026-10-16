@@ -114,10 +114,16 @@ describe("FR-FND-05 API deployment", () => {
       /workflow_dispatch:[\s\S]+environment:[\s\S]+type:\s*choice[\s\S]+staging[\s\S]+production/,
     );
     expect(workflow).toMatch(
+      /action:[\s\S]+type:\s*choice[\s\S]+default:\s*status[\s\S]+options:[\s\S]+status[\s\S]+apply[\s\S]+seed/,
+    );
+    expect(workflow).toMatch(
       /database-migrate:[\s\S]+if:\s*\$\{\{ github\.event_name == 'workflow_dispatch' \}\}/,
     );
     expect(migrationJob).toMatch(
       /environment:\s*\n\s+name:\s*\$\{\{ inputs\.environment \}\}/,
+    );
+    expect(migrationJob).toContain(
+      "name: Run ${{ inputs.environment }} ${{ inputs.environment == 'staging' && inputs.action == 'seed' && 'seed' || inputs.environment == 'staging' && 'apply' || inputs.action }} database operation",
     );
     expect(migrationJob).toContain("id-token: write");
     expect(migrationJob).toContain("google-github-actions/auth@v3");
@@ -130,16 +136,15 @@ describe("FR-FND-05 API deployment", () => {
     expect(migrationJob).toContain("google-github-actions/setup-gcloud@v3");
     expect(migrationJob).toContain("MONGODB_URI_MIGRATOR_STAGING");
     expect(migrationJob).toContain("MONGODB_URI_MIGRATOR");
+    expect(migrationJob).toContain('if [[ "${{ inputs.action }}" == "seed" ]]; then');
+    expect(migrationJob).toContain("MIGRATION_ACTION=seed");
+    expect(migrationJob).toContain("MIGRATION_ACTION=apply");
+    expect(migrationJob).toContain("MIGRATION_ACTION=${{ inputs.action }}");
     expect(migrationJob).toContain(
-      "MIGRATION_ARGS=up,-f,/app/migrate-mongo-config.cjs",
-    );
-    expect(migrationJob).toContain(
-      "MIGRATION_ARGS=status,-f,/app/migrate-mongo-config.cjs",
+      "MIGRATION_JOB=\"eqplus-db-migrate-${{ inputs.environment }}-${{ inputs.action == 'seed' && 'seed' || inputs.environment == 'staging' && 'apply' || inputs.action }}\"",
     );
     expect(migrationJob).toContain("--command=node");
-    expect(migrationJob).toContain(
-      "--args=\"/app/node_modules/migrate-mongo/bin/migrate-mongo.js,${MIGRATION_ARGS}\"",
-    );
+    expect(migrationJob).toContain("--args=/app/scripts/run-migration.cjs");
     expect(migrationJob).not.toContain("--command=pnpm");
     expect(migrationJob).toContain("--network=default");
     expect(migrationJob).toContain("--subnet=default");
@@ -158,6 +163,14 @@ describe("FR-FND-05 API deployment", () => {
     expect(migrationJob).toContain(
       `printf 'execution_name=%s\\n' "\${execution_name}" >> "\${GITHUB_OUTPUT}"`,
     );
+    expect(migrationJob).toContain("actions execute the idempotent taxonomy seed");
+    const migrationRunner = readFileSync(
+      path.join(repositoryDirectory, "apps", "api", "scripts", "run-migration.cjs"),
+      "utf8",
+    );
+    expect(migrationRunner).toContain('"seed"');
+    expect(migrationRunner).toContain("skill-taxonomy.cjs");
+    expect(migrationRunner).toContain('cwd: path.resolve(__dirname, "..")');
     expect(migrationJob).toContain("gcloud run jobs executions describe");
     expect(migrationJob).toContain("gcloud logging read");
     expect(migrationJob).not.toContain("gcloud secrets versions access");
@@ -549,11 +562,9 @@ describe("FR-FND-05 API deployment", () => {
     expect(runbook).toContain("unsuffixed database and JWT secrets must grant only production");
     expect(runbook).toMatch(/Never copy production users, documents, or OTP\/session data/i);
     expect(runbook).toContain("SCRAM user `eqplus-staging-app`");
-    expect(runbook).toContain("migrate-mongo `status`");
-    expect(runbook).toContain("migrate-mongo `up`");
-    expect(runbook).toContain(
-      "/app/node_modules/migrate-mongo/bin/migrate-mongo.js",
-    );
+    expect(runbook).toContain("action=status|apply|seed");
+    expect(runbook).toContain("status`, then `up`, then `status` again");
+    expect(runbook).toContain("/app/scripts/run-migration.cjs");
     expect(runbook).toContain("Staging remains valid for application");
     expect(runbook).toMatch(/FR-FND-07\s+migrations run through the dedicated workflow job/);
     expect(runbook).toContain("GCP_MIGRATION_SERVICE_ACCOUNT");
