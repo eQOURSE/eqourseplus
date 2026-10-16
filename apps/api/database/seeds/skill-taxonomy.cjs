@@ -537,8 +537,18 @@ async function run() {
 
   const { client, db } = await migrateMongo.database.connect();
   try {
+    const beforeCount = await db.collection("skillTaxonomy").countDocuments();
+    process.stdout.write(`skillTaxonomy count before: ${beforeCount}\n`);
     await seedSkillTaxonomy(db);
+    const actualCount = await db.collection("skillTaxonomy").countDocuments();
+    if (actualCount !== SEED_ROWS.length) {
+      throw new Error(
+        `skillTaxonomy seed count mismatch: expected ${SEED_ROWS.length}, found ${actualCount}`,
+      );
+    }
+    process.stdout.write(`skillTaxonomy count after: ${actualCount}\n`);
     process.stdout.write(`skillTaxonomy seed complete (${SEED_ROWS.length} rows)\n`);
+    process.stdout.write(`skillTaxonomy seed verified (${actualCount} rows)\n`);
   } finally {
     await client.close();
   }

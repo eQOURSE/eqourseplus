@@ -16,13 +16,14 @@ on:
           - staging
           - production
       action:
-        description: Production migration action (staging always applies)
+        description: Database operation to run in the selected environment
         required: true
         type: choice
         default: status
         options:
           - status
           - apply
+          - seed
 
 permissions:
   contents: read
@@ -84,7 +85,7 @@ jobs:
   database-migrate:
     # FR-FND-07: execute migrations inside Cloud Run so Atlas sees the approved
     # Cloud Run NAT address. The migration URI is injected by Secret Manager.
-    name: Run ${{ inputs.environment }} ${{ inputs.environment == 'staging' && 'apply' || inputs.action }} database migration
+    name: Run ${{ inputs.environment }} ${{ inputs.environment == 'staging' && inputs.action == 'seed' && 'seed' || inputs.environment == 'staging' && 'apply' || inputs.action }} database operation
     if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     environment:
@@ -104,20 +105,24 @@ jobs:
       - name: Set up Google Cloud CLI
         uses: google-github-actions/setup-gcloud@v3
 
-      - name: Select environment-scoped migration command
+      - name: Select environment-scoped database operation
         shell: bash
         run: |
           if [[ "${{ inputs.environment }}" == "staging" ]]; then
             MIGRATION_SECRET=MONGODB_URI_MIGRATOR_STAGING
-            MIGRATION_ACTION=apply
+            if [[ "${{ inputs.action }}" == "seed" ]]; then
+              MIGRATION_ACTION=seed
+            else
+              MIGRATION_ACTION=apply
+            fi
           elif [[ "${{ inputs.environment }}" == "production" ]]; then
             MIGRATION_SECRET=MONGODB_URI_MIGRATOR
             MIGRATION_ACTION=${{ inputs.action }}
           else
-            echo "::error::Unsupported migration environment"
+            echo "::error::Unsupported database environment"
             exit 1
           fi
-          MIGRATION_JOB="eqplus-db-migrate-${{ inputs.environment }}-${{ inputs.environment == 'staging' && 'apply' || inputs.action }}"
+          MIGRATION_JOB="eqplus-db-migrate-${{ inputs.environment }}-${{ inputs.action == 'seed' && 'seed' || inputs.environment == 'staging' && 'apply' || inputs.action }}"
           echo "MIGRATION_SECRET=${MIGRATION_SECRET}" >> "${GITHUB_ENV}"
           echo "MIGRATION_ACTION=${MIGRATION_ACTION}" >> "${GITHUB_ENV}"
           echo "MIGRATION_JOB=${MIGRATION_JOB}" >> "${GITHUB_ENV}"
@@ -148,9 +153,9 @@ jobs:
           --args=/app/scripts/run-migration.cjs
           --quiet
 
-      # The migration runner prints status, applies, then prints status again
-      # for apply actions so the Cloud Run log proves the pending and resulting
-      # changelog. The production approval gate remains on this job.
+      # The runner prints the migration status before and after apply. Seed
+      # actions execute the idempotent taxonomy seed and verify its dynamic row
+      # count. The selected environment's approval gate remains on this job.
 
       - name: Execute and wait for the migration job
         id: execute-migration

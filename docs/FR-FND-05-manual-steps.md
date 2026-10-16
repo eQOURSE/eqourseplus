@@ -183,31 +183,41 @@ change the working URI, user, database name, or network rules to match an old
 runbook example. Never copy production users, documents, or OTP/session data
 into staging.
 
-### 4.2 Run the FR-FND-07 migration verification workflow
+### 4.2 Run the FR-FND-07 database operation workflow
 
-The `workflow_dispatch` input `environment=staging` deploys and waits for the
-one-shot `eqplus-db-migrate-staging-apply` Cloud Run Job. It injects
+The `workflow_dispatch` input `environment=staging` defaults to the existing
+`action=apply` behavior and deploys and waits for the one-shot
+`eqplus-db-migrate-staging-apply` Cloud Run Job. Selecting `action=status` on
+staging also resolves to `apply`, preserving the original acceptance procedure.
+Selecting `action=seed` is the explicit staging taxonomy rehearsal. It injects
 `MONGODB_URI_MIGRATOR_STAGING` as `MONGODB_MIGRATION_URI` inside Cloud Run,
 runs `/app/scripts/run-migration.cjs` (which invokes the pinned
 `/app/node_modules/migrate-mongo/bin/migrate-mongo.js` entrypoint with
 `/app/migrate-mongo-config.cjs`), and routes all egress through the existing
 VPC/NAT path. Run it twice; the two successful GitHub workflow logs are
 the idempotency evidence. The URI is never read into GitHub Actions or printed.
+Run the staging `action=apply` dispatch twice for migration idempotency, then
+run the staging `action=seed` dispatch twice for taxonomy idempotency. Retain
+all four successful workflow logs as acceptance evidence.
 
 The dispatch also has an `action` input. Production defaults to `status`, uses
 the protected GitHub `production` environment, injects `MONGODB_URI_MIGRATOR`,
-and names the job `eqplus-db-migrate-production-status` or
-`eqplus-db-migrate-production-apply` so the approval dialog is unambiguous.
-`status` is read-only. `apply` runs `status`, then `up`, then `status` again in
+and names the job `eqplus-db-migrate-production-status`,
+`eqplus-db-migrate-production-apply`, or
+`eqplus-db-migrate-production-seed` so the approval dialog is unambiguous.
+`status` is read-only in production. `apply` runs `status`, then `up`, then `status` again in
 the Cloud Run job; the log therefore proves what was pending and the resulting
-changelog. Every production action remains behind the existing reviewer gate,
-and the migration job never runs on a push.
+changelog. `seed` runs the taxonomy seed and verifies the resulting collection
+count against the seed file's own row definition. Every production action
+remains behind the existing reviewer gate, and the database job never runs on
+a push.
 
 The production migration must be dispatched from `develop` at the exact commit
 being promoted, because the migration job verifies the SHA-tagged image built
 by the `develop` push. The ordering is: first promote `develop` to `main` as a
 two-parent merge commit; then dispatch `environment=production` with
-`action=apply` from `develop` at that same promoted commit. Do not dispatch
+`action=apply`, then `action=seed`, from `develop` at that same promoted commit.
+Do not dispatch
 from the `main` merge commit: that commit has no separately built image tag.
 
 The migration Cloud Run Job uses the image tagged by the dispatched commit and

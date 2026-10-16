@@ -264,6 +264,13 @@ describe("FR-FND-03A database migration and taxonomy seed", () => {
     expect(stdout).toContain(
       `skillTaxonomy seed complete (${SEED_ROWS.length} rows)`,
     );
+    expect(stdout).toMatch(/skillTaxonomy count before: \d+\n/);
+    expect(stdout).toContain(
+      `skillTaxonomy count after: ${SEED_ROWS.length}`,
+    );
+    expect(stdout).toContain(
+      `skillTaxonomy seed verified (${SEED_ROWS.length} rows)`,
+    );
     expect(await db.collection("skillTaxonomy").countDocuments()).toBe(
       SEED_ROWS.length,
     );
