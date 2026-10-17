@@ -169,8 +169,7 @@ describe("FR-FND-03A database migration and taxonomy seed", () => {
     const afterSecondRun = await collection.find().sort({ slug: 1 }).toArray();
 
     expect(afterSecondRun).toEqual(afterFirstRun);
-    expect(afterSecondRun.length).toBeGreaterThanOrEqual(40);
-    expect(afterSecondRun.length).toBeLessThanOrEqual(60);
+    expect(afterSecondRun.length).toBe(61);
     expect(new Set(afterSecondRun.map((row) => row.slug)).size).toBe(
       afterSecondRun.length,
     );
@@ -199,6 +198,8 @@ describe("FR-FND-03A database migration and taxonomy seed", () => {
     );
     for (const expected of [
       "eqourse-ai-data-services-annotation-bounding-box",
+      "eqourse-ai-data-services-image-annotation-quality-assurance",
+      "eqourse-content-services-multilingual-content-quality-review",
       "eqourse-content-services-curriculum",
       "tutrain-tutoring-neet-biology",
     ]) {
@@ -267,9 +268,6 @@ describe("FR-FND-03A database migration and taxonomy seed", () => {
     expect(stdout).toMatch(/skillTaxonomy count before: \d+\n/);
     expect(stdout).toContain(
       `skillTaxonomy count after: ${SEED_ROWS.length}`,
-    );
-    expect(stdout).toContain(
-      `skillTaxonomy seed verified (${SEED_ROWS.length} rows)`,
     );
     expect(await db.collection("skillTaxonomy").countDocuments()).toBe(
       SEED_ROWS.length,

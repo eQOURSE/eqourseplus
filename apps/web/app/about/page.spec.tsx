@@ -6,6 +6,7 @@ import { structuredData as homeStructuredData } from "../home-data";
 import { RESOLVING_ROUTES } from "../public-routes";
 import { aboutStructuredData, faqs } from "./about-data";
 import AboutPage from "./page";
+import { inPageBody } from "../../components/home/chrome-test-utils";
 
 afterEach(cleanup);
 
@@ -14,7 +15,7 @@ describe("FR-PUB-05 /about", () => {
     const { container } = render(<AboutPage />);
     expect(container.querySelectorAll("h1")).toHaveLength(1);
     expect(container.querySelectorAll("h2").length).toBeGreaterThanOrEqual(10);
-    expect(container.querySelectorAll("h3")).toHaveLength(16);
+    expect(inPageBody(container, "h3")).toHaveLength(12);
   });
 
   it("renders the final content structure and every CTA", () => {

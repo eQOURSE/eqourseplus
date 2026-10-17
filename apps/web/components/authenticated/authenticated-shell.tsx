@@ -2,6 +2,7 @@
 
 import type { AuthSession } from "@eqourse/shared";
 import { GlassButton, GlassNav, ThemeToggle } from "@eqourse/ui";
+import { usePathname } from "next/navigation";
 import {
   createContext,
   useContext,
@@ -9,6 +10,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
+
+import { HomeFooter, HomeHeader } from "../home/HomeChrome";
 
 interface AuthenticatedShellProps {
   children: ReactNode;
@@ -36,6 +39,8 @@ export function AuthenticatedShell({
   const [session, setSession] = useState<AuthSession | null>(initialSession ?? null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">(initialSession ? "ready" : "loading");
   const [signingOut, setSigningOut] = useState(false);
+  const pathname = usePathname();
+  const refreshedProfilePage = pathname === "/profile" || pathname === "/profile-reviews";
 
   useEffect(() => {
     if (initialSession) return;
@@ -83,6 +88,19 @@ export function AuthenticatedShell({
   }
 
   if (!session) return null;
+
+  if (refreshedProfilePage) {
+    return (
+      <div className="q q-page profile-workspace">
+        <a className="q-skip" href="#main-content">Skip to content</a>
+        <HomeHeader session={session} onSignOut={() => void signOut()} />
+        <AuthenticatedSessionContext.Provider value={session}>
+          <main id="main-content" className="q-container profile-workspace-content">{children}</main>
+        </AuthenticatedSessionContext.Provider>
+        <HomeFooter />
+      </div>
+    );
+  }
 
   return (
     <div className="authenticated-shell">

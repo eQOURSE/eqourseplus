@@ -12,7 +12,16 @@ export interface ProfileStore {
     fromState: ProfileState,
     toState: ProfileState,
     session: ClientSession,
+    submittedAt?: Date,
   ): Promise<ProfileDocument | null>;
+  transitionStateById(
+    id: string,
+    fromState: ProfileState,
+    toState: ProfileState,
+    session: ClientSession,
+  ): Promise<ProfileDocument | null>;
+  findById(id: string, session?: ClientSession): Promise<ProfileDocument | null>;
+  findReviewQueue(): Promise<ProfileDocument[]>;
   ensureForUser(userId: string, session?: ClientSession): Promise<void>;
 }
 
@@ -29,12 +38,43 @@ export class MongooseProfileStore implements ProfileStore {
     fromState: ProfileState,
     toState: ProfileState,
     session: ClientSession,
+    submittedAt?: Date,
   ): Promise<ProfileDocument | null> {
+    const set: Record<string, unknown> = { state: toState };
+    if (submittedAt) set.submittedAt = submittedAt;
     return ProfileModel.findOneAndUpdate(
       { userId: new Types.ObjectId(userId), state: fromState },
+      { $set: set },
+      { returnDocument: "after", includeResultMetadata: false, runValidators: true, session },
+    ).exec() as Promise<ProfileDocument | null>;
+  }
+
+  findById(id: string, session?: ClientSession): Promise<ProfileDocument | null> {
+    const query = ProfileModel.findById(new Types.ObjectId(id));
+    if (session) query.session(session);
+    return query.exec() as Promise<ProfileDocument | null>;
+  }
+
+  transitionStateById(
+    id: string,
+    fromState: ProfileState,
+    toState: ProfileState,
+    session: ClientSession,
+  ): Promise<ProfileDocument | null> {
+    return ProfileModel.findOneAndUpdate(
+      { _id: new Types.ObjectId(id), state: fromState },
       { $set: { state: toState } },
       { returnDocument: "after", includeResultMetadata: false, runValidators: true, session },
     ).exec() as Promise<ProfileDocument | null>;
+  }
+
+  findReviewQueue(): Promise<ProfileDocument[]> {
+    return ProfileModel.find({
+      state: { $in: [ProfileState.SUBMITTED, ProfileState.UNDER_REVIEW] },
+    })
+      .select({ _id: 1, state: 1, submittedAt: 1, updatedAt: 1, createdAt: 1 })
+      .sort({ submittedAt: 1, _id: 1 })
+      .exec() as Promise<ProfileDocument[]>;
   }
 
   updateDraft(

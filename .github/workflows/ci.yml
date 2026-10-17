@@ -185,7 +185,10 @@ jobs:
           else
             execution_name="${execute_output}"
           fi
-          printf 'execution_name=%s\n' "${execution_name}" >> "${GITHUB_OUTPUT}" || true
+          execution_name="$(printf '%s' "${execution_name}" | tail -n 1 | tr -d '\r\n')"
+          if [[ -n "${execution_name}" && "${execution_name}" != *[[:space:]]* ]]; then
+            printf 'execution_name=%s\n' "${execution_name}" >> "${GITHUB_OUTPUT}" || true
+          fi
           exit "${execute_status}"
 
       - name: Diagnose failed migration execution
@@ -200,7 +203,7 @@ jobs:
               --region="${REGION}" \
               --format='yaml(metadata.name,status)' \
               --quiet || true
-            log_filter="resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"${MIGRATION_JOB}\" AND labels.\"run.googleapis.com/execution_name\"=\"${execution_name}\""
+          log_filter="resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"${MIGRATION_JOB}\" AND labels.\"run.googleapis.com/execution_name\"=\"${execution_name}\""
           else
             log_filter="resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"${MIGRATION_JOB}\""
           fi

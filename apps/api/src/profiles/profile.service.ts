@@ -12,12 +12,14 @@ import {
   calculateProfileCompletionPercentage,
   ProfileState,
   profileSubmissionSchema,
+  profileReviewDecisionSchema,
   type ProfileSampleUploadRequest,
   type ProfileSampleUploadResponse,
   type ProfileDraftInput,
+  type ProfileReviewDecisionInput,
 } from "@eqourse/shared";
 import type { StorageAdapter } from "@eqourse/adapters";
-import type { Connection, ClientSession } from "mongoose";
+import { Types, type Connection, type ClientSession } from "mongoose";
 import { createCompanyUpload } from "../company-registration/company-registration";
 import { AUDIT_LOG_STORE } from "../company-reviews/company-review.constants";
 import type { AuditLogStore } from "../company-reviews/audit-log.store";
@@ -103,6 +105,7 @@ export class ProfileService {
           current.state,
           ProfileState.SUBMITTED,
           session,
+          current.state === ProfileState.DRAFT ? new Date() : undefined,
         );
         if (!submitted) {
           throw new BadRequestException("Profile state changed before submission could be applied");
@@ -125,6 +128,69 @@ export class ProfileService {
     }
     if (!submitted) throw new ServiceUnavailableException("Profile transition could not be audit-logged");
     return this.response(submitted);
+  }
+
+  async reviewQueue() {
+    return (await this.store.findReviewQueue()).map((profile) => {
+      // Legacy submitted profiles may predate submittedAt. updatedAt is the migration's
+      // documented proxy; createdAt keeps the queue usable if both fields are legacy-missing.
+      const submittedAt = profile.submittedAt ?? profile.updatedAt ?? profile.createdAt;
+      return {
+        id: profile._id.toHexString(),
+        state: profile.state,
+        submittedAt: submittedAt.toISOString(),
+      };
+    });
+  }
+
+  async reviewDetail(id: string) {
+    this.assertObjectId(id);
+    const profile = await this.store.findById(id);
+    if (!profile || ![ProfileState.SUBMITTED, ProfileState.UNDER_REVIEW].includes(profile.state)) {
+      throw new NotFoundException("Profile is not available for review");
+    }
+    return this.response(profile);
+  }
+
+  async decideReview(id: string, actorUserId: string, input: ProfileReviewDecisionInput) {
+    const parsed = profileReviewDecisionSchema.safeParse(input);
+    if (!parsed.success) throw new BadRequestException("Invalid profile review decision");
+    let session: ClientSession;
+    try {
+      session = await this.database.startSession();
+    } catch {
+      throw new ServiceUnavailableException("Profile transition could not be audit-logged");
+    }
+    let decided: ProfileDocument | null = null;
+    try {
+      await session.withTransaction(async () => {
+        this.assertObjectId(id);
+        const current = await this.store.findById(id, session);
+        if (!current || ![ProfileState.SUBMITTED, ProfileState.UNDER_REVIEW].includes(current.state)) {
+          throw new NotFoundException("Profile is not available for review");
+        }
+        this.assertReasonHasNoReviewedPii(input.reason, current);
+        const toState = profileReviewTarget(current.state, input.decision);
+        decided = await this.store.transitionStateById(id, current.state, toState, session);
+        if (!decided) throw new BadRequestException("Profile state changed before this decision could be applied");
+        await this.auditLogs.insert({
+          actorUserId,
+          subjectCollection: "profiles",
+          subjectId: id,
+          fromState: current.state,
+          toState,
+          reason: input.reason,
+          occurredAt: new Date(),
+        }, session);
+      });
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new ServiceUnavailableException("Profile transition could not be audit-logged");
+    } finally {
+      await session.endSession().catch(() => undefined);
+    }
+    if (!decided) throw new ServiceUnavailableException("Profile transition could not be audit-logged");
+    return this.response(decided);
   }
 
   private assertSampleKeys(
@@ -168,4 +234,56 @@ export class ProfileService {
       completionPercentage: calculateProfileCompletionPercentage(value),
     };
   }
+
+  private assertObjectId(id: string): void {
+    if (!Types.ObjectId.isValid(id)) throw new BadRequestException("Invalid profile ID");
+  }
+
+  private assertReasonHasNoReviewedPii(reason: string, profile: ProfileDocument): void {
+    if (/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i.test(reason)) {
+      throw new BadRequestException("Reason must not contain an email address");
+    }
+    if (/(?:^|\s)\+?\d[\d\s().-]{7,}\d(?=\s|$)/.test(reason)) {
+      throw new BadRequestException("Reason must not contain a phone number");
+    }
+    const normalizedReason = normalize(reason);
+    if (collectReviewedIdentifiers(profile.toObject()).some((value) => {
+      const normalizedValue = normalize(value);
+      return normalizedValue.length >= 5 && normalizedReason.includes(normalizedValue);
+    })) {
+      throw new BadRequestException("Reason must not copy a value from the reviewed profile");
+    }
+  }
+}
+
+function normalize(value: string): string {
+  return value.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+}
+
+function collectReviewedIdentifiers(value: unknown, key = ""): string[] {
+  if (typeof value === "string") {
+    return /firstName|lastName|email|phone|address|objectKey|fileName|filename/i.test(key) ? [value] : [];
+  }
+  if (Array.isArray(value)) return value.flatMap((entry) => collectReviewedIdentifiers(entry, key));
+  if (value !== null && typeof value === "object" && !(value instanceof Date) && !(value instanceof Types.ObjectId)) {
+    return Object.entries(value).flatMap(([entryKey, entry]) => collectReviewedIdentifiers(entry, entryKey));
+  }
+  return [];
+}
+
+function profileReviewTarget(
+  fromState: ProfileState,
+  decision: ProfileReviewDecisionInput["decision"],
+): ProfileState {
+  const target = decision === "START_REVIEW"
+    ? ProfileState.UNDER_REVIEW
+    : decision === "APPROVE"
+      ? ProfileState.TEST_PENDING
+      : decision === "REJECT"
+        ? ProfileState.REJECTED
+        : ProfileState.MORE_INFO_NEEDED;
+  if (!canTransitionProfile(fromState, target)) {
+    throw new BadRequestException("Decision is not permitted in the current profile state");
+  }
+  return target;
 }

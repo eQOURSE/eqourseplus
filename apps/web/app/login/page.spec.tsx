@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { LOGIN_DESCRIPTION, LOGIN_TITLE } from "./login-data";
 import LoginPage, { metadata } from "./page";
+import { PRIMARY_NAV_HREFS, PUBLIC_CHROME_HREFS, primaryNavHrefs, withoutStandardIds } from "../../components/home/chrome-test-utils";
 
 const pageSource = readFileSync(
   resolve(process.cwd(), "app/login/page.tsx"),
@@ -62,7 +63,7 @@ describe("FR-PUB-06 login page", () => {
     const { container } = render(<LoginPage />);
     const visibleText = container.textContent ?? "";
 
-    expect(visibleText.match(/\d[\d+]*/g) ?? []).toEqual([]);
+    expect(withoutStandardIds(visibleText).match(/\d[\d+]*/g) ?? []).toEqual([]);
     expect(visibleText).not.toMatch(/\b(?:wizard|placeholder|preview)\b/i);
     expect(visibleText).not.toMatch(
       /\u20b9|\u0024|\u20ac|\u00a3|\b(?:Razorpay|Cashfree|Stripe|PayPal|DocuSign|Dropbox Sign|Digio|Leegality|IDfy|HyperVerge|Sumsub|Onfido|Persona|Veriff)\b|\b(?:commission|take[- ]?rate|margin|fee percentage|settlement|turnaround|SLA|headcount|capacity)\b|\bearn\b|\bper (?:hour|task)\b/i,
@@ -81,18 +82,11 @@ describe("FR-PUB-06 login page", () => {
     for (const link of container.querySelectorAll<HTMLAnchorElement>("a[href]")) {
       const href = link.getAttribute("href") ?? "";
       expect(
-        href.startsWith("#") || APPROVED_LINKS.includes(href as never),
+        href.startsWith("#") || (APPROVED_LINKS.includes(href as never) || PUBLIC_CHROME_HREFS.includes(href)),
         href,
       ).toBe(true);
     }
-    expect(
-      Array.from(
-        container.querySelectorAll<HTMLAnchorElement>(
-          "#site-navigation .home-nav-links a",
-        ),
-        (link) => link.getAttribute("href"),
-      ),
-    ).toEqual(["#how-it-works", "#categories", "/freelancers", "/vendors", "/about"]);
+    expect(primaryNavHrefs(container)).toEqual(PRIMARY_NAV_HREFS);
     expect(
       container.querySelector("#site-navigation [aria-current]"),
     ).toBeNull();

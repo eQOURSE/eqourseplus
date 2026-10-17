@@ -183,42 +183,39 @@ change the working URI, user, database name, or network rules to match an old
 runbook example. Never copy production users, documents, or OTP/session data
 into staging.
 
-### 4.2 Run the FR-FND-07 database operation workflow
+### 4.2 Run the FR-FND-07 migration verification workflow
 
-The `workflow_dispatch` input `environment=staging` defaults to the existing
-`action=apply` behavior and deploys and waits for the one-shot
-`eqplus-db-migrate-staging-apply` Cloud Run Job. Selecting `action=status` on
-staging also resolves to `apply`, preserving the original acceptance procedure.
-Selecting `action=seed` is the explicit staging taxonomy rehearsal. It injects
+The `workflow_dispatch` inputs accept `environment=staging|production` and
+`action=status|apply|seed`. Staging defaults to the existing `apply` behavior;
+selecting `action=status` on staging also resolves to `apply`, while selecting
+`action=seed` explicitly runs the taxonomy rehearsal. The workflow deploys and
+waits for an action-aware one-shot Cloud Run Job, such as
+`eqplus-db-migrate-staging-apply` or `eqplus-db-migrate-staging-seed`. It injects
 `MONGODB_URI_MIGRATOR_STAGING` as `MONGODB_MIGRATION_URI` inside Cloud Run,
-runs `/app/scripts/run-migration.cjs` (which invokes the pinned
-`/app/node_modules/migrate-mongo/bin/migrate-mongo.js` entrypoint with
-`/app/migrate-mongo-config.cjs`), and routes all egress through the existing
-VPC/NAT path. Run it twice; the two successful GitHub workflow logs are
-the idempotency evidence. The URI is never read into GitHub Actions or printed.
-Run the staging `action=apply` dispatch twice for migration idempotency, then
-run the staging `action=seed` dispatch twice for taxonomy idempotency. Retain
-all four successful workflow logs as acceptance evidence.
+runs `/app/scripts/run-migration.cjs`, and routes all egress through the
+existing VPC/NAT path. Run staging `action=apply` twice, then staging
+`action=seed` twice; retain all four successful GitHub workflow logs as
+rehearsal and idempotency evidence. The URI is never read into GitHub Actions
+or printed.
 
-The dispatch also has an `action` input. Production defaults to `status`, uses
-the protected GitHub `production` environment, injects `MONGODB_URI_MIGRATOR`,
-and names the job `eqplus-db-migrate-production-status`,
+Production defaults to `action=status`, uses the protected GitHub `production`
+environment, injects `MONGODB_URI_MIGRATOR`, and names the jobs
+`eqplus-db-migrate-production-status`,
 `eqplus-db-migrate-production-apply`, or
-`eqplus-db-migrate-production-seed` so the approval dialog is unambiguous.
-`status` is read-only in production. `apply` runs `status`, then `up`, then `status` again in
-the Cloud Run job; the log therefore proves what was pending and the resulting
-changelog. `seed` runs the taxonomy seed and verifies the resulting collection
-count against the seed file's own row definition. Every production action
-remains behind the existing reviewer gate, and the database job never runs on
-a push.
+`eqplus-db-migrate-production-seed`. `status` is read-only. `apply` runs
+`status`, then `up`, then `status` again; `seed` logs the taxonomy collection
+count before and after and verifies the final count against `SEED_ROWS.length`.
+Every production action must be approved by the existing production reviewers.
+The workflow logs the Cloud Run execution name and terminal conditions for
+audit evidence and never runs on a push.
 
-The production migration must be dispatched from `develop` at the exact commit
-being promoted, because the migration job verifies the SHA-tagged image built
-by the `develop` push. The ordering is: first promote `develop` to `main` as a
-two-parent merge commit; then dispatch `environment=production` with
-`action=apply`, then `action=seed`, from `develop` at that same promoted commit.
-Do not dispatch
-from the `main` merge commit: that commit has no separately built image tag.
+The production operation must be dispatched from `develop` at the exact commit
+being promoted, because it verifies the SHA-tagged image built by the
+`develop` push. The ordering is: complete staging apply ×2 and seed ×2; then
+promote `develop` to `main` as a two-parent merge commit and verify `HEAD^2`
+matches the promoted develop SHA; then dispatch production `status`, `apply`,
+and `seed` from `develop` at that same SHA. Do not dispatch from the `main`
+merge commit: that commit has no separately built image tag.
 
 The migration Cloud Run Job uses the image tagged by the dispatched commit and
 the repository variable `GCP_MIGRATION_SERVICE_ACCOUNT`, whose value must be
@@ -271,9 +268,7 @@ job continues to declare `environment: production`.
 ### 6.1 Use reviewed PRs and a merge commit for releases
 
 Require reviewed PRs and the `Lint, test, and build` check for both protected
-branches, and block direct pushes to `main`. Any merge into `main` must be a
-two-parent merge commit; the production guard blocks squash merges, including
-workflow-only changes that are not promotions. Squash feature-to-develop PRs as
+branches, and block direct pushes to `main`. Squash feature-to-develop PRs as
 usual. After the `develop` push has passed staging deployment and health, open
 a reviewed PR with base `main` and head `develop`. For that release PR, choose
 **Create a merge commit**. Do not squash or rebase that specific PR: production

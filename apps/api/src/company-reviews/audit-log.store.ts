@@ -55,7 +55,7 @@ export class MongooseAuditLogStore implements AuditLogStore {
   }
 
   findBySubject(
-    subjectCollection: "vendors" | "clients",
+    subjectCollection: "vendors" | "clients" | "profiles",
     subjectId: string,
   ): Promise<AuditLogDocument[]> {
     return this.model

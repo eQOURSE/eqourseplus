@@ -9,19 +9,21 @@ import { HomeHeader } from "./HomeChrome";
 describe("FR-PUB-00 HomeHeader responsive disclosure", () => {
   afterEach(cleanup);
 
-  it("defines the 768px and 480px presentation breakpoints", () => {
+  it("collapses the navigation behind a 48px toggle at the 768px breakpoint", () => {
     const styles = readFileSync(
-      resolve(process.cwd(), "components/home/home-redesign.module.css"),
+      resolve(process.cwd(), "components/landing/chrome.css"),
       "utf8",
     );
 
-    expect(styles).toMatch(/@media\s*\(max-width:\s*768px\)/);
-    expect(styles).toMatch(/@media\s*\(max-width:\s*480px\)/);
-    expect(styles).toMatch(/\.mobileToggle\s*\{[\s\S]*width:\s*48px[\s\S]*height:\s*48px/);
-    expect(styles).toMatch(/\.mobileMenu\s*\{[\s\S]*max-height:\s*0/);
-    expect(styles).toMatch(
-      /@media\s*\(max-width:\s*768px\)\s*\{[\s\S]*\.header\s*\{[\s\S]*border-radius:\s*24px/,
+    // The toggle must be showing at and below 768px; the header may collapse
+    // earlier (wider breakpoint) to stay on one row.
+    const collapse = styles.match(
+      /@media\s*\(max-width:\s*(\d+)px\)\s*\{[^@]*\.q-nav__toggle\s*\{\s*display:\s*grid/,
     );
+    expect(collapse, "toggle revealed inside a max-width media query").not.toBeNull();
+    expect(Number(collapse?.[1])).toBeGreaterThanOrEqual(768);
+    expect(styles).toMatch(/\.q-nav__toggle\s*\{[^}]*width:\s*48px;[^}]*height:\s*48px/);
+    expect(styles).toMatch(/\.q-sheet\s*\{[^}]*visibility:\s*hidden/);
   });
 
   it("keeps the mobile menu closed and exposes a labelled 48px toggle", () => {
@@ -36,7 +38,7 @@ describe("FR-PUB-00 HomeHeader responsive disclosure", () => {
   it("opens and closes the hidden navigation options", () => {
     render(<HomeHeader />);
 
-    const toggle = screen.getAllByRole("button", { name: "Open navigation menu" })[0];
+    const toggle = screen.getAllByRole("button", { name: "Open navigation menu" })[0]!;
     const menu = document.getElementById("home-mobile-navigation");
 
     expect(menu).toHaveAttribute("aria-hidden", "true");
