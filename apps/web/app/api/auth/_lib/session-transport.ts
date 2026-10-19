@@ -9,15 +9,14 @@ import {
 import { NextRequest, NextResponse } from "next/server";
 
 import { apiFetch } from "../../../../lib/api-fetch";
+import { ACCESS_COOKIE, REFRESH_COOKIE } from "../../../../lib/auth-cookie-names";
+export { ACCESS_COOKIE, REFRESH_COOKIE } from "../../../../lib/auth-cookie-names";
 
 interface Schema<T> {
   safeParse(value: unknown):
     | { success: true; data: T }
     | { success: false };
 }
-
-export const ACCESS_COOKIE = "__Host-eqourse-access";
-export const REFRESH_COOKIE = "__Host-eqourse-refresh";
 
 const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 const COOKIE_BASE = {

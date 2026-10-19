@@ -14,6 +14,11 @@ const globalStyles = readFileSync(
 afterEach(cleanup);
 
 describe("FR-PUB-02 public navigation placement", () => {
+  it("keeps the static job-detail navigation account-neutral", () => {
+    const { container } = render(<SiteNavigation page="jobs" />);
+    expect(container.textContent).not.toMatch(/login|sign in|sign out|account/i);
+    expect(container.querySelector('a[href="/login"]')).toBeNull();
+  });
   it("keeps Jobs out of primary navigation", () => {
     render(<SiteNavigation page="about" />);
 

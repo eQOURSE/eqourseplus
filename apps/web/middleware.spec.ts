@@ -1,11 +1,11 @@
 // @vitest-environment node
 
 import { NextRequest } from "next/server";
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { middleware } from "./middleware";
+import { middleware, PUBLIC_ROUTES } from "./middleware";
 
 const PUBLIC_HEADER_ROUTES = [
   "/", "/about", "/clients", "/freelancers", "/jobs", "/login",
@@ -47,16 +47,15 @@ describe("FR-REG-02D public session before HTML", () => {
         const path = join(dir, entry.name);
         if (entry.isDirectory()) visit(path);
         else if (entry.name === "page.tsx") {
-          const source = readFileSync(path, "utf8");
-          if (source.includes("<HomeHeader") || source.includes("<CompanyOnboardingEntry")) {
-            const parent = relative(appDir, dir).split(sep).join("/");
-            pages.push(parent ? `/${parent}` : "/");
-          }
+          const parent = relative(appDir, dir).split(sep).join("/");
+          if (parent.startsWith("(authenticated)/") || parent === "jobs/[slug]" || parent === "design-system") continue;
+          pages.push(parent ? `/${parent}` : "/");
         }
       }
     }
     visit(appDir);
     expect(pages.sort()).toEqual([...PUBLIC_HEADER_ROUTES]);
+    expect([...PUBLIC_ROUTES].sort()).toEqual([...PUBLIC_HEADER_ROUTES]);
   });
 
   it.each(PUBLIC_HEADER_ROUTES.filter((path) => path !== "/login"))(

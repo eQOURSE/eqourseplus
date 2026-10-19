@@ -1,21 +1,25 @@
-import { ClientState, VendorState, authSessionSchema, authTokenPairSchema, type AuthSession } from "@eqourse/shared";
+import { ClientState, VendorState, authSessionSchema, authTokenPairSchema, type AuthSession, type AuthTokenPair } from "@eqourse/shared";
 import { NextResponse, type NextRequest } from "next/server";
+import { resolvePostSignInDestination } from "./lib/sign-in-destination";
+import { ACCESS_COOKIE, REFRESH_COOKIE } from "./lib/auth-cookie-names";
 
 const SAFE_REQUEST_ID = /^[A-Za-z0-9._-]{1,128}$/;
-const ACCESS_COOKIE = "__Host-eqourse-access";
-const REFRESH_COOKIE = "__Host-eqourse-refresh";
 const PUBLIC_SESSION_HEADER = "x-eqourse-public-session";
-const PUBLIC_ROUTES = new Set([
+export const PUBLIC_ROUTES = [
   "/", "/freelancers", "/vendors", "/clients", "/about", "/jobs",
   "/login", "/register", "/register/freelancer", "/register/vendor", "/register/client",
-]);
+] as const;
+const publicRoutes = new Set<string>(PUBLIC_ROUTES);
+const FETCH_TIMEOUT_MS = 4_000;
+type RefreshResult = { status: number; pair: AuthTokenPair | null };
+const refreshFlights = new Map<string, Promise<RefreshResult>>();
 
 function resolveRequestId(value: string | null): string {
   return value && SAFE_REQUEST_ID.test(value) ? value : crypto.randomUUID();
 }
 
 function publicRoute(pathname: string): boolean {
-  return PUBLIC_ROUTES.has(pathname);
+  return publicRoutes.has(pathname);
 }
 
 function apiUrl(path: string): URL {
@@ -27,13 +31,38 @@ async function sessionFor(accessToken: string, requestId: string): Promise<Respo
   return fetch(apiUrl("/api/v1/auth/session"), {
     headers: { Authorization: `Bearer ${accessToken}`, "x-request-id": requestId },
     cache: "no-store",
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
+}
+
+async function refreshOnce(refreshToken: string, requestId: string): Promise<RefreshResult> {
+  const existing = refreshFlights.get(refreshToken);
+  if (existing) return existing;
+  const flight = (async (): Promise<RefreshResult> => {
+    const response = await fetch(apiUrl("/api/v1/auth/refresh"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-request-id": requestId },
+      body: JSON.stringify({ refreshToken }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!response.ok) return { status: response.status, pair: null };
+    const parsed = authTokenPairSchema.safeParse(await response.json());
+    return { status: response.status, pair: parsed.success ? parsed.data : null };
+  })();
+  refreshFlights.set(refreshToken, flight);
+  try {
+    return await flight;
+  } finally {
+    if (refreshFlights.get(refreshToken) === flight) refreshFlights.delete(refreshToken);
+  }
 }
 
 async function ownedCompanyState(actor: "client" | "vendor", accessToken: string, requestId: string): Promise<ClientState | VendorState | null> {
   const response = await fetch(apiUrl(`/api/v1/${actor}s/me`), {
     headers: { Authorization: `Bearer ${accessToken}`, "x-request-id": requestId },
     cache: "no-store",
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error("Company status unavailable");
@@ -47,15 +76,15 @@ async function ownedCompanyState(actor: "client" | "vendor", accessToken: string
 }
 
 function unavailable(): NextResponse {
-  return new NextResponse("Session temporarily unavailable", {
+  return new NextResponse(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Temporarily unavailable | eQOURSE+</title></head><body style="margin:0;background:#F7FAF9;color:#232145;font-family:Inter,Arial,sans-serif;display:grid;min-height:100vh;place-items:center"><main style="max-width:36rem;padding:2rem"><p style="color:#0F9B8E;font-weight:700">eQOURSE+</p><h1>Temporarily unavailable</h1><p>We could not check your session. Please try again in a moment.</p><a href="/" style="color:#0F9B8E">Try again</a></main></body></html>`, {
     status: 503,
-    headers: { "Cache-Control": "no-store" },
+    headers: { "Cache-Control": "no-store", "Content-Type": "text/html; charset=utf-8" },
   });
 }
 
-function finishResponse(response: NextResponse, requestId: string, rotated: { accessToken: string; refreshToken: string } | null): NextResponse {
+function finishResponse(response: NextResponse, requestId: string, rotated: { accessToken: string; refreshToken: string } | null, sessionBearing = true): NextResponse {
   response.headers.set("x-request-id", requestId);
-  response.headers.set("Cache-Control", "no-store");
+  response.headers.set("Cache-Control", sessionBearing ? "no-store" : "private, max-age=0, must-revalidate");
   if (rotated) {
     response.cookies.set(ACCESS_COOKIE, rotated.accessToken, {
       httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 15 * 60,
@@ -86,19 +115,14 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   try {
     let upstream = accessToken ? await sessionFor(accessToken, requestId) : null;
     if ((!upstream || upstream.status === 401) && refreshToken) {
-      const refresh = await fetch(apiUrl("/api/v1/auth/refresh"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-request-id": requestId },
-        body: JSON.stringify({ refreshToken }),
-        cache: "no-store",
-      });
-      if (refresh.ok) {
-        const parsed = authTokenPairSchema.safeParse(await refresh.json());
-        if (!parsed.success) return unavailable();
-        rotated = parsed.data;
+      const refresh = await refreshOnce(refreshToken, requestId);
+      if (refresh.pair) {
+        rotated = refresh.pair;
         accessToken = rotated.accessToken;
         upstream = await sessionFor(accessToken, requestId);
-      } else if (refresh.status !== 401) {
+      } else if (refresh.status !== 401 || accessToken) {
+        // A stale cookie may have lost a concurrent rotation on another instance.
+        // Never render a guest header or clear a winning response's cookies.
         return unavailable();
       }
     }
@@ -113,14 +137,16 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     if (session && accessToken && pathname === "/login") {
       const vendor = await ownedCompanyState("vendor", accessToken, requestId);
       const client = vendor ? null : await ownedCompanyState("client", accessToken, requestId);
-      const internal = session.roleAssignments.some((assignment) => assignment.role === "VERIFIER");
-      const destination = vendor || client ? "/dashboard" : internal ? "/company-reviews" : "/dashboard";
+      const destination = resolvePostSignInDestination(session, Boolean(vendor), Boolean(client));
       return finishResponse(NextResponse.redirect(new URL(destination, request.url)), requestId, rotated);
     }
     if (session && accessToken && (pathname === "/register/client" || pathname === "/register/vendor")) {
       const actor = pathname.endsWith("client") ? "client" : "vendor";
       const state = await ownedCompanyState(actor, accessToken, requestId);
-      if (state && state !== ClientState.DRAFT && state !== ClientState.MORE_INFO_NEEDED) {
+      const editable = actor === "client"
+        ? state === ClientState.DRAFT || state === ClientState.MORE_INFO_NEEDED
+        : state === VendorState.DRAFT || state === VendorState.MORE_INFO_NEEDED;
+      if (state && !editable) {
         return finishResponse(NextResponse.redirect(new URL("/dashboard", request.url)), requestId, rotated);
       }
     }
@@ -130,7 +156,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
   if (session) requestHeaders.set(PUBLIC_SESSION_HEADER, JSON.stringify(session));
   const response = NextResponse.next({ request: { headers: requestHeaders } });
-  return finishResponse(response, requestId, rotated);
+  return finishResponse(response, requestId, rotated, Boolean(session || accessToken || refreshToken));
 }
 
 export const config = {
