@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { authSessionSchema, type AuthSession } from "@eqourse/shared";
+import { headers } from "next/headers";
 import type { ReactNode } from "react";
 import { themeInitializerScript } from "@eqourse/ui";
+import { PublicSessionProvider } from "../components/public/public-session-provider";
 
 import "./globals.css";
 import "../components/landing/landing.css";
@@ -60,6 +63,16 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+  let session: AuthSession | null = null;
+  const value = headers().get("x-eqourse-public-session");
+  if (value) {
+    try {
+      const parsed = authSessionSchema.safeParse(JSON.parse(value));
+      if (parsed.success) session = parsed.data;
+    } catch {
+      // Middleware is the only trusted source of this header.
+    }
+  }
   return (
     <html
       lang="en"
@@ -73,7 +86,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         />
         <script dangerouslySetInnerHTML={{ __html: motionReadyScript }} />
       </head>
-      <body>{children}</body>
+      <body><PublicSessionProvider session={session}>{children}</PublicSessionProvider></body>
     </html>
   );
 }
