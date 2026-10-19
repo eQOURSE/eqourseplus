@@ -2,13 +2,27 @@
 
 import { NextRequest } from "next/server";
 import { describe, expect, it, vi, afterEach } from "vitest";
+
+const { captureMessage, clearScope, setTag, setLevel, setFingerprint } = vi.hoisted(() => ({
+  captureMessage: vi.fn(),
+  clearScope: vi.fn(),
+  setTag: vi.fn(),
+  setLevel: vi.fn(),
+  setFingerprint: vi.fn(),
+}));
+
+vi.mock("@sentry/nextjs", () => ({
+  captureMessage,
+  withScope: (callback: (scope: { clear: typeof clearScope; setTag: typeof setTag; setLevel: typeof setLevel; setFingerprint: typeof setFingerprint }) => void) => callback({ clear: clearScope, setTag, setLevel, setFingerprint }),
+}));
+
 import { middleware } from "./middleware";
 
 const session = { userId: "507f1f77bcf86cd799439011", email: "owner@example.com", roleAssignments: [], profileState: "DRAFT" };
 const request = (path: string, cookie = "") => new NextRequest(`https://plus.eqourse.test${path}`, { headers: cookie ? { cookie } : {} });
 
 describe("FR-REG-02D review regressions", () => {
-  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.clearAllMocks(); });
 
   it("does not rotate one refresh token twice for concurrent public requests", async () => {
     vi.stubEnv("API_URL", "https://api.eqourse.test");
@@ -115,5 +129,96 @@ describe("FR-REG-02D review regressions", () => {
     const response = await middleware(request("/login", "__Host-eqourse-access=valid"));
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe("https://plus.eqourse.test/company-reviews");
+  });
+});
+
+describe("FR-FND-06 public session unavailable Sentry events", () => {
+  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.clearAllMocks(); });
+
+  const expectEvent = (reason: string, routeGroup: string) => {
+    expect(captureMessage).toHaveBeenCalledTimes(1);
+    expect(captureMessage).toHaveBeenCalledWith("Public session resolution unavailable");
+    expect(setTag.mock.calls).toEqual([["reason", reason], ["route_group", routeGroup]]);
+    expect(setLevel).toHaveBeenCalledWith("error");
+    expect(setFingerprint).toHaveBeenCalledWith(["public-session-unavailable"]);
+    expect(clearScope).toHaveBeenCalledTimes(1);
+  };
+
+  it.each([
+    ["timeout", "/about", "__Host-eqourse-access=valid", async () => {
+      vi.stubEnv("API_URL", "https://api.eqourse.test");
+      vi.stubGlobal("fetch", vi.fn(async () => { throw Object.assign(new Error("timed out"), { name: "TimeoutError" }); }));
+    }, "marketing"],
+    ["timeout", "/about", "__Host-eqourse-access=expired; __Host-eqourse-refresh=old", async () => {
+      vi.stubEnv("API_URL", "https://api.eqourse.test");
+      vi.stubGlobal("fetch", vi.fn(async (url: URL) => String(url).endsWith("/auth/session")
+        ? new Response(null, { status: 401 })
+        : Promise.reject(Object.assign(new Error("timed out"), { name: "TimeoutError" }))));
+    }, "marketing"],
+    ["timeout", "/login", "__Host-eqourse-access=valid", async () => {
+      vi.stubEnv("API_URL", "https://api.eqourse.test");
+      vi.stubGlobal("fetch", vi.fn(async (url: URL) => String(url).endsWith("/auth/session")
+        ? new Response(JSON.stringify(session), { status: 200 })
+        : Promise.reject(Object.assign(new Error("timed out"), { name: "TimeoutError" }))));
+    }, "login"],
+    ["upstream_status", "/about", "__Host-eqourse-access=valid", async () => {
+      vi.stubEnv("API_URL", "https://api.eqourse.test");
+      vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 503 })));
+    }, "marketing"],
+    ["upstream_status", "/about", "__Host-eqourse-access=expired; __Host-eqourse-refresh=old", async () => {
+      vi.stubEnv("API_URL", "https://api.eqourse.test");
+      vi.stubGlobal("fetch", vi.fn(async (url: URL) => String(url).endsWith("/auth/session")
+        ? new Response(null, { status: 401 })
+        : new Response(null, { status: 429 })));
+    }, "marketing"],
+    ["upstream_status", "/login", "__Host-eqourse-access=valid", async () => {
+      vi.stubEnv("API_URL", "https://api.eqourse.test");
+      vi.stubGlobal("fetch", vi.fn(async (url: URL) => String(url).endsWith("/auth/session")
+        ? new Response(JSON.stringify(session), { status: 200 })
+        : new Response(null, { status: 503 })));
+    }, "login"],
+    ["upstream_status", "/login", "__Host-eqourse-access=valid", async () => {
+      vi.stubEnv("API_URL", "https://api.eqourse.test");
+      vi.stubGlobal("fetch", vi.fn(async (url: URL) => String(url).endsWith("/auth/session")
+        ? new Response(JSON.stringify(session), { status: 200 })
+        : new Response(null, { status: 401 })));
+    }, "login"],
+    ["refresh_lost", "/about", "__Host-eqourse-access=expired; __Host-eqourse-refresh=old", async () => {
+      vi.stubEnv("API_URL", "https://api.eqourse.test");
+      vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 401 })));
+    }, "marketing"],
+    ["parse_failed", "/login", "__Host-eqourse-access=valid", async () => {
+      vi.stubEnv("API_URL", "https://api.eqourse.test");
+      vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ userId: "not-a-session" }), { status: 200 })));
+    }, "login"],
+    ["parse_failed", "/register/vendor", "__Host-eqourse-access=expired; __Host-eqourse-refresh=old", async () => {
+      vi.stubEnv("API_URL", "https://api.eqourse.test");
+      vi.stubGlobal("fetch", vi.fn(async (url: URL) => String(url).endsWith("/auth/session")
+        ? new Response(null, { status: 401 })
+        : new Response(JSON.stringify({ accessToken: "", refreshToken: "pair" }), { status: 200 })));
+    }, "register"],
+    ["misconfigured", "/register/freelancer", "__Host-eqourse-access=valid", async () => {
+      vi.stubEnv("API_URL", "");
+    }, "register"],
+    ["upstream_unreachable", "/login", "__Host-eqourse-access=valid", async () => {
+      vi.stubEnv("API_URL", "https://api.eqourse.test");
+      vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("fetch failed"); }));
+    }, "login"],
+  ])("tags %s for %s", async (reason, path, cookie, setup, group) => {
+    await setup();
+    const response = await middleware(request(path, cookie));
+    expect(response.status).toBe(503);
+    expectEvent(reason, group);
+  });
+
+  it("uses only route groups, without adding query strings or identity to Sentry", async () => {
+    vi.stubEnv("API_URL", "https://api.eqourse.test");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 503 })));
+    await middleware(request("/about?campaign=private", "__Host-eqourse-access=valid"));
+    expectEvent("upstream_status", "marketing");
+    expect(setTag.mock.calls.flat()).not.toContain("/about");
+    expect(setTag.mock.calls.flat()).not.toContain("campaign");
+    expect(setTag.mock.calls.flat()).not.toContain(session.userId);
+    expect(setTag.mock.calls.flat()).not.toContain(session.email);
   });
 });
