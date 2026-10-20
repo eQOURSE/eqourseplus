@@ -52,3 +52,32 @@ the repository and chat even though it is public by design.
 Do not add a live DSN to GitHub Actions. The test suite uses a fake DSN with a
 local transport (API) and a mocked capture boundary (web), so CI makes no
 requests to Sentry.
+
+## Public-session alert: live Edge delivery gate before production
+
+Before promoting FR-REG-02D (PR #138) and the FR-FND-06 follow-up (PR #139)
+together, verify the deployed PR preview rather than relying on the mocked
+`@sentry/nextjs` unit tests:
+
+1. Open a marketing route such as `/about` on PR #139's authenticated Vercel
+   preview. Set only disposable, invalid `__Host-eqourse-access` and
+   `__Host-eqourse-refresh` cookies for that preview host. Use `Secure`,
+   `HttpOnly`, and `Path=/`, with no `Domain`; never use a real session.
+2. Reload the route once and verify the fail-closed, no-store 503 page. The
+   expected cause is `refresh_lost`: session lookup returns 401 for the bad
+   access token, then refresh returns 401 for the bad refresh token. If an
+   upstream call instead times out or fails, record that actual reason and
+   leave the `refresh_lost` check open until the preview API is reachable.
+3. In Sentry's `javascript-nextjs` project, find the new `Public session
+   resolution unavailable` event. Confirm `runtime=vercel-edge`,
+   `reason=refresh_lost`, and `route_group=marketing`. Inspect its message,
+   tags, breadcrumbs, and contexts for the absence of user ID, email, token,
+   cookie value, full route, and query string. Sentry's own default IP
+   collection is outside the custom event tags.
+4. Remove the disposable cookies. Record the event link and result in
+   `PROGRESS.md`. Keep production promotion blocked until this exact check
+   passes and the Sentry alert is enabled with a 30-minute action throttle.
+
+The issue alert is scoped to `javascript-nextjs`, matches more than 9 events
+in 5 minutes, and notifies the sole free-plan member at `yobhauk@gmail.com`.
+Bhavesh owns any external mail forwarding to the developer.
