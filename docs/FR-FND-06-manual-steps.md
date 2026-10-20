@@ -63,20 +63,20 @@ together, verify the deployed PR preview rather than relying on the mocked
    preview. Set only disposable, invalid `__Host-eqourse-access` and
    `__Host-eqourse-refresh` cookies for that preview host. Use `Secure`,
    `HttpOnly`, and `Path=/`, with no `Domain`; never use a real session.
-2. Reload the route once and verify the fail-closed, no-store 503 page. The
-   expected cause is `refresh_lost`: session lookup returns 401 for the bad
-   access token, then refresh returns 401 for the bad refresh token. If an
-   upstream call instead times out or fails, record that actual reason and
-   leave the `refresh_lost` check open until the preview API is reachable.
+2. Reload the route once and verify the fail-closed, no-store 503 page. Record
+   the actual `reason`: an invalid access token can yield session 401 followed
+   by refresh 400, which correctly maps to `upstream_status`. A real
+   `refresh_lost` requires an already rotated refresh token and is covered by
+   the unit tests; it is not a live-preview requirement.
 3. In Sentry's `javascript-nextjs` project, find the new `Public session
    resolution unavailable` event. Confirm `runtime=vercel-edge`,
-   `reason=refresh_lost`, and `route_group=marketing`. Inspect its message,
-   tags, breadcrumbs, and contexts for the absence of user ID, email, token,
-   cookie value, full route, and query string. Sentry's own default IP
-   collection is outside the custom event tags.
+   the actual `reason`, and `route_group=marketing`. Inspect its message,
+   tags, breadcrumbs, and contexts for the absence of a `user` field, IP,
+   geolocation, user ID, email, token, cookie value, full route, and query
+   string. The Edge `beforeSend` privacy test must also pass.
 4. Remove the disposable cookies. Record the event link and result in
-   `PROGRESS.md`. Keep production promotion blocked until this exact check
-   passes and the Sentry alert is enabled with a 30-minute action throttle.
+   `PROGRESS.md`. Keep production promotion blocked until live event privacy
+   and the Sentry alert with a 30-minute action throttle are verified.
 
 The issue alert is scoped to `javascript-nextjs`, matches more than 9 events
 in 5 minutes, and notifies the sole free-plan member at `yobhauk@gmail.com`.
