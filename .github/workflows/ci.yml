@@ -286,7 +286,7 @@ jobs:
           --image="${STAGED_IMAGE}"
           --service-account="${STAGING_RUNTIME_SERVICE_ACCOUNT}"
           --port=8080
-          --min-instances=0
+          --min-instances=1
           --allow-unauthenticated
           --network=default
           --subnet=default
@@ -417,7 +417,7 @@ jobs:
           --image="${PROMOTED_IMAGE}"
           --service-account="${PRODUCTION_RUNTIME_SERVICE_ACCOUNT}"
           --port=8080
-          --min-instances=0
+          --min-instances=1
           --allow-unauthenticated
           --network=default
           --subnet=default

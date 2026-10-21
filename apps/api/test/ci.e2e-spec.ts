@@ -25,6 +25,7 @@ const deploymentRunbookPath = path.join(
   "FR-FND-05-manual-steps.md",
 );
 const packagePath = path.join(repositoryDirectory, "package.json");
+const apiPackagePath = path.join(repositoryDirectory, "apps", "api", "package.json");
 const nodeVersionPath = path.join(repositoryDirectory, ".node-version");
 const pinnedNodeVersion = "22.23.1";
 const pnpmMinimumNodeVersion = [22, 13, 0] as const;
@@ -210,6 +211,27 @@ describe("FR-FND-05 API deployment", () => {
     );
   });
 
+  it("keeps migrate-mongo in runtime dependencies and documents legacy job cleanup", () => {
+    const apiPackage = JSON.parse(readFileSync(apiPackagePath, "utf8")) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    const runbook = readFileSync(deploymentRunbookPath, "utf8");
+
+    expect(apiPackage.dependencies?.["migrate-mongo"]).toBeDefined();
+    expect(apiPackage.devDependencies?.["migrate-mongo"]).toBeUndefined();
+    expect(runbook).toContain("eqplus-db-migrate-staging");
+    expect(runbook).toContain("eqplus-db-migrate-production");
+    expect(runbook).toContain("gcloud run jobs delete");
+    expect(runbook).toMatch(/secret-bound legacy jobs/i);
+    expect(runbook).toMatch(
+      /After `eqplus-db-migrate-staging-apply` and[\s\S]+`eqplus-db-migrate-production-status`/,
+    );
+    expect(runbook.indexOf("Only after that verification, delete the legacy jobs")).toBeGreaterThan(
+      runbook.indexOf("eqplus-db-migrate-production-status"),
+    );
+  });
+
   it("defines a pnpm-aware, multi-stage, non-root production API image", () => {
     const dockerfile = readFileSync(dockerfilePath, "utf8");
     const dockerignore = readFileSync(dockerignorePath, "utf8");
@@ -263,7 +285,7 @@ describe("FR-FND-05 API deployment", () => {
     expect(workflow).toContain("docker push");
     expect(workflow).toContain("gcloud run deploy eqplus-api-staging");
     expect(workflow).toContain("--region=asia-south1");
-    expect(workflow).toContain("--min-instances=0");
+    expect(workflow).toContain("--min-instances=1");
     expect(workflow).toContain("--allow-unauthenticated");
     expect(workflow).toContain(
       "--set-secrets=MONGODB_URI=MONGODB_URI_STAGING:latest,JWT_SECRET=JWT_SECRET_STAGING:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
@@ -296,9 +318,7 @@ describe("FR-FND-05 API deployment", () => {
     expect(
       workflow.match(/--region=asia-south1/g)?.length,
     ).toBeGreaterThanOrEqual(2);
-    expect(
-      workflow.match(/--min-instances=0/g)?.length,
-    ).toBeGreaterThanOrEqual(2);
+    expect(workflow.match(/--min-instances=1/g)?.length).toBe(2);
     expect(
       workflow.match(/--allow-unauthenticated/g)?.length,
     ).toBeGreaterThanOrEqual(2);
