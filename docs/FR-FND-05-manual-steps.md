@@ -223,6 +223,34 @@ the full service account name above. The IAM contract in Section 2 is
 mandatory; do not infer these grants from the workflow. Keep the existing WIF
 provider and deploy identity; do not create a JSON service-account key.
 
+### 4.3 Remove the legacy secret-bound migration jobs
+
+After `eqplus-db-migrate-staging-apply` and
+`eqplus-db-migrate-production-status` have each completed successfully, verify
+that the two pre-rename jobs are the obsolete secret-bound legacy jobs:
+
+```powershell
+gcloud run jobs describe eqplus-db-migrate-staging `
+  --project=$ProjectId --region=$Region
+gcloud run jobs describe eqplus-db-migrate-production `
+  --project=$ProjectId --region=$Region
+```
+
+Only after that verification, delete the legacy jobs. Do not delete the
+action-suffixed jobs used by the current workflow:
+
+```powershell
+gcloud run jobs delete eqplus-db-migrate-staging `
+  --project=$ProjectId --region=$Region --quiet
+gcloud run jobs delete eqplus-db-migrate-production `
+  --project=$ProjectId --region=$Region --quiet
+```
+
+Record the deletion timestamps and the two exact job names in the release
+evidence. If either legacy job is absent, record it as already cleaned up; do
+not recreate it. This cleanup prevents future workflow renames from leaving
+secret-bound Cloud Run jobs behind.
+
 Index parity remains a separate FR-FND-07 acceptance check: the reviewed,
 idempotent, name-aware migration must compare complete definitions, require a
 write pause before unique-index renames, and never use `syncIndexes()` or
@@ -324,7 +352,7 @@ configured. Only then merge the PR into `develop`.
 ## 8. Post-merge acceptance verification
 
 The `develop` push staging job builds and pushes the commit-SHA image, deploys
-`eqplus-api-staging` in `asia-south1` with `min-instances=0`, public invocation,
+`eqplus-api-staging` in `asia-south1` with `min-instances=1`, public invocation,
 `CORS_ORIGINS=http://localhost:3000,https://staging.plus.eqourse.com` as
 non-secret runtime configuration, `MAILER_PROVIDER=resend` with the existing
 `OTP_EMAIL_FROM` sender and `RESEND_API_KEY` secret,
