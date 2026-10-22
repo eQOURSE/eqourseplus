@@ -16,6 +16,7 @@ import {
 } from "../landing/icons";
 import { LiquidGlass } from "../landing/liquid-glass";
 import { ACCESS, LOGIN, SEGMENTS } from "../landing/segments";
+import { usePublicSession } from "../public/public-session-provider";
 
 export const NAV_LINKS = [
   { label: "Solutions", href: "/clients", page: "clients" },
@@ -104,8 +105,15 @@ type HomeHeaderProps = {
 } & ({ session?: null; onSignOut?: never } | { session: AuthSession; onSignOut: () => void });
 
 export function HomeHeader({ brandHref = "/", activePage, ...auth }: HomeHeaderProps = {}) {
-  const session = "session" in auth ? auth.session : null;
-  const onSignOut = "onSignOut" in auth ? auth.onSignOut : undefined;
+  const publicSession = usePublicSession();
+  const session = "session" in auth ? auth.session : publicSession;
+  const onSignOut = "onSignOut" in auth ? auth.onSignOut : async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      window.location.assign("/login");
+    }
+  };
   const authenticated = Boolean(session);
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);

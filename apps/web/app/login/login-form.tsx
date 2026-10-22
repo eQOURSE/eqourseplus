@@ -13,16 +13,13 @@ import { GlassButton } from "@eqourse/ui";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { publicApiUrl } from "../../lib/public-api-url";
+import { resolvePostSignInDestination } from "../../lib/sign-in-destination";
 
 type Step = "email" | "otp";
 
 interface LoginFormProps {
   navigate?: (href: string) => void;
 }
-
-const INTERNAL_SURFACE_BY_ROLE: Readonly<Partial<Record<Role, string>>> = {
-  [Role.VERIFIER]: "/company-reviews",
-};
 
 const knownRoles = new Set<string>(Object.values(Role));
 const knownBusinessUnits = new Set<string>(Object.values(BusinessUnit));
@@ -37,13 +34,7 @@ async function destinationFor(session: AuthSession): Promise<string> {
     fetch("/api/v1/clients/me", { cache: "no-store" }).catch(() => null),
   ]);
 
-  if (vendor?.ok) return "/dashboard";
-  if (client?.ok) return "/dashboard";
-  for (const assignment of session.roleAssignments) {
-    const internalSurface = INTERNAL_SURFACE_BY_ROLE[assignment.role];
-    if (internalSurface) return internalSurface;
-  }
-  return "/dashboard";
+  return resolvePostSignInDestination(session, Boolean(vendor?.ok), Boolean(client?.ok));
 }
 
 async function readSession(): Promise<AuthSession | null> {
