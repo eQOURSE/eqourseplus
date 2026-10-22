@@ -1,7 +1,9 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ProfileState } from "@eqourse/shared";
 
 import { CompanyOnboardingEntry } from "./company-onboarding-entry";
+import { PublicSessionProvider } from "../public/public-session-provider";
 
 const fetchMock = vi.fn<typeof fetch>();
 
@@ -38,12 +40,6 @@ describe("company onboarding entry", () => {
 
   it("keeps authenticated navigation and loads the persisted draft for a signed-in person", async () => {
     fetchMock.mockImplementation((path) => {
-      if (path === "/api/auth/session") return Promise.resolve(response({
-        userId: "user-1",
-        email: "owner@example.com",
-        roleAssignments: [],
-        profileState: "DRAFT",
-      }));
       if (String(path).endsWith("/api/v1/skill-taxonomy")) return Promise.resolve(response([]));
       if (path === "/api/v1/vendors/me") return Promise.resolve(response({
         _id: "vendor-1",
@@ -57,7 +53,12 @@ describe("company onboarding entry", () => {
       return Promise.resolve(response({}, 404));
     });
 
-    render(<CompanyOnboardingEntry actor="vendor" />);
+    render(<PublicSessionProvider session={{
+      userId: "user-1",
+      email: "owner@example.com",
+      roleAssignments: [],
+      profileState: ProfileState.DRAFT,
+    }}><CompanyOnboardingEntry actor="vendor" /></PublicSessionProvider>);
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Tell us about your business." })).toBeVisible());
     await waitFor(() => expect(screen.getByLabelText("Legal name")).toHaveValue("Saved Company"));
@@ -66,5 +67,6 @@ describe("company onboarding entry", () => {
     expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
     expect(screen.getByRole("contentinfo")).toBeVisible();
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/vendors/me", { cache: "no-store" });
+    expect(fetchMock).not.toHaveBeenCalledWith("/api/auth/session", { cache: "no-store" });
   });
 });

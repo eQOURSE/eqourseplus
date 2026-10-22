@@ -14,14 +14,14 @@ describe("FR-FND-06 web request-id propagation", () => {
     delete process.env.API_URL;
   });
 
-  it("preserves or creates an id on an inbound web request", () => {
+  it("preserves or creates an id on an inbound web request", async () => {
     const incoming = new NextRequest("http://localhost/example", {
       headers: { "x-request-id": "browser-request-123" },
     });
-    const preserved = middleware(incoming);
+    const preserved = await middleware(incoming);
     expect(preserved.headers.get("x-request-id")).toBe("browser-request-123");
 
-    const generated = middleware(
+    const generated = await middleware(
       new NextRequest("http://localhost/example"),
     );
     expect(generated.headers.get("x-request-id")).toMatch(

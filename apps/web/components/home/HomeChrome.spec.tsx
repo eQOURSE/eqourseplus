@@ -3,8 +3,11 @@ import { resolve } from "node:path";
 
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { renderToString } from "react-dom/server";
+import { ProfileState } from "@eqourse/shared";
 
 import { HomeHeader } from "./HomeChrome";
+import { PublicSessionProvider } from "../public/public-session-provider";
 
 describe("FR-PUB-00 HomeHeader responsive disclosure", () => {
   afterEach(cleanup);
@@ -54,5 +57,21 @@ describe("FR-PUB-00 HomeHeader responsive disclosure", () => {
 
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(menu).toHaveAttribute("aria-hidden", "true");
+  });
+});
+
+describe("FR-REG-02D first-render public header", () => {
+  afterEach(cleanup);
+
+  it("renders the signed-in controls in server HTML when the resolved session exists", () => {
+    const html = renderToString(<PublicSessionProvider session={{
+      userId: "507f1f77bcf86cd799439011",
+      email: "owner@example.com",
+      roleAssignments: [],
+      profileState: ProfileState.DRAFT,
+    }}><HomeHeader /></PublicSessionProvider>);
+    expect(html).toContain("owner@example.com");
+    expect(html).toContain("Sign out");
+    expect(html).not.toContain('href="/login"');
   });
 });
