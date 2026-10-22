@@ -1,4 +1,5 @@
 import { ClientState, VendorState, authSessionSchema, authTokenPairSchema, type AuthSession, type AuthTokenPair } from "@eqourse/shared";
+import * as Sentry from "@sentry/nextjs";
 import { NextResponse, type NextRequest } from "next/server";
 import { resolvePostSignInDestination } from "./lib/sign-in-destination";
 import { ACCESS_COOKIE, REFRESH_COOKIE } from "./lib/auth-cookie-names";
@@ -11,8 +12,17 @@ export const PUBLIC_ROUTES = [
 ] as const;
 const publicRoutes = new Set<string>(PUBLIC_ROUTES);
 const FETCH_TIMEOUT_MS = 4_000;
-type RefreshResult = { status: number; pair: AuthTokenPair | null };
+type RouteGroup = "marketing" | "login" | "register";
+type UnavailableReason = "timeout" | "upstream_status" | "refresh_lost" | "parse_failed" | "misconfigured" | "upstream_unreachable";
+type RefreshResult = { status: number; pair: AuthTokenPair | null; parseFailed: boolean };
 const refreshFlights = new Map<string, Promise<RefreshResult>>();
+
+class UnavailableError extends Error {
+  constructor(readonly reason: UnavailableReason) {
+    super(reason);
+    this.name = "UnavailableError";
+  }
+}
 
 function resolveRequestId(value: string | null): string {
   return value && SAFE_REQUEST_ID.test(value) ? value : crypto.randomUUID();
@@ -22,9 +32,23 @@ function publicRoute(pathname: string): boolean {
   return publicRoutes.has(pathname);
 }
 
+function routeGroup(pathname: string): RouteGroup {
+  if (pathname === "/login") return "login";
+  if (pathname === "/register" || pathname.startsWith("/register/")) return "register";
+  return "marketing";
+}
+
 function apiUrl(path: string): URL {
-  if (!process.env.API_URL) throw new Error("API_URL is required");
+  if (!process.env.API_URL) throw new UnavailableError("misconfigured");
   return new URL(path, process.env.API_URL);
+}
+
+function unavailableReason(error: unknown): UnavailableReason {
+  if (error instanceof UnavailableError) return error.reason;
+  if (error && typeof error === "object" && "name" in error && (error.name === "AbortError" || error.name === "TimeoutError")) {
+    return "timeout";
+  }
+  return "upstream_unreachable";
 }
 
 async function sessionFor(accessToken: string, requestId: string): Promise<Response> {
@@ -46,9 +70,15 @@ async function refreshOnce(refreshToken: string, requestId: string): Promise<Ref
       cache: "no-store",
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
-    if (!response.ok) return { status: response.status, pair: null };
-    const parsed = authTokenPairSchema.safeParse(await response.json());
-    return { status: response.status, pair: parsed.success ? parsed.data : null };
+    if (!response.ok) return { status: response.status, pair: null, parseFailed: false };
+    let body: unknown;
+    try {
+      body = await response.json();
+    } catch {
+      return { status: response.status, pair: null, parseFailed: true };
+    }
+    const parsed = authTokenPairSchema.safeParse(body);
+    return { status: response.status, pair: parsed.success ? parsed.data : null, parseFailed: !parsed.success };
   })();
   refreshFlights.set(refreshToken, flight);
   try {
@@ -65,17 +95,34 @@ async function ownedCompanyState(actor: "client" | "vendor", accessToken: string
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (response.status === 404) return null;
-  if (!response.ok) throw new Error("Company status unavailable");
-  const body: unknown = await response.json();
+  if (!response.ok) throw new UnavailableError("upstream_status");
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw new UnavailableError("parse_failed");
+  }
   if (!body || typeof body !== "object" || !("state" in body) || typeof body.state !== "string") {
-    throw new Error("Invalid company status");
+    throw new UnavailableError("parse_failed");
   }
   const states: readonly string[] = actor === "client" ? Object.values(ClientState) : Object.values(VendorState);
-  if (!states.includes(body.state)) throw new Error("Invalid company status");
+  if (!states.includes(body.state)) throw new UnavailableError("parse_failed");
   return body.state as ClientState | VendorState;
 }
 
-function unavailable(): NextResponse {
+function unavailable(reason: UnavailableReason, group: RouteGroup): NextResponse {
+  try {
+    Sentry.withScope((scope) => {
+      scope.clear();
+      scope.setTag("reason", reason);
+      scope.setTag("route_group", group);
+      scope.setLevel("error");
+      scope.setFingerprint(["public-session-unavailable"]);
+      Sentry.captureMessage("Public session resolution unavailable");
+    });
+  } catch {
+    // Reporting must never prevent the fail-closed response from being returned.
+  }
   return new NextResponse(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Temporarily unavailable | eQOURSE+</title></head><body style="margin:0;background:#F7FAF9;color:#232145;font-family:Inter,Arial,sans-serif;display:grid;min-height:100vh;place-items:center"><main style="max-width:36rem;padding:2rem"><p style="color:#0F9B8E;font-weight:700">eQOURSE+</p><h1>Temporarily unavailable</h1><p>We could not check your session. Please try again in a moment.</p><a href="/" style="color:#0F9B8E">Try again</a></main></body></html>`, {
     status: 503,
     headers: { "Cache-Control": "no-store", "Content-Type": "text/html; charset=utf-8" },
@@ -110,6 +157,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
   let accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
+  const group = routeGroup(pathname);
   let rotated: { accessToken: string; refreshToken: string } | null = null;
   let session: AuthSession | null = null;
   try {
@@ -120,18 +168,28 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
         rotated = refresh.pair;
         accessToken = rotated.accessToken;
         upstream = await sessionFor(accessToken, requestId);
-      } else if (refresh.status !== 401 || accessToken) {
+      } else if (refresh.parseFailed) {
+        return unavailable("parse_failed", group);
+      } else if (refresh.status === 401 && accessToken) {
         // A stale cookie may have lost a concurrent rotation on another instance.
         // Never render a guest header or clear a winning response's cookies.
-        return unavailable();
+        return unavailable("refresh_lost", group);
+      } else if (refresh.status !== 401) {
+        return unavailable("upstream_status", group);
       }
     }
     if (upstream?.ok) {
-      const parsed = authSessionSchema.safeParse(await upstream.json());
-      if (!parsed.success) return unavailable();
+      let body: unknown;
+      try {
+        body = await upstream.json();
+      } catch {
+        return unavailable("parse_failed", group);
+      }
+      const parsed = authSessionSchema.safeParse(body);
+      if (!parsed.success) return unavailable("parse_failed", group);
       session = parsed.data;
     } else if (upstream && upstream.status !== 401) {
-      return unavailable();
+      return unavailable("upstream_status", group);
     }
 
     if (session && accessToken && pathname === "/login") {
@@ -150,8 +208,8 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
         return finishResponse(NextResponse.redirect(new URL("/dashboard", request.url)), requestId, rotated);
       }
     }
-  } catch {
-    return unavailable();
+  } catch (error) {
+    return unavailable(unavailableReason(error), group);
   }
 
   if (session) requestHeaders.set(PUBLIC_SESSION_HEADER, JSON.stringify(session));

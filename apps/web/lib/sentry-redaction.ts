@@ -33,5 +33,7 @@ function redact(value: unknown, seen = new WeakSet<object>()): unknown {
 }
 
 export function redactSentryEvent<T extends Event>(event: T): T {
-  return redact(event) as T;
+  const withoutUser = { ...event };
+  delete withoutUser.user;
+  return redact(withoutUser) as T;
 }
