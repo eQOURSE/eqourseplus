@@ -60,6 +60,8 @@ Priorities: [P1]=MVP Phase 1, [P2]=Phase 2, [P3]=Phase 3. Format: ID | Requireme
 
 **Role-home presentation rule (normative for FR-REG-16, FR-REG-17 and FR-REG-18).** Each role home uses one shared shell and a role-resolved panel inventory. Every Next action is computed on read from authoritative profile or company state and other already-owned source data and is never persisted; storing a second copy would allow the fact shown to the user to drift from the source. A panel whose underlying feature is not yet built renders an empty state describing in one line what will appear there and, where an implemented destination exists, one relevant CTA. It never renders placeholder, sample or illustrative values. A figure inside a signed-in user's own home is read as that person's or company's data, so a fabricated figure is a false statement to a real person. This rule deliberately carries the lesson from the invented public operating metrics removed in PR #85 into the less visible and therefore harder-to-audit authenticated surface.
 
+**FR-REG-01 enumeration decision (amendment).** A registration conflict remains a field-agnostic HTTP 409 and never confirms that an account exists or identifies whether the conflict was on email, phone or a country identifier. The freelancer form renders: “We could not create this account. If you already have one, sign in.” and provides a `/login` action. This preserves the anti-enumeration decision made for FR-REG-02C while giving the user an actionable next step; the wording does not imply that the submitted email is the account's sign-in address because the conflict may be on another registration field.
+
 ### 5.2 Assessment & Proctoring (TST)
 
 | ID | Requirement | Acceptance |

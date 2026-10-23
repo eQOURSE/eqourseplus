@@ -195,7 +195,7 @@ function SpecialistHome({ profile }: { profile: ProfileRecord }) {
           </div>
           <dl className="role-home-facts"><Fact label="State" value={humanize(profile.state)} /></dl>
           <a className="home-registration-link" href="/profile">
-            {profile.completionPercentage < 100 ? "Continue profile" : "Edit profile"}
+            {profileLinkLabel(profile)}
           </a>
         </Panel>
       </div>
@@ -334,6 +334,13 @@ function ActionLink({ action }: { action: NextAction }) {
   return action.href && action.label
     ? <a className="home-registration-link" href={action.href}>{action.label}</a>
     : null;
+}
+
+function profileLinkLabel(profile: ProfileRecord): string {
+  const editable = profile.state === ProfileState.DRAFT || profile.state === ProfileState.MORE_INFO_NEEDED;
+  if (editable && profile.completionPercentage < 100) return "Continue profile";
+  if (editable) return "Edit profile";
+  return "View profile";
 }
 
 function specialistNextAction(profile: ProfileRecord): NextAction {

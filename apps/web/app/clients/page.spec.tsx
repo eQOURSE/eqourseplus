@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { clientCapabilities } from "./clients-data";
 import ClientsPage, { metadata } from "./page";
 
 const pageStyles = readFileSync(
@@ -47,5 +48,27 @@ describe("FR-PUB-07 clients landing page", () => {
   it("animates the project path timeline steps with left/right TimelineSlideIn", () => {
     expect(pageSource).toContain("TimelineSlideIn");
     expect(pageSource).toMatch(/side=\{side\}/);
+  });
+
+  it("keeps capability cards structurally uniform and centers the five-card arrangement", () => {
+    const { container } = render(<ClientsPage />);
+    const section = screen.getByRole("heading", {
+      name: "Enterprise AI Data & Expert Content Capabilities",
+    }).closest("section");
+    const cards = Array.from(section?.querySelectorAll("article") ?? []);
+
+    expect(cards).toHaveLength(clientCapabilities.length);
+    expect(cards.every((card) =>
+      card.querySelector("h3") &&
+      card.querySelector("p") &&
+      card.querySelector("a") &&
+      card.querySelector('[class*="iconBox"]'),
+    )).toBe(true);
+
+    const gridRule = pageStyles.match(/\.grid3\s*\{([^}]*)\}/)?.[1] ?? "";
+    const cardRule = pageStyles.match(/\.capability\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(gridRule).toMatch(/grid-template-columns:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\)/);
+    expect(cardRule).toMatch(/min-width:\s*0/);
+    expect(container.querySelectorAll('[class*="capability"]').length).toBeGreaterThanOrEqual(clientCapabilities.length);
   });
 });
