@@ -3997,6 +3997,31 @@ body {
   margin-top: 0.875rem;
 }
 
+.about-shell section[aria-labelledby="who-title"] .about-panel-section {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
+}
+
+.about-shell section[aria-labelledby="who-title"] .about-panel-section>.home-eyebrow {
+  margin: 0 0 0.75rem;
+}
+
+.about-shell section[aria-labelledby="who-title"] .about-panel-section>.home-section-title {
+  max-width: none;
+  margin: 0;
+  text-align: left;
+}
+
+.about-shell section[aria-labelledby="who-title"] .about-panel-section>.home-section-title+p {
+  margin-top: 1.25rem;
+}
+
+.about-shell section[aria-labelledby="who-title"] .about-panel-section>p+p {
+  margin-top: 1rem;
+}
+
 .about-centered-heading {
   max-width: 42rem;
   margin-inline: auto;
@@ -4083,6 +4108,9 @@ body {
 }
 
 .about-shell .about-qualifier {
+  max-width: 44rem;
+  margin: 1.75rem auto 0;
+  line-height: 1.65;
   text-align: center;
 }
 

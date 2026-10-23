@@ -406,11 +406,27 @@
 
 .grid3 {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 16px;
 }
 
+.capabilityItem {
+  display: flex;
+  min-width: 0;
+  grid-column: span 2;
+}
+
+.capabilityItem:nth-child(4) {
+  grid-column: 2 / span 2;
+}
+
+.capabilityItem:nth-child(5) {
+  grid-column: 4 / span 2;
+}
+
 .capability {
+  width: 100%;
+  min-width: 0;
   border: 1px solid hsl(var(--border));
   border-radius: 12px;
   background: hsl(var(--card));
@@ -446,6 +462,7 @@
   font-size: 0.98rem;
   font-weight: 700;
   color: hsl(var(--foreground));
+  min-height: 2.4em;
 }
 
 .capability p {
@@ -956,6 +973,12 @@
   .scaleGrid,
   .deliveryGrid {
     grid-template-columns: 1fr;
+  }
+
+  .capabilityItem,
+  .capabilityItem:nth-child(4),
+  .capabilityItem:nth-child(5) {
+    grid-column: 1;
   }
 
   .sectionHeaderRow {

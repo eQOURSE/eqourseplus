@@ -386,7 +386,7 @@
 
 .timelineItem.left {
     margin-right: auto;
-    text-align: right;
+    text-align: left;
 }
 
 .timelineItem.right {
@@ -449,8 +449,12 @@
     gap: 18px;
 }
 
-.dossierGrid article{
-    height: 250px;
+.dossierGrid article {
+    min-width: 0;
+    min-height: 250px;
+    height: auto;
+    display: flex;
+    flex-direction: column;
 }
 
 
@@ -500,11 +504,15 @@
 }
 
 .tags span {
+    min-width: 0;
+    max-width: 100%;
     background: hsl(var(--surface-sunken) / .72);
     border-radius: 10px;
     padding: 5px 8px;
     color: hsl(var(--vendor-ink));
     font-size: 11px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .rfpSection {
