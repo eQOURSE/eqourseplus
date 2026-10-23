@@ -915,7 +915,7 @@ export function ProfileWizard() {
           if (!entry.taxonomySlug) return null;
           const option = taxonomy.find((item) => item.slug === entry.taxonomySlug);
           const label = option ? taxonomyLabel(option) : "Previously selected skill";
-          return <button className="profile-skill-chip" type="button" key={`${entry.taxonomySlug}-${index}`} disabled={!editable || saving} aria-label={`Deselect ${label}`} onClick={() => updateSkill(index, "taxonomySlug", "")}>{label}</button>;
+          return <button className="profile-skill-chip" type="button" key={`${entry.taxonomySlug}-${index}`} disabled={!editable || saving} aria-label={`Deselect ${label}`} onClick={() => removeRow("skills", index)}><span>{label}</span><span aria-hidden="true" className="profile-skill-chip__remove">×</span></button>;
         })}
       </div> : null}
       {form.skills.length ? form.skills.map((entry, index) => {

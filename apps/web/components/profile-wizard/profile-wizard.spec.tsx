@@ -453,9 +453,11 @@ describe("FR-REG-02B profile wizard", () => {
     fireEvent.change(screen.getByLabelText("Skill 1"), { target: { value: taxonomy[0]!.slug } });
 
     const chip = await screen.findByRole("button", { name: "Deselect Bounding Box — AI Data Services" });
+    expect(chip).toHaveTextContent("×");
     fireEvent.click(chip);
 
-    expect(screen.getByLabelText("Skill 1")).toHaveValue("");
+    expect(screen.queryByLabelText("Skill 1")).not.toBeInTheDocument();
+    expect(screen.getByText("No skills added yet.")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Deselect Bounding Box — AI Data Services" })).not.toBeInTheDocument();
   });
 

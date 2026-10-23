@@ -2715,6 +2715,9 @@ body {
 }
 
 .profile-skill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
   padding: 0.45rem 0.75rem;
   border: 1px solid hsl(var(--primary) / 0.45);
   border-radius: 999px;
@@ -2724,6 +2727,11 @@ body {
   font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
+}
+
+.profile-skill-chip__remove {
+  font-size: 1.1em;
+  line-height: 1;
 }
 
 .profile-skill-chip:hover:not(:disabled),
