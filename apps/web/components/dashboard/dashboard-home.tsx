@@ -337,8 +337,9 @@ function ActionLink({ action }: { action: NextAction }) {
 }
 
 function profileLinkLabel(profile: ProfileRecord): string {
-  if (profile.state === ProfileState.DRAFT && profile.completionPercentage < 100) return "Continue profile";
-  if (profile.state === ProfileState.DRAFT || profile.state === ProfileState.MORE_INFO_NEEDED) return "Edit profile";
+  const editable = profile.state === ProfileState.DRAFT || profile.state === ProfileState.MORE_INFO_NEEDED;
+  if (editable && profile.completionPercentage < 100) return "Continue profile";
+  if (editable) return "Edit profile";
   return "View profile";
 }
 
