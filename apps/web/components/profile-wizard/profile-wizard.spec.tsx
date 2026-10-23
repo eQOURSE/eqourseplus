@@ -276,11 +276,12 @@ describe("FR-REG-02B profile wizard", () => {
     expect(screen.queryByRole("button", { name: "Submit profile for review" })).not.toBeInTheDocument();
   });
 
-  it("shows the confirmation on a fresh visit to an already submitted profile", async () => {
+  it("FR-REG-02 amendment: leaves a submitted profile with a way forward", async () => {
     installFetch(profile({ state: "SUBMITTED", completionPercentage: 100 }));
     render(<ProfileWizard />);
 
     expect(await screen.findByRole("heading", { name: "Profile received" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Go to dashboard" })).toHaveAttribute("href", "/dashboard");
     expect(screen.queryByRole("navigation", { name: "Profile sections" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Save draft" })).not.toBeInTheDocument();
     expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH" || init?.method === "POST")).toBe(false);
