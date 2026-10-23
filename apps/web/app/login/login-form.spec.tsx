@@ -299,8 +299,16 @@ describe("FR-REG-02C login form", () => {
       render(<LoginForm navigate={vi.fn()} />);
       await submitEmail(email);
 
-      expect(screen.getByText(/If an account uses/)).toBeVisible();
-      expect(screen.getByText(/a six-digit code was sent there/)).toBeVisible();
+      expect(screen.getByText((_, element) =>
+        element?.tagName === "P" &&
+        element.textContent ===
+          `If an account uses ${email}, a six-digit code is on its way — it can take up to a minute to arrive.`,
+      )).toBeVisible();
+      expect(screen.getByText("Didn't get one? Create an account or change email.")).toBeVisible();
+      expect(screen.getByRole("link", { name: "Create an account" }))
+        .toHaveAttribute("href", "/register");
+      fireEvent.click(screen.getByRole("button", { name: "Change email" }));
+      expect(screen.getByLabelText("Email address")).toBeVisible();
     },
   );
 });
