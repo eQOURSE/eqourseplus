@@ -915,6 +915,7 @@ export function ProfileWizard() {
         <div className="profile-status-next">
           <p className="profile-refresh-kicker">What happens next</p>
           <p>{statusCopy.next}</p>
+          <a className="home-registration-link" href="/dashboard">Go to dashboard</a>
         </div>
       </section>
     );
