@@ -61,6 +61,7 @@ export function FreelancerRegistrationForm({
   > | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formMessage, setFormMessage] = useState("");
+  const [registrationConflict, setRegistrationConflict] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const countryRef = useRef<HTMLSelectElement>(null);
@@ -132,6 +133,7 @@ export function FreelancerRegistrationForm({
     }
 
     setErrors({});
+    setRegistrationConflict(false);
     setSubmitting(true);
     try {
       const response = await fetch(
@@ -144,9 +146,11 @@ export function FreelancerRegistrationForm({
       );
 
       if (!response.ok) {
+        const conflict = response.status === 409;
+        setRegistrationConflict(conflict);
         setFormMessage(
-          response.status === 409
-            ? "We could not start this registration. Check your details or try again later."
+          conflict
+            ? "We could not create this account. If you already have one, sign in."
             : response.status === 429
               ? "Too many attempts. Wait a little, then try again."
               : "We could not send your verification code. Try again.",
@@ -390,6 +394,9 @@ export function FreelancerRegistrationForm({
 
           <p className="registration-form-message" aria-live="polite">
             {formMessage}
+            {registrationConflict ? (
+              <>{" "}<a href="/login">Sign in</a></>
+            ) : null}
           </p>
           <button className="registration-submit" type="submit" disabled={submitting}>
             {submitting ? "Sending verification code…" : "Send verification code"}
