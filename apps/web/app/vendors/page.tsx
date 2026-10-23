@@ -60,7 +60,7 @@ export default function VendorsPage() {
                   <article className={`${styles.timelineItem} ${isRight ? styles.right : styles.left}`} data-testid="vendor-step">
                     <span className={styles.timelineIcon}>{timelineIcons[index]}</span>
                     <div>
-                      <small>Step</small>
+                      <small>Step {index + 1}</small>
                       <h3>{step.title}</h3>
                       <p>{step.body}</p>
                     </div>

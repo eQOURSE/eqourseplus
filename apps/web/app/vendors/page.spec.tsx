@@ -76,6 +76,29 @@ describe("FR-PUB-04 vendors page", () => {
     ]);
   });
 
+  it("renders the sequential step number on every journey card", () => {
+    render(<VendorsPage />);
+
+    expect(screen.getAllByTestId("vendor-step").map((step) =>
+      step.querySelector("small")?.textContent,
+    )).toEqual(Array.from({ length: 11 }, (_, index) => `Step ${index + 1}`));
+  });
+
+  it("contains long dossier tags and lets their cards grow with the content", () => {
+    render(<VendorsPage />);
+    const longTag = screen.getByText("Documented for verifier review before bidding.");
+    const memberCard = screen.getByRole("heading", { name: "Member readiness" }).closest("article");
+
+    expect(longTag.textContent?.length).toBeGreaterThan(40);
+    expect(memberCard).toContainElement(longTag);
+
+    const cardRule = cssRule(pageStyles, ".dossierGrid article");
+    const tagRule = cssRule(pageStyles, ".tags span");
+    expect(cardRule).toMatch(/height:\s*auto/);
+    expect(cardRule).toMatch(/min-height:\s*250px/);
+    expect(tagRule).toMatch(/overflow-wrap:\s*anywhere/);
+  });
+
   it("covers the required capability and RFP model without claiming live bidding", () => {
     render(<VendorsPage />);
 
@@ -205,7 +228,8 @@ describe("FR-PUB-04 vendors page", () => {
     const { container } = render(<VendorsPage />);
     container.querySelectorAll("script").forEach((script) => script.remove());
 
-    expect(withoutStandardIds(container.textContent ?? "").match(/\d[\d+]*/g) ?? []).toEqual([]);
+    const textWithoutStepNumbers = (container.textContent ?? "").replace(/Step \d+/g, "");
+    expect(withoutStandardIds(textWithoutStepNumbers).match(/\d[\d+]*/g) ?? []).toEqual([]);
     expect(container.textContent).not.toMatch(
       /₹|\$|€|£|\b(?:Razorpay|Cashfree|Stripe|PayPal|DocuSign|Dropbox Sign|Digio|Leegality|IDfy|HyperVerge|Sumsub|Onfido|Persona|Veriff)\b|\b(?:commission|take[- ]?rate|margin|fee percentage|settlement|turnaround|SLA|headcount|capacity)\b|\bearn\b|\bper (?:hour|task)\b/i,
     );

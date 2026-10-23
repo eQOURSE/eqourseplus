@@ -348,7 +348,7 @@ export default function ClientsPage() {
               const icons = ["globe", "code", "globe", "content", "briefcase"];
               const iconName = icons[idx] || "globe";
               return (
-                <FadeInStaggerItem key={title}>
+                <FadeInStaggerItem className={styles.capabilityItem} key={title}>
                   <article className={styles.capability}>
                     <div>
                       <div className={styles.iconBox}>
