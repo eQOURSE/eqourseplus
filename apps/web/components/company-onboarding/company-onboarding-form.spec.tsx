@@ -1209,6 +1209,9 @@ describe("generic company onboarding", () => {
 
     expect(await screen.findByRole("heading", { name: "Registration under review" })).toBeVisible();
     expect(screen.getByText(/under review by the compliance team/i)).toBeVisible();
+    expect(screen.getByRole("link", { name: "Go to dashboard" })).toHaveAttribute("href", "/dashboard");
+    expect(screen.getByRole("heading", { name: "Registration under review" }).closest(".company-onboarding-status-page"))
+      .toHaveClass("company-onboarding-status-page--full");
     expect(screen.queryByRole("button", { name: "Submit registration" })).toBeNull();
   });
 
@@ -1226,6 +1229,7 @@ describe("generic company onboarding", () => {
 
     expect(await screen.findByRole("heading", { name: "Registration under review" })).toBeVisible();
     expect(screen.getByText(/under review by the compliance team/i)).toBeVisible();
+    expect(screen.getByRole("link", { name: "Go to dashboard" })).toHaveAttribute("href", "/dashboard");
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/clients/me/submit", { method: "POST" });
     expect(fetchMock.mock.calls.some(([path]) => path === "/api/v1/vendors/me/submit")).toBe(false);
   });

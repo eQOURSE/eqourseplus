@@ -1530,7 +1530,7 @@ export function CompanyOnboardingForm({ actor = "vendor", guest = false, onAuthe
   }
 
   function renderSubmitted(): React.ReactNode {
-    return <FrostedSurface aria-labelledby="company-onboarding-status-title" className="company-onboarding-status-page" variant="panel"><p className="home-eyebrow">Company registration</p><h1 id="company-onboarding-status-title">Registration under review</h1><p className="company-onboarding-copy">Your registration has been submitted and is under review by the compliance team.</p></FrostedSurface>;
+    return <FrostedSurface aria-labelledby="company-onboarding-status-title" className="company-onboarding-status-page company-onboarding-status-page--full" variant="panel"><p className="home-eyebrow">Company registration</p><h1 id="company-onboarding-status-title">Registration under review</h1><p className="company-onboarding-copy">Your registration has been submitted and is under review by the compliance team.</p><a className="home-registration-link" href="/dashboard">Go to dashboard</a></FrostedSurface>;
   }
 
   if (loading) return <p className="company-onboarding-status">Loading your company profile…</p>;

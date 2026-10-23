@@ -1844,6 +1844,12 @@ body {
   text-align: center;
 }
 
+.company-onboarding-status-page--full {
+  display: grid;
+  align-content: center;
+  min-height: max(34rem, calc(100svh - 13.5rem));
+}
+
 .company-onboarding-status-page h1 {
   margin: 0.5rem 0 0;
   color: hsl(var(--foreground));
@@ -2783,6 +2789,10 @@ body {
     padding: clamp(1rem, 3vw, 1.5rem);
   }
 
+  .company-onboarding-status-page--full {
+    min-height: max(34rem, calc(100svh - 8rem));
+  }
+
   .company-onboarding-stepper {
     overflow-x: visible;
     margin-top: 1.5rem;
@@ -2831,6 +2841,10 @@ body {
   .company-onboarding-shell,
   .company-onboarding-status-page {
     padding: 1rem;
+  }
+
+  .company-onboarding-status-page--full {
+    min-height: max(34rem, calc(100svh - 6rem));
   }
 
   .company-onboarding-stepper ol {
