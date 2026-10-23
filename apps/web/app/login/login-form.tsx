@@ -187,8 +187,9 @@ export function LoginForm({ navigate = defaultNavigate }: LoginFormProps) {
     return (
       <form className="login-form" noValidate onSubmit={verifyOtp}>
         <p className="login-form-instruction">
-          A sign-in code may have been sent to this address. If you don&apos;t receive one, create an account or try another email.
+          If an account uses <strong>{verifiedEmail}</strong>, a six-digit code is on its way — it can take up to a minute to arrive.
         </p>
+        <p className="login-form-instruction">Didn&apos;t get one? Create an account or change email.</p>
         <div className="company-onboarding-field">
           <label htmlFor="login-otp">Email sign-in code</label>
           <input
