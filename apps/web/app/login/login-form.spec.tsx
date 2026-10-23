@@ -299,8 +299,11 @@ describe("FR-REG-02C login form", () => {
       render(<LoginForm navigate={vi.fn()} />);
       await submitEmail(email);
 
-      expect(screen.getByText(/If an account uses/)).toBeVisible();
-      expect(screen.getByText(/a six-digit code was sent there/)).toBeVisible();
+      expect(screen.getByText(
+        "A sign-in code may have been sent to this address. If you don't receive one, create an account or try another email.",
+      )).toBeVisible();
+      expect(screen.getByRole("link", { name: "Create an account" }))
+        .toHaveAttribute("href", "/register");
     },
   );
 });

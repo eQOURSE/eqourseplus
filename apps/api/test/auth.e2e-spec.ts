@@ -431,7 +431,7 @@ describe("FR-FND-02 auth core", () => {
       .expect(401);
   });
 
-  it("does not reveal whether an email exists when requesting an OTP", async () => {
+  it("returns the same accepted response shape without revealing whether an email exists", async () => {
     const existing = await request(app.getHttpServer())
       .post("/api/v1/auth/otp/request")
       .set("x-forwarded-for", "198.51.100.210")
@@ -443,7 +443,9 @@ describe("FR-FND-02 auth core", () => {
       .send({ email: "unknown@example.com" })
       .expect(202);
 
+    expect(existing.body).toEqual({ status: "accepted" });
     expect(unknown.body).toEqual(existing.body);
+    expect(Object.keys(unknown.body)).toEqual(["status"]);
     expect(mailer.deliveries).toHaveLength(1);
     expect(mailer.deliveries[0]?.to).toBe("freelancer@example.com");
   });
