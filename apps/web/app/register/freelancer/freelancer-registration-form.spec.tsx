@@ -271,10 +271,14 @@ describe("FR-REG-01 freelancer registration form", () => {
     );
 
     const message = await screen.findByText(
-      "We could not start this registration. Check your details or try again later.",
+      "We could not create this account. If you already have one, sign in.",
     );
     expect(message).toBeVisible();
     expect(message.textContent).not.toMatch(/phone|PAN/i);
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/login",
+    );
   });
 
   it("posts the email OTP and shows confirmation without persisting tokens", async () => {
