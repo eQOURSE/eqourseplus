@@ -32,7 +32,7 @@ type EducationForm = {
 };
 
 type SkillForm = { taxonomySlug: string; level: string };
-type LanguageForm = { languageCode: string; proficiency: string };
+type LanguageForm = { languageCode: string; languageChoice: string; proficiency: string };
 type ExperienceEntryForm = {
   organization: string;
   title: string;
@@ -50,7 +50,7 @@ interface ProfileFormState {
   languages: LanguageForm[];
   experience: { totalMonths: string; entries: ExperienceEntryForm[] };
   samples: SampleForm[];
-  availability: { availableFrom: string; weeklyHours: string; timeZone: string };
+  availability: { availableFrom: string; weeklyHours: string; timeZone: string; timeZoneChoice: string };
   rate: { amountMinor: string; currencyCode: string; unit: string };
 }
 
@@ -76,7 +76,7 @@ const EMPTY_EDUCATION: EducationForm = {
   endYear: "",
 };
 const EMPTY_SKILL: SkillForm = { taxonomySlug: "", level: "" };
-const EMPTY_LANGUAGE: LanguageForm = { languageCode: "", proficiency: "" };
+const EMPTY_LANGUAGE: LanguageForm = { languageCode: "", languageChoice: "", proficiency: "" };
 const EMPTY_EXPERIENCE: ExperienceEntryForm = {
   organization: "",
   title: "",
@@ -93,7 +93,7 @@ const EMPTY_FORM: ProfileFormState = {
   languages: [{ ...EMPTY_LANGUAGE }],
   experience: { totalMonths: "", entries: [{ ...EMPTY_EXPERIENCE }] },
   samples: [{ ...EMPTY_SAMPLE }],
-  availability: { availableFrom: "", weeklyHours: "", timeZone: "" },
+  availability: { availableFrom: "", weeklyHours: "", timeZone: "", timeZoneChoice: "" },
   rate: { amountMinor: "", currencyCode: "INR", unit: "" },
 };
 
@@ -115,6 +115,47 @@ const SECTION_LABELS: Readonly<Record<ProfileSection, string>> = {
   [ProfileSection.AVAILABILITY]: "Availability",
   [ProfileSection.RATE]: "Rate",
 };
+
+const OTHER_OPTION = "OTHER";
+const LANGUAGE_OPTIONS = [
+  { value: "en", label: "English" },
+  { value: "hi", label: "Hindi" },
+  { value: "es", label: "Spanish" },
+  { value: "fr", label: "French" },
+  { value: "de", label: "German" },
+  { value: "pt", label: "Portuguese" },
+  { value: "zh", label: "Chinese" },
+  { value: "ja", label: "Japanese" },
+  { value: "ar", label: "Arabic" },
+  { value: "bn", label: "Bengali" },
+  { value: "ta", label: "Tamil" },
+  { value: "te", label: "Telugu" },
+  { value: "mr", label: "Marathi" },
+  { value: "gu", label: "Gujarati" },
+  { value: "kn", label: "Kannada" },
+  { value: "ml", label: "Malayalam" },
+  { value: "pa", label: "Punjabi" },
+  { value: OTHER_OPTION, label: "Other" },
+] as const;
+const TIMEZONE_OPTIONS = [
+  { value: "UTC", label: "UTC" },
+  { value: "Asia/Kolkata", label: "India — Asia/Kolkata" },
+  { value: "Asia/Singapore", label: "Singapore — Asia/Singapore" },
+  { value: "Asia/Dubai", label: "United Arab Emirates — Asia/Dubai" },
+  { value: "Asia/Tokyo", label: "Japan — Asia/Tokyo" },
+  { value: "Europe/London", label: "United Kingdom — Europe/London" },
+  { value: "Europe/Berlin", label: "Central Europe — Europe/Berlin" },
+  { value: "America/New_York", label: "Eastern North America — America/New_York" },
+  { value: "America/Chicago", label: "Central North America — America/Chicago" },
+  { value: "America/Los_Angeles", label: "Pacific North America — America/Los_Angeles" },
+  { value: "Australia/Sydney", label: "Australia — Australia/Sydney" },
+  { value: OTHER_OPTION, label: "Other" },
+] as const;
+
+function optionValue(value: string, options: readonly { value: string }[]): string {
+  if (!value) return "";
+  return options.some((option) => option.value === value) ? value : OTHER_OPTION;
+}
 
 const PROFILE_STATUS_COPY: Partial<Readonly<Record<ProfileState, {
   label: string;
@@ -202,7 +243,7 @@ function formFromProfile(profile: ProfileResponse): ProfileFormState {
       headline: text(profile.personal?.headline),
       city: text(profile.personal?.city),
     },
-    education: profile.education?.length
+    education: Array.isArray(profile.education)
       ? profile.education.map((entry) => ({
           institution: text(entry.institution),
           qualification: text(entry.qualification),
@@ -211,21 +252,25 @@ function formFromProfile(profile: ProfileResponse): ProfileFormState {
           endYear: numberInput(entry.endYear),
         }))
       : [{ ...EMPTY_EDUCATION }],
-    skills: profile.skills?.length
+    skills: Array.isArray(profile.skills)
       ? profile.skills.map((entry) => ({
           taxonomySlug: text(entry.taxonomySlug),
           level: text(entry.level),
         }))
       : [{ ...EMPTY_SKILL }],
-    languages: profile.languages?.length
-      ? profile.languages.map((entry) => ({
-          languageCode: text(entry.languageCode),
+    languages: Array.isArray(profile.languages)
+      ? profile.languages.map((entry) => {
+          const languageCode = text(entry.languageCode);
+          return {
+            languageCode,
+            languageChoice: optionValue(languageCode, LANGUAGE_OPTIONS),
           proficiency: text(entry.proficiency),
-        }))
+          };
+        })
       : [{ ...EMPTY_LANGUAGE }],
     experience: {
       totalMonths: numberInput(profile.experience?.totalMonths),
-      entries: profile.experience?.entries?.length
+      entries: Array.isArray(profile.experience?.entries)
         ? profile.experience.entries.map((entry) => ({
             organization: text(entry.organization),
             title: text(entry.title),
@@ -236,7 +281,7 @@ function formFromProfile(profile: ProfileResponse): ProfileFormState {
           }))
         : [{ ...EMPTY_EXPERIENCE }],
     },
-    samples: profile.samples?.length
+    samples: Array.isArray(profile.samples)
       ? profile.samples.map((entry) => ({
           title: text(entry.title),
           objectKey: text(entry.objectKey),
@@ -248,6 +293,7 @@ function formFromProfile(profile: ProfileResponse): ProfileFormState {
       availableFrom: dateInput(profile.availability?.availableFrom),
       weeklyHours: numberInput(profile.availability?.weeklyHours),
       timeZone: text(profile.availability?.timeZone),
+      timeZoneChoice: optionValue(text(profile.availability?.timeZone), TIMEZONE_OPTIONS),
     },
     rate: {
       amountMinor: rateInput(profile.rate?.amountMinor, text(profile.rate?.currencyCode)),
@@ -323,7 +369,7 @@ function sectionPatch(
     })));
     return { experience: compact({
       totalMonths: optionalInteger(form.experience.totalMonths),
-      entries: entries.length ? entries : undefined,
+      entries: form.experience.entries.length === 0 ? [] : entries.length ? entries : undefined,
     }) } as ProfileDraftInput;
   }
   if (section === ProfileSection.SAMPLES) {
@@ -452,6 +498,7 @@ export function ProfileWizard() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [taxonomy, setTaxonomy] = useState<TaxonomyOption[]>([]);
   const [taxonomyStatus, setTaxonomyStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [skillSearch, setSkillSearch] = useState("");
   const dirty = useRef(new Set<ProfileSection>());
   const latestForm = useRef(form);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -464,6 +511,12 @@ export function ProfileWizard() {
     () => new Set(taxonomy.map((option) => option.slug)),
     [taxonomy],
   );
+  const visibleTaxonomy = useMemo(() => {
+    const query = skillSearch.trim().toLocaleLowerCase();
+    return taxonomy.filter((option) => !query
+      || taxonomyLabel(option).toLocaleLowerCase().includes(query)
+      || form.skills.some((entry) => entry.taxonomySlug === option.slug));
+  }, [form.skills, skillSearch, taxonomy]);
 
   useEffect(() => {
     let active = true;
@@ -672,6 +725,33 @@ export function ProfileWizard() {
     markChanged({ ...form, languages: entries }, ProfileSection.LANGUAGES);
   }
 
+  function updateLanguageChoice(index: number, value: string): void {
+    const entries = form.languages.map((entry, item) => {
+      if (item !== index) return entry;
+      return {
+        ...entry,
+        languageChoice: value,
+        languageCode: value === OTHER_OPTION
+          ? entry.languageChoice === OTHER_OPTION ? entry.languageCode : ""
+          : value,
+      };
+    });
+    markChanged({ ...form, languages: entries }, ProfileSection.LANGUAGES);
+  }
+
+  function updateTimeZoneChoice(value: string): void {
+    markChanged({
+      ...form,
+      availability: {
+        ...form.availability,
+        timeZoneChoice: value,
+        timeZone: value === OTHER_OPTION
+          ? form.availability.timeZoneChoice === OTHER_OPTION ? form.availability.timeZone : ""
+          : value,
+      },
+    }, ProfileSection.AVAILABILITY);
+  }
+
   function updateExperience(index: number, field: keyof ExperienceEntryForm, value: string | boolean): void {
     const entries = form.experience.entries.map((entry, item) => item === index ? { ...entry, [field]: value } : entry);
     markChanged({ ...form, experience: { ...form.experience, entries } }, ProfileSection.EXPERIENCE);
@@ -680,6 +760,15 @@ export function ProfileWizard() {
   function updateSample(index: number, field: keyof SampleForm, value: string): void {
     const entries = form.samples.map((entry, item) => item === index ? { ...entry, [field]: value } : entry);
     markChanged({ ...form, samples: entries }, ProfileSection.SAMPLES);
+  }
+
+  function removeRow(target: "education" | "skills" | "languages" | "experience" | "samples", index: number): void {
+    if (!editable || saving) return;
+    if (target === "education") markChanged({ ...form, education: form.education.filter((_, item) => item !== index) }, ProfileSection.EDUCATION);
+    if (target === "skills") markChanged({ ...form, skills: form.skills.filter((_, item) => item !== index) }, ProfileSection.SKILLS);
+    if (target === "languages") markChanged({ ...form, languages: form.languages.filter((_, item) => item !== index) }, ProfileSection.LANGUAGES);
+    if (target === "experience") markChanged({ ...form, experience: { ...form.experience, entries: form.experience.entries.filter((_, item) => item !== index) } }, ProfileSection.EXPERIENCE);
+    if (target === "samples") markChanged({ ...form, samples: form.samples.filter((_, item) => item !== index) }, ProfileSection.SAMPLES);
   }
 
   async function uploadSample(index: number, event: ChangeEvent<HTMLInputElement>): Promise<void> {
@@ -787,6 +876,7 @@ export function ProfileWizard() {
   }
 
   function addRow(target: "education" | "skills" | "languages" | "experience" | "samples"): void {
+    if (!editable || saving) return;
     if (target === "education") markChanged({ ...form, education: [...form.education, { ...EMPTY_EDUCATION }] }, ProfileSection.EDUCATION);
     if (target === "skills") markChanged({ ...form, skills: [...form.skills, { ...EMPTY_SKILL }] }, ProfileSection.SKILLS);
     if (target === "languages") markChanged({ ...form, languages: [...form.languages, { ...EMPTY_LANGUAGE }] }, ProfileSection.LANGUAGES);
@@ -802,26 +892,40 @@ export function ProfileWizard() {
       {input("City (optional)", "profile-personal-city", form.personal.city, (value) => updatePersonal("city", value))}
     </>;
     if (section === ProfileSection.EDUCATION) return <>
-      {form.education.map((entry, index) => <fieldset className="company-onboarding-subsection" key={index}>
+      {form.education.length ? form.education.map((entry, index) => <fieldset className="company-onboarding-subsection" key={index}>
         <legend>Education {index + 1}</legend>
         {input("School or university", `profile-education-${index}-institution`, entry.institution, (value) => updateEducation(index, "institution", value))}
         {input("Qualification", `profile-education-${index}-qualification`, entry.qualification, (value) => updateEducation(index, "qualification", value))}
         {input("Area of study", `profile-education-${index}-fieldOfStudy`, entry.fieldOfStudy, (value) => updateEducation(index, "fieldOfStudy", value))}
         {select("Start year", `profile-education-${index}-startYear`, entry.startYear, (value) => updateEducation(index, "startYear", value), YEAR_OPTIONS)}
         {select("End year (optional)", `profile-education-${index}-endYear`, entry.endYear, (value) => updateEducation(index, "endYear", value), YEAR_OPTIONS)}
-      </fieldset>)}
-      <GlassButton type="button" variant="secondary" onClick={() => addRow("education")}>Add education</GlassButton>
+        <GlassButton type="button" variant="secondary" disabled={!editable || saving} onClick={() => removeRow("education", index)}>Remove education {index + 1}</GlassButton>
+      </fieldset>) : <p className="company-onboarding-help">No education added yet.</p>}
+      <GlassButton type="button" variant="secondary" disabled={!editable || saving} onClick={() => addRow("education")}>Add education</GlassButton>
     </>;
     if (section === ProfileSection.SKILLS) return <>
       {taxonomyStatus === "error" ? <p role="alert">The skill list is unavailable. Refresh and try again.</p> : null}
-      {form.skills.map((entry, index) => {
+      <div className="company-onboarding-field">
+        <label htmlFor="profile-skills-search">Search skills</label>
+        <input id="profile-skills-search" type="search" value={skillSearch} disabled={!editable || saving} onChange={(event) => setSkillSearch(event.target.value)} />
+        <p className="company-onboarding-help">Choose from the active skill list below. Selected skills can be removed by clicking their chips.</p>
+      </div>
+      {form.skills.some((entry) => entry.taxonomySlug) ? <div className="profile-skill-chips" aria-label="Selected skills">
+        {form.skills.map((entry, index) => {
+          if (!entry.taxonomySlug) return null;
+          const option = taxonomy.find((item) => item.slug === entry.taxonomySlug);
+          const label = option ? taxonomyLabel(option) : "Previously selected skill";
+          return <button className="profile-skill-chip" type="button" key={`${entry.taxonomySlug}-${index}`} disabled={!editable || saving} aria-label={`Deselect ${label}`} onClick={() => removeRow("skills", index)}><span>{label}</span><span aria-hidden="true" className="profile-skill-chip__remove">×</span></button>;
+        })}
+      </div> : null}
+      {form.skills.length ? form.skills.map((entry, index) => {
         const unavailable = entry.taxonomySlug && !activeTaxonomySlugs.has(entry.taxonomySlug)
           ? [{ value: entry.taxonomySlug, label: "Previously selected skill (no longer available)", disabled: true }]
           : [];
         return <fieldset className="company-onboarding-subsection" key={index}>
           <legend>Skill {index + 1}</legend>
           {select(`Skill ${index + 1}`, `profile-skill-${index}-taxonomySlug`, entry.taxonomySlug, (value) => updateSkill(index, "taxonomySlug", value), [
-            ...taxonomy.map((option) => ({ value: option.slug, label: taxonomyLabel(option) })),
+            ...visibleTaxonomy.map((option) => ({ value: option.slug, label: taxonomyLabel(option) })),
             ...unavailable,
           ])}
           {select(`Level ${index + 1}`, `profile-skill-${index}-level`, entry.level, (value) => updateSkill(index, "level", value), [
@@ -830,27 +934,30 @@ export function ProfileWizard() {
             { value: "ADVANCED", label: "Advanced" },
             { value: "EXPERT", label: "Expert" },
           ])}
+          <GlassButton type="button" variant="secondary" disabled={!editable || saving} onClick={() => removeRow("skills", index)}>Remove skill {index + 1}</GlassButton>
         </fieldset>;
-      })}
-      <GlassButton type="button" variant="secondary" onClick={() => addRow("skills")}>Add skill</GlassButton>
+      }) : <p className="company-onboarding-help">No skills added yet.</p>}
+      <GlassButton type="button" variant="secondary" disabled={!editable || saving} onClick={() => addRow("skills")}>Add skill</GlassButton>
     </>;
     if (section === ProfileSection.LANGUAGES) return <>
-      <p className="company-onboarding-help">Use a BCP 47 language tag such as en, en-GB, or hi. Use a hyphen, not an underscore.</p>
-      {form.languages.map((entry, index) => <fieldset className="company-onboarding-subsection" key={index}>
+      <p className="company-onboarding-help">Choose a language from the list, or choose Other and enter a valid BCP 47 language tag such as en-GB. Use a hyphen, not an underscore.</p>
+      {form.languages.length ? form.languages.map((entry, index) => <fieldset className="company-onboarding-subsection" key={index}>
         <legend>Language {index + 1}</legend>
-        {input(`Language tag ${index + 1}`, `profile-language-${index}-languageCode`, entry.languageCode, (value) => updateLanguage(index, "languageCode", value), { help: "Examples: en, en-GB, hi." })}
+        {select(`Language ${index + 1}`, `profile-language-${index}-languageChoice`, entry.languageChoice, (value) => updateLanguageChoice(index, value), LANGUAGE_OPTIONS)}
+        {entry.languageChoice === OTHER_OPTION ? input(`Language tag ${index + 1}`, `profile-language-${index}-languageCode`, entry.languageCode, (value) => updateLanguage(index, "languageCode", value), { help: "Examples: en-GB, fr-CA, or another valid BCP 47 tag." }) : null}
         {select(`Proficiency ${index + 1}`, `profile-language-${index}-proficiency`, entry.proficiency, (value) => updateLanguage(index, "proficiency", value), [
           { value: "BASIC", label: "Basic" },
           { value: "CONVERSATIONAL", label: "Conversational" },
           { value: "PROFESSIONAL", label: "Professional" },
           { value: "NATIVE", label: "Native" },
         ])}
-      </fieldset>)}
-      <GlassButton type="button" variant="secondary" onClick={() => addRow("languages")}>Add language</GlassButton>
+        <GlassButton type="button" variant="secondary" disabled={!editable || saving} onClick={() => removeRow("languages", index)}>Remove language {index + 1}</GlassButton>
+      </fieldset>) : <p className="company-onboarding-help">No languages added yet.</p>}
+      <GlassButton type="button" variant="secondary" disabled={!editable || saving} onClick={() => addRow("languages")}>Add language</GlassButton>
     </>;
     if (section === ProfileSection.EXPERIENCE) return <>
       {input("Total experience in months", "profile-experience-totalMonths", form.experience.totalMonths, (value) => markChanged({ ...form, experience: { ...form.experience, totalMonths: value } }, ProfileSection.EXPERIENCE), { type: "number", inputMode: "numeric", min: 0, max: 960 })}
-      {form.experience.entries.map((entry, index) => <fieldset className="company-onboarding-subsection" key={index}>
+      {form.experience.entries.length ? form.experience.entries.map((entry, index) => <fieldset className="company-onboarding-subsection" key={index}>
         <legend>Experience {index + 1}</legend>
         {input("Company", `profile-experience-${index}-organization`, entry.organization, (value) => updateExperience(index, "organization", value))}
         {input("Job title", `profile-experience-${index}-title`, entry.title, (value) => updateExperience(index, "title", value))}
@@ -858,12 +965,13 @@ export function ProfileWizard() {
         {!entry.currentlyWorks ? <MonthYearPicker id={`profile-experience-${index}-endDate`} label="End month" value={entry.endDate.slice(0, 7)} onChange={(value) => updateExperience(index, "endDate", value ? `${value}-01` : "")} disabled={!editable || saving} error={errors[`profile-experience-${index}-endDate`]} /> : null}
         <label className="profile-current-work"><input type="checkbox" checked={entry.currentlyWorks} disabled={saving || !editable} onChange={(event) => { const currentlyWorks = event.target.checked; const entries = form.experience.entries.map((item, itemIndex) => itemIndex === index ? { ...item, currentlyWorks, endDate: currentlyWorks ? "" : item.endDate } : item); markChanged({ ...form, experience: { ...form.experience, entries } }, ProfileSection.EXPERIENCE); }} /> I currently work here</label>
         {input("What you did (optional)", `profile-experience-${index}-summary`, entry.summary, (value) => updateExperience(index, "summary", value))}
-      </fieldset>)}
-      <GlassButton type="button" variant="secondary" onClick={() => addRow("experience")}>Add experience</GlassButton>
+        <GlassButton type="button" variant="secondary" disabled={!editable || saving} onClick={() => removeRow("experience", index)}>Remove experience {index + 1}</GlassButton>
+      </fieldset>) : <p className="company-onboarding-help">No experience added yet.</p>}
+      <GlassButton type="button" variant="secondary" disabled={!editable || saving} onClick={() => addRow("experience")}>Add experience</GlassButton>
     </>;
     if (section === ProfileSection.SAMPLES) return <>
       <p className="company-onboarding-help">Add references to work samples stored through the profile storage flow.</p>
-      {form.samples.map((entry, index) => <fieldset className="company-onboarding-subsection" key={index}>
+      {form.samples.length ? form.samples.map((entry, index) => <fieldset className="company-onboarding-subsection" key={index}>
         <legend>Sample {index + 1}</legend>
         {input(`Sample title ${index + 1}`, `profile-sample-${index}-title`, entry.title, (value) => updateSample(index, "title", value))}
         <div className="company-onboarding-field">
@@ -872,13 +980,15 @@ export function ProfileWizard() {
           {entry.objectKey ? <p className="company-onboarding-help">{entry.fileName || "Sample file uploaded."}</p> : null}
           {errors[`profile-sample-${index}-file`] ? <p className="company-onboarding-error" role="alert">{errors[`profile-sample-${index}-file`]}</p> : null}
         </div>
-      </fieldset>)}
-      <GlassButton type="button" variant="secondary" onClick={() => addRow("samples")}>Add sample</GlassButton>
+        <GlassButton type="button" variant="secondary" disabled={!editable || saving} onClick={() => removeRow("samples", index)}>Remove sample {index + 1}</GlassButton>
+      </fieldset>) : <p className="company-onboarding-help">No samples added yet.</p>}
+      <GlassButton type="button" variant="secondary" disabled={!editable || saving} onClick={() => addRow("samples")}>Add sample</GlassButton>
     </>;
     if (section === ProfileSection.AVAILABILITY) return <>
       {input("Available from", "profile-availability-availableFrom", form.availability.availableFrom, (value) => markChanged({ ...form, availability: { ...form.availability, availableFrom: value } }, ProfileSection.AVAILABILITY), { type: "date" })}
       {input("Weekly hours", "profile-availability-weeklyHours", form.availability.weeklyHours, (value) => markChanged({ ...form, availability: { ...form.availability, weeklyHours: value } }, ProfileSection.AVAILABILITY), { type: "number", inputMode: "numeric", min: 1, max: 168 })}
-      {input("IANA time zone", "profile-availability-timeZone", form.availability.timeZone, (value) => markChanged({ ...form, availability: { ...form.availability, timeZone: value } }, ProfileSection.AVAILABILITY), { help: "Example: Asia/Kolkata or Europe/London." })}
+      {select("Time zone", "profile-availability-timeZoneChoice", form.availability.timeZoneChoice, updateTimeZoneChoice, TIMEZONE_OPTIONS)}
+      {form.availability.timeZoneChoice === OTHER_OPTION ? input("IANA time zone", "profile-availability-timeZone", form.availability.timeZone, (value) => markChanged({ ...form, availability: { ...form.availability, timeZone: value } }, ProfileSection.AVAILABILITY), { help: "Example: Asia/Kolkata or Europe/London." }) : null}
     </>;
     return <>
       <div className="company-onboarding-field">

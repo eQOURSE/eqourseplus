@@ -233,6 +233,7 @@ describe("FR-REG-02B profile wizard", () => {
     fireEvent.change(screen.getByLabelText("Skill 1"), { target: { value: taxonomy[0]!.slug } });
     fireEvent.click(screen.getByRole("button", { name: "Languages" }));
     await screen.findByRole("heading", { name: "Languages" });
+    fireEvent.change(screen.getByLabelText("Language 1"), { target: { value: "OTHER" } });
     fireEvent.change(screen.getByLabelText("Language tag 1"), { target: { value: "en-GB" } });
     fireEvent.click(screen.getByRole("button", { name: "Experience" }));
     await screen.findByRole("heading", { name: "Experience" });
@@ -418,11 +419,90 @@ describe("FR-REG-02B profile wizard", () => {
     });
   });
 
+  it.each([
+    ["Education", "education", "Add education"],
+    ["Skills", "skills", "Add skill"],
+    ["Languages", "languages", "Add language"],
+  ])("removes the last %s entry into an explicit empty state", async (heading, key, addLabel) => {
+    installFetch(profile({
+      resumeSection: heading.toUpperCase(),
+      [key]: key === "education"
+        ? [{ institution: "University", qualification: "Certificate", fieldOfStudy: "Math", startYear: 2020 }]
+        : key === "skills"
+          ? [{ taxonomySlug: taxonomy[0]!.slug, level: "EXPERT" }]
+          : [{ languageCode: "en", proficiency: "NATIVE" }],
+    }));
+    render(<ProfileWizard />);
+    await screen.findByRole("heading", { name: heading });
+
+    const rowName = heading === "Skills" ? "skill" : heading === "Languages" ? "language" : "education";
+    fireEvent.click(screen.getByRole("button", { name: `Remove ${rowName} 1` }));
+
+    expect(screen.getByText(`No ${heading.toLowerCase()} added yet.`)).toBeVisible();
+    expect(screen.getByRole("button", { name: addLabel })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+    await waitFor(() => expect(patches()).toContainEqual(expect.objectContaining({ [key]: [] })));
+  });
+
+  it("deselects a selected skill when its chip is clicked", async () => {
+    installFetch(profile({ resumeSection: "SKILLS" }));
+    render(<ProfileWizard />);
+    await screen.findByRole("heading", { name: "Skills" });
+
+    fireEvent.change(screen.getByLabelText("Skill 1"), { target: { value: taxonomy[0]!.slug } });
+
+    const chip = await screen.findByRole("button", { name: "Deselect Bounding Box — AI Data Services" });
+    expect(chip).toHaveTextContent("×");
+    fireEvent.click(chip);
+
+    expect(screen.queryByLabelText("Skill 1")).not.toBeInTheDocument();
+    expect(screen.getByText("No skills added yet.")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Deselect Bounding Box — AI Data Services" })).not.toBeInTheDocument();
+  });
+
+  it("uses a client-side language list while preserving free-form Other values", async () => {
+    installFetch(profile({ resumeSection: "LANGUAGES" }));
+    render(<ProfileWizard />);
+    await screen.findByRole("heading", { name: "Languages" });
+
+    const language = screen.getByLabelText<HTMLSelectElement>("Language 1");
+    expect(language).toHaveProperty("type", "select-one");
+    expect(Array.from(language.options).map((option) => option.value)).toEqual(expect.arrayContaining(["en", "hi", "OTHER"]));
+
+    fireEvent.change(language, { target: { value: "OTHER" } });
+    fireEvent.change(screen.getByLabelText("Language tag 1"), { target: { value: "fr-CA" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+    await waitFor(() => expect(patches()).toContainEqual(expect.objectContaining({
+      languages: [{ languageCode: "fr-CA" }],
+    })));
+  });
+
+  it("uses a client-side timezone list while preserving free-form Other values", async () => {
+    installFetch(profile({ resumeSection: "AVAILABILITY" }));
+    render(<ProfileWizard />);
+    await screen.findByRole("heading", { name: "Availability" });
+
+    const timezone = screen.getByLabelText<HTMLSelectElement>("Time zone");
+    expect(timezone).toHaveProperty("type", "select-one");
+    expect(Array.from(timezone.options).map((option) => option.value)).toEqual(expect.arrayContaining(["Asia/Kolkata", "OTHER"]));
+
+    fireEvent.change(timezone, { target: { value: "OTHER" } });
+    fireEvent.change(screen.getByLabelText("IANA time zone"), { target: { value: "America/Argentina/Buenos_Aires" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+    await waitFor(() => expect(patches()).toContainEqual(expect.objectContaining({
+      availability: { timeZone: "America/Argentina/Buenos_Aires" },
+    })));
+  });
+
   it("validates and explains BCP 47 language tags before saving", async () => {
     installFetch(profile({ resumeSection: "LANGUAGES" }));
     render(<ProfileWizard />);
+    fireEvent.change(await screen.findByLabelText("Language 1"), { target: { value: "OTHER" } });
     const input = await screen.findByLabelText("Language tag 1");
-    expect(screen.getByText(/BCP 47/i)).toBeVisible();
+    expect(screen.getAllByText(/BCP 47/i).length).toBeGreaterThan(0);
     fireEvent.change(input, { target: { value: "EN_gb" } });
     fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
 
