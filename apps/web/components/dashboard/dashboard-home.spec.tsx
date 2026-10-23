@@ -244,6 +244,26 @@ describe("FR-REG-16/17/18 role-resolved dashboard", () => {
     expect(screen.getByRole("link", { name: "Register a company" })).toHaveAttribute("href", "/register");
   });
 
+  it("FR-REG-16 amendment: presents a submitted profile as read-only", async () => {
+    fetchMock.mockImplementation((path) => {
+      if (path === "/api/v1/vendors/me" || path === "/api/v1/clients/me") {
+        return response({}, 404);
+      }
+      if (path === "/api/v1/profiles/me") {
+        return response({ userId: "user-1", state: "SUBMITTED", completionPercentage: 100 });
+      }
+      throw new Error(`Unexpected request: ${String(path)}`);
+    });
+
+    renderHome();
+
+    const profilePanel = await screen.findByRole("region", { name: "Profile" });
+    expect(within(profilePanel).getByRole("link", { name: "View profile" }))
+      .toHaveAttribute("href", "/profile");
+    expect(within(profilePanel).queryByRole("link", { name: "Edit profile" }))
+      .not.toBeInTheDocument();
+  });
+
   it("names the missing required field in a draft's next action", async () => {
     fetchMock.mockImplementation((path) => {
       if (path === "/api/v1/vendors/me" || path === "/api/v1/clients/me") return response({}, 404);
