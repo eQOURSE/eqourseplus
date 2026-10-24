@@ -78,6 +78,27 @@ together, verify the deployed PR preview rather than relying on the mocked
    `PROGRESS.md`. Keep production promotion blocked until live event privacy
    and the Sentry alert with a 30-minute action throttle are verified.
 
-The issue alert is scoped to `javascript-nextjs`, matches more than 9 events
-in 5 minutes, and notifies the sole free-plan member at `yobhauk@gmail.com`.
-Bhavesh owns any external mail forwarding to the developer.
+## Production alert amendment
+
+The original alert threshold was not actionable: the real incident volume was
+two events in four days, so `>9 events in 5 minutes` could never fire. Replace
+the old rule with these two named Sentry issue alerts:
+
+| Project | Alert name | Query/environment | Trigger | Action throttle | Recipient |
+| --- | --- | --- | --- | --- | --- |
+| `javascript-nextjs` | `FR-FND-06 production public-session unavailable` | `environment:production` and the stable public-session issue fingerprint | more than 0 matching events in 1 hour | 30 minutes | `yobhauk@gmail.com` |
+| `node-nestjs` | `FR-FND-06 production API error` | `environment:production` | more than 0 new error events in 1 hour | 30 minutes | `yobhauk@gmail.com` |
+
+Do not leave either alert scoped to **All environments**. The web deployment
+uses Vercel's `VERCEL_ENV`; the API deployment sets `SENTRY_ENVIRONMENT` to
+`staging` or `production` explicitly. Preview and staging events must not
+count toward the production rules.
+
+After both rules are saved, trigger one real, production-safe application
+error in each app and verify the corresponding issue and email. A Sentry test
+event or a green DSN/configuration check is not delivery proof. Record the
+issue links, event environment, timestamps, and email-delivery result in
+`PROGRESS.md`; keep the FR open until both deliveries are confirmed.
+
+Bhavesh owns any external mail forwarding beyond the configured Sentry
+recipient.
