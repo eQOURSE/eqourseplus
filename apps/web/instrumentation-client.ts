@@ -4,9 +4,8 @@ import { redactSentryEvent } from "./lib/sentry-redaction";
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN?.trim();
 const environment =
-  process.env.VERCEL_ENV?.trim() ||
-  process.env.SENTRY_ENVIRONMENT?.trim() ||
-  process.env.NODE_ENV?.trim() ||
+  process.env.NEXT_PUBLIC_VERCEL_ENV?.trim() ||
+  process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT?.trim() ||
   "development";
 
 Sentry.init({
