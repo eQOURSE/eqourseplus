@@ -21,7 +21,7 @@ export interface AuditLogStore {
     session: ClientSession,
   ): Promise<AuditLogDocument>;
   findBySubject(
-    subjectCollection: "vendors" | "clients" | "profiles",
+    subjectCollection: "vendors" | "clients" | "profiles" | "users",
     subjectId: string,
   ): Promise<AuditLogDocument[]>;
 }
@@ -55,7 +55,7 @@ export class MongooseAuditLogStore implements AuditLogStore {
   }
 
   findBySubject(
-    subjectCollection: "vendors" | "clients" | "profiles",
+    subjectCollection: "vendors" | "clients" | "profiles" | "users",
     subjectId: string,
   ): Promise<AuditLogDocument[]> {
     return this.model
