@@ -3,8 +3,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { MongoMemoryReplSet } from "mongodb-memory-server";
-import { mongo } from "mongoose";
+import { mongo, model, Types } from "mongoose";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+
+import { auditLogSchema } from "../src/company-reviews/audit-log.schema";
 
 interface RoleAssignmentMigration {
   up(db: mongo.Db, client: mongo.MongoClient): Promise<void>;
@@ -22,6 +24,7 @@ const migrationPath = path.resolve(
 );
 
 const TARGET_EMAIL = "bhavesh.ai@eqourse.com";
+const AuditLogModel = model("FRADM07AuditLog", auditLogSchema);
 
 describe("FR-ADM-07 reviewed internal role assignment migration", () => {
   let memoryServer: MongoMemoryReplSet;
@@ -90,7 +93,6 @@ describe("FR-ADM-07 reviewed internal role assignment migration", () => {
 
     const audit = await db.collection("auditLogs").findOne({ subjectId: id });
     expect(audit).toEqual(expect.objectContaining({
-      actorUserId: id,
       actor: "migration:FR-ADM-07-01",
       subjectCollection: "users",
       subjectId: id,
@@ -102,6 +104,33 @@ describe("FR-ADM-07 reviewed internal role assignment migration", () => {
       reason: expect.stringContaining("FR-FND-06 observability checks"),
       occurredAt: expect.any(Date),
     }));
+    expect(audit).not.toHaveProperty("actorUserId");
+  });
+
+  it("requires exactly one actor identity and never accepts both actor forms", async () => {
+    const base = {
+      subjectCollection: "users",
+      subjectId: new Types.ObjectId(),
+      fromState: "UNASSIGNED",
+      toState: "SUPER_ADMIN",
+      reason: "Reviewed role assignment",
+      occurredAt: new Date(),
+    };
+
+    await expect(new AuditLogModel(base).validate()).rejects.toThrow(/exactly one actor/i);
+    await expect(
+      new AuditLogModel({
+        ...base,
+        actor: "migration:FR-ADM-07-01",
+        actorUserId: new Types.ObjectId(),
+      }).validate(),
+    ).rejects.toThrow(/exactly one actor/i);
+    await expect(
+      new AuditLogModel({ ...base, actor: "migration:FR-ADM-07-01" }).validate(),
+    ).resolves.toBeUndefined();
+    await expect(
+      new AuditLogModel({ ...base, actorUserId: new Types.ObjectId() }).validate(),
+    ).resolves.toBeUndefined();
   });
 
   it("is idempotent and does not rewrite sessions or audit on a rerun", async () => {

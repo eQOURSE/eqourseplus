@@ -55,7 +55,6 @@ module.exports = {
       );
       await auditLogs.insertOne(
         {
-          actorUserId: user._id,
           actor: ACTOR,
           subjectCollection: "users",
           subjectId: user._id,

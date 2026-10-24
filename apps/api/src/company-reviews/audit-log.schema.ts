@@ -1,7 +1,7 @@
 import { Schema, Types, type HydratedDocument } from "mongoose";
 
 export interface AuditLogRecord {
-  actorUserId: Types.ObjectId;
+  actorUserId?: Types.ObjectId;
   actor?: string;
   subjectCollection: "vendors" | "clients" | "profiles" | "users";
   subjectId: Types.ObjectId;
@@ -18,7 +18,7 @@ export type AuditLogDocument = HydratedDocument<AuditLogRecord>;
 
 export const auditLogSchema = new Schema<AuditLogRecord>(
   {
-    actorUserId: { type: Schema.Types.ObjectId, required: true },
+    actorUserId: { type: Schema.Types.ObjectId },
     actor: { type: String, trim: true },
     subjectCollection: {
       type: String,
@@ -40,6 +40,15 @@ export const auditLogSchema = new Schema<AuditLogRecord>(
     versionKey: false,
   },
 );
+
+auditLogSchema.pre("validate", function () {
+  const hasAuthenticatedActor =
+    this.actorUserId !== undefined && this.actorUserId !== null;
+  const hasMigrationActor = typeof this.actor === "string" && this.actor.trim().length > 0;
+  if (hasAuthenticatedActor === hasMigrationActor) {
+    throw new Error("Audit entry must identify exactly one actor: user or migration");
+  }
+});
 
 auditLogSchema.index({ subjectCollection: 1, subjectId: 1, occurredAt: 1 });
 auditLogSchema.index({ actorUserId: 1, occurredAt: 1 });
