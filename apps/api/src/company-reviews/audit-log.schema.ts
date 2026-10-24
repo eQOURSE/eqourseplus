@@ -2,8 +2,12 @@ import { Schema, Types, type HydratedDocument } from "mongoose";
 
 export interface AuditLogRecord {
   actorUserId: Types.ObjectId;
-  subjectCollection: "vendors" | "clients" | "profiles";
+  actor?: string;
+  subjectCollection: "vendors" | "clients" | "profiles" | "users";
   subjectId: Types.ObjectId;
+  subjectEmail?: string;
+  role?: string;
+  businessUnit?: string;
   fromState: string;
   toState: string;
   reason: string;
@@ -15,12 +19,16 @@ export type AuditLogDocument = HydratedDocument<AuditLogRecord>;
 export const auditLogSchema = new Schema<AuditLogRecord>(
   {
     actorUserId: { type: Schema.Types.ObjectId, required: true },
+    actor: { type: String, trim: true },
     subjectCollection: {
       type: String,
-      enum: ["vendors", "clients", "profiles"],
+      enum: ["vendors", "clients", "profiles", "users"],
       required: true,
     },
     subjectId: { type: Schema.Types.ObjectId, required: true },
+    subjectEmail: { type: String, trim: true },
+    role: { type: String, trim: true },
+    businessUnit: { type: String, trim: true },
     fromState: { type: String, required: true },
     toState: { type: String, required: true },
     reason: { type: String, required: true, trim: true },
