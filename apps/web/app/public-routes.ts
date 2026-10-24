@@ -12,6 +12,7 @@ export const EXCLUDED_ROUTES = [
   "/design-system",
   "/jobs",
   "/login",
+  "/observability-check",
   "/profile",
   "/profile-reviews",
   "/register",

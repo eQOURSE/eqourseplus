@@ -516,7 +516,15 @@ Sentry environments. The `javascript-nextjs` public-session alert and a named
 trigger on more than 0 matching events in 1 hour, and retain a 30-minute
 action throttle. Both alerts notify the configured Sentry recipient, and
 acceptance requires a real production error in each app plus confirmed email
-delivery; configuration or a Sentry test event alone is insufficient.
+delivery; configuration or a Sentry test event alone is insufficient. Each app
+therefore exposes a repeatable, guarded observability check: API `GET
+/api/v1/internal/observability-check` and the server-rendered web
+`/observability-check` route. Both require an authenticated `SUPER_ADMIN`, are
+noindex and absent from the sitemap, and throw a known PII-free error only
+after authentication succeeds. Unauthenticated requests and authenticated
+non-internal roles must not reach the throw path. These checks are the approved
+production-safe trigger for proving the corresponding Sentry issue and email
+delivery, including after the AWS migration.
 
 ### 22.2 Public site (PUB) — Phase 1, after all FND
 | ID | Requirement | Acceptance |
