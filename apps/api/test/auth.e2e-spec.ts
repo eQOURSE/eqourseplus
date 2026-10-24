@@ -731,4 +731,22 @@ describe("FR-FND-02 auth core", () => {
       .auth(tokens.accessToken, { type: "bearer" })
       .expect(200, { ok: true });
   });
+
+  it("keeps the FR-FND-06 observability check behind the internal role", async () => {
+    await request(app.getHttpServer())
+      .get("/api/v1/internal/observability-check")
+      .expect(401);
+
+    const freelancer = await signIn("freelancer@example.com");
+    await request(app.getHttpServer())
+      .get("/api/v1/internal/observability-check")
+      .auth(freelancer.accessToken, { type: "bearer" })
+      .expect(403);
+
+    const superAdmin = await signIn("admin@example.com");
+    await request(app.getHttpServer())
+      .get("/api/v1/internal/observability-check")
+      .auth(superAdmin.accessToken, { type: "bearer" })
+      .expect(500);
+  });
 });

@@ -189,6 +189,13 @@ describe("FR-PUB-01 crawl controls", () => {
       expect(serialized).not.toContain(`plus.eqourse.com${route}`);
     }
   });
+
+  it("keeps the observability check out of the sitemap", () => {
+    expect(JSON.stringify(sitemap())).not.toContain(
+      "plus.eqourse.com/observability-check",
+    );
+    expect(EXCLUDED_ROUTES).toContain("/observability-check");
+  });
 });
 
 describe("FR-PUB-01 social image", () => {

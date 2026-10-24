@@ -19,6 +19,7 @@ const ALL_PUBLIC_ROUTES = [
   "/freelancers",
   "/jobs",
   "/login",
+  "/observability-check",
   "/profile",
   "/profile-reviews",
   "/register",
