@@ -8,6 +8,15 @@ const { init } = vi.hoisted(() => ({ init: vi.fn() }));
 vi.mock("@sentry/nextjs", () => ({ init }));
 
 describe("FR-FND-06 Edge event privacy", () => {
+  it("marks Edge events as production events when deployed in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_SENTRY_DSN", "https://public-key@example.ingest.sentry.io/1");
+    await import("./sentry.edge.config");
+
+    expect(init.mock.calls[0]?.[0]).toMatchObject({ environment: "production" });
+  });
+
   it("removes SDK-added user identity before an event is sent", async () => {
     vi.stubEnv("NEXT_PUBLIC_SENTRY_DSN", "https://public-key@example.ingest.sentry.io/1");
     await import("./sentry.edge.config");
