@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { MongoMemoryServer } from "mongodb-memory-server";
+import { MongoMemoryReplSet } from "mongodb-memory-server";
 import { connection, type mongo } from "mongoose";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -56,13 +56,13 @@ const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const apiDirectory = path.resolve(testDirectory, "..");
 
 describe("FR-FND-03A database migration and taxonomy seed", () => {
-  let memoryServer: MongoMemoryServer;
+  let memoryServer: MongoMemoryReplSet;
   let client: mongo.MongoClient;
   let db: mongo.Db;
   let uri: string;
 
   beforeAll(async () => {
-    memoryServer = await MongoMemoryServer.create();
+    memoryServer = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
     const databaseName = "eqourse_fnd_03_test";
     uri = memoryServer.getUri(databaseName);
     process.env.MONGODB_URI = uri;
