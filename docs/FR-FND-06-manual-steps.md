@@ -94,11 +94,19 @@ uses Vercel's `VERCEL_ENV`; the API deployment sets `SENTRY_ENVIRONMENT` to
 `staging` or `production` explicitly. Preview and staging events must not
 count toward the production rules.
 
-After both rules are saved, trigger one real, production-safe application
-error in each app and verify the corresponding issue and email. A Sentry test
-event or a green DSN/configuration check is not delivery proof. Record the
-issue links, event environment, timestamps, and email-delivery result in
-`PROGRESS.md`; keep the FR open until both deliveries are confirmed.
+After both rules are saved, sign in with an internal `SUPER_ADMIN` account and
+trigger the repeatable production-safe checks:
+
+1. `GET /api/v1/internal/observability-check` on the API.
+2. `GET /observability-check` on the web app.
+
+Each route is noindex, absent from the sitemap, inaccessible without an
+authenticated internal role, and throws a known PII-free error only after the
+guard succeeds. Verify the corresponding issue and email for each event. A
+Sentry test event or a green DSN/configuration check is not delivery proof.
+Record the issue links, event environments, timestamps, and email-delivery
+results in `PROGRESS.md`; keep the FR open until both deliveries are
+confirmed.
 
 Bhavesh owns any external mail forwarding beyond the configured Sentry
 recipient.

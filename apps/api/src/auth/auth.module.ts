@@ -12,6 +12,7 @@ import {
 } from "./auth.constants";
 import { loadAuthConfig } from "./auth.config";
 import { AuthController } from "./auth.controller";
+import { ObservabilityController } from "./observability.controller";
 import { InMemoryAuthRateLimitStore } from "./auth-rate-limit.store";
 import { AuthService } from "./auth.service";
 import { JwtAuthGuard } from "./jwt-auth.guard";
@@ -32,7 +33,7 @@ import { ProfilesModule } from "../profiles/profiles.module";
     ProfilesModule,
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 5 }]),
   ],
-  controllers: [AuthController, RegistrationController],
+  controllers: [AuthController, RegistrationController, ObservabilityController],
   providers: [
     {
       provide: AUTH_CONFIG,
