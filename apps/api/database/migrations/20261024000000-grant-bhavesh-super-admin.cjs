@@ -26,7 +26,10 @@ module.exports = {
       const user = await users.findOne({ email: TARGET_EMAIL }, { session });
 
       if (!user) {
-        throw new Error(`Internal role subject ${TARGET_EMAIL} does not exist`);
+        console.warn(
+          `FR-ADM-07 skipped: subject account ${TARGET_EMAIL} does not exist; no writes performed`,
+        );
+        return;
       }
 
       const assignments = user.roleAssignments ?? [];

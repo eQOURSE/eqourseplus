@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { MongoMemoryReplSet } from "mongodb-memory-server";
 import { mongo, model, Types } from "mongoose";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { auditLogSchema } from "../src/company-reviews/audit-log.schema";
 
@@ -146,10 +146,18 @@ describe("FR-ADM-07 reviewed internal role assignment migration", () => {
     expect(await db.collection("auditLogs").find().toArray()).toEqual(auditAfterFirstRun);
   });
 
-  it("aborts without writes when the literal subject email does not exist", async () => {
-    await expect(migration().up(db, client)).rejects.toThrow(/does not exist/i);
-    expect(await db.collection("users").countDocuments()).toBe(0);
-    expect(await db.collection("auditLogs").countDocuments()).toBe(0);
+  it("skips without writes and logs the literal subject email when it does not exist", async () => {
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      await expect(migration().up(db, client)).resolves.toBeUndefined();
+      expect(warning).toHaveBeenCalledWith(
+        `FR-ADM-07 skipped: subject account ${TARGET_EMAIL} does not exist; no writes performed`,
+      );
+      expect(await db.collection("users").countDocuments()).toBe(0);
+      expect(await db.collection("auditLogs").countDocuments()).toBe(0);
+    } finally {
+      warning.mockRestore();
+    }
   });
 
   it("rolls back the assignment and session revocation when the audit insert fails", async () => {
