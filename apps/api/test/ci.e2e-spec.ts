@@ -416,6 +416,8 @@ describe("FR-FND-05 API deployment", () => {
     expect(productionJob).toContain(
       'CORS_ORIGINS: "https://plus.eqourse.com"',
     );
+    expect(stagingJob).toContain('SENTRY_ENVIRONMENT: "staging"');
+    expect(productionJob).toContain('SENTRY_ENVIRONMENT: "production"');
     expect(stagingJob).toContain("Validate staging runtime configuration");
     expect(productionJob).toContain(
       "Validate production runtime configuration",
@@ -427,10 +429,10 @@ describe("FR-FND-05 API deployment", () => {
       "Missing required runtime configuration: CORS_ORIGINS",
     );
     expect(stagingJob).toContain(
-      '--set-env-vars="^;^CORS_ORIGINS=${CORS_ORIGINS};MAILER_PROVIDER=${MAILER_PROVIDER}',
+      '--set-env-vars="^;^CORS_ORIGINS=${CORS_ORIGINS};SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT};MAILER_PROVIDER=${MAILER_PROVIDER}',
     );
     expect(productionJob).toContain(
-      '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}"',
+      '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",SENTRY_ENVIRONMENT="${SENTRY_ENVIRONMENT}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}"',
     );
     expect(stagingJob).toContain(
       "--set-secrets=MONGODB_URI=MONGODB_URI_STAGING:latest,JWT_SECRET=JWT_SECRET_STAGING:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
@@ -472,7 +474,7 @@ describe("FR-FND-05 API deployment", () => {
     expect(stagingJob).toContain("OTP_EMAIL_FROM: ${{ vars.OTP_EMAIL_FROM }}");
     expect(stagingJob).toContain("Missing required runtime configuration: OTP_EMAIL_FROM");
     expect(stagingJob).toContain(
-      ';MAILER_PROVIDER=${MAILER_PROVIDER};OTP_EMAIL_FROM=${OTP_EMAIL_FROM}',
+      ';SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT};MAILER_PROVIDER=${MAILER_PROVIDER};OTP_EMAIL_FROM=${OTP_EMAIL_FROM}',
     );
     expect(stagingJob).toContain("RESEND_API_KEY=RESEND_API_KEY:latest");
 
@@ -482,7 +484,7 @@ describe("FR-FND-05 API deployment", () => {
       "Missing required runtime configuration: OTP_EMAIL_FROM",
     );
     expect(productionJob).toContain(
-      '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}"',
+      '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",SENTRY_ENVIRONMENT="${SENTRY_ENVIRONMENT}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}"',
     );
     expect(productionJob).toContain(
       "RESEND_API_KEY=RESEND_API_KEY:latest",
@@ -502,7 +504,7 @@ describe("FR-FND-05 API deployment", () => {
     expect(stagingJob).toContain('SMS_PROVIDER: "sandbox"');
     expect(productionJob).toContain('SMS_PROVIDER: "sandbox"');
     expect(productionJob).toContain(
-      '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}",SMS_PROVIDER="${SMS_PROVIDER}"',
+      '--set-env-vars=CORS_ORIGINS="${CORS_ORIGINS}",SENTRY_ENVIRONMENT="${SENTRY_ENVIRONMENT}",MAILER_PROVIDER="${MAILER_PROVIDER}",OTP_EMAIL_FROM="${OTP_EMAIL_FROM}",SMS_PROVIDER="${SMS_PROVIDER}"',
     );
     expect(productionJob).toContain(
       "--set-secrets=MONGODB_URI=MONGODB_URI:latest,JWT_SECRET=JWT_SECRET:latest,VENDOR_IDENTIFIER_HMAC_SECRET=VENDOR_IDENTIFIER_HMAC_SECRET:latest,CLIENT_IDENTIFIER_HMAC_SECRET=CLIENT_IDENTIFIER_HMAC_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest",
