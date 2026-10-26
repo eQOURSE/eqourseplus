@@ -553,17 +553,18 @@ open board (wk25–30) → 8 AI+CRM (31+). Never start a phase before the previo
 
 **FR-FND-07 role-separation amendment (2026-10-26):** The reviewed Atlas
 role shape and verification procedure are normative in
-`docs/FR-FND-07-index-ownership.md`. Runtime roles are project-local custom
-roles with data actions on `eqplus` collections only: `users`, `profiles`,
-`vendors` and `clients` may use `find`/`insert`/`update`/`remove`,
-`skillTaxonomy` uses `find`, and `auditLogs` uses only `find`/`insert`.
-Runtime roles inherit no built-in role and have no `listIndexes`,
-`createIndex`, `dropIndex`, `collMod`, `createCollection`, database-wide or
-`AnyDatabase` privilege. Separate project-local migrator roles alone hold
-index actions on all application collections, plus only the committed
-migration data and changelog/lock actions; they have no `update` or `remove`
-on `auditLogs`. Atlas effective privileges must be recorded for staging and
-production before FR-FND-07 or the dependent migration PRs are accepted.
+`docs/FR-FND-07-index-ownership.md`. The staging runtime user
+`eqplus-staging-app` receives `eqplus-app-staging`, which has the same data
+shape as production `eqplus-app` and no index actions. Production `api-prod`
+keeps `eqplus-app`; only its `createIndex` action is removed because its
+`auditLogs` `find`/`insert` shape is already compliant. Both project-local
+`eqplus-migrator` users receive `eqplus-migrator-role`: full CRUD on the
+non-audit application collections, `find`/`insert` only on `auditLogs`, and
+`createIndex`/`dropIndex`/`listIndexes`. `api-dev` is not referenced by the
+repository's application or deployment configuration and must be confirmed
+unused before removal. The order is staging role replacement, effective-role
+verification and smoke test, then production role changes and verification;
+the dependent migration PRs remain blocked until the recorded evidence passes.
 
 **FR-FND-06 amendment (2026-10-24):** Production observability uses explicit
 Sentry environments. The `javascript-nextjs` public-session alert and a named

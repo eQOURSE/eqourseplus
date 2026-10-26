@@ -4,15 +4,23 @@ This rollout follows [SPEC.md](../SPEC.md) §19.2 and FR-FND-07. Do not merge
 the runtime change into `develop` until the staging role split is verified;
 do not promote it to `main` until the production role split is verified.
 
-## Current Atlas state (reported prerequisite state, 2026-10-03)
+## Current Atlas state (direct review, 2026-10-26)
 
-- The dev project has `api-dev` with the broad development role, while the
-  deployed `eqplus-app` runtime role is restricted. FR-FND-07 includes replacing
-  the broad `api-dev` role before FR-REG-07A; the FR-TST-01 `tests`,
-  `testAttempts` and `collMod` role addition is intentionally separate.
+- In `eqplus-dev`, production `api-prod` uses custom role `eqplus-app` on
+  `admin`. Its `auditLogs` privilege is already `find` + `insert` only; the
+  sole reported violation is `createIndex`, which must be removed in place.
+- In `eqplus-staging`, `eqplus-staging-app` still has
+  `readWriteAnyDatabase@admin`; it must be replaced by `eqplus-app-staging`.
+- Both project-local `eqplus-migrator` users and production-project `api-dev`
+  still have broad `readWrite@eqplus`, which permits `update` and `remove` on
+  `auditLogs`. The migrators must be replaced by `eqplus-migrator-role`.
+- The repository references `api-dev` only in legacy `SETUP.md`, `HANDOFF.md`
+  and this rollout document; no application code, workflow, deployed secret
+  or connection configuration uses it. Its external use must be confirmed
+  before the production-project user is removed.
 - The staging and production projects have distinct `eqplus-migrator`
-  principals with the reviewed migration permissions. Secret Manager contains
-  `MONGODB_URI_MIGRATOR_STAGING` and `MONGODB_URI_MIGRATOR`.
+  principals. Secret Manager contains `MONGODB_URI_MIGRATOR_STAGING` and
+  `MONGODB_URI_MIGRATOR`.
 - The two clusters have different names for four `users` indexes with the
   same observed key patterns. The Atlas connector exposes names and keys but
   not the complete `unique`, `sparse`, partial-filter, collation and TTL
@@ -27,62 +35,77 @@ another custom role.
 
 ### Runtime principals
 
-- In `eqplus-staging`, keep username `eqplus-staging-app` and assign a custom
-  runtime role. In `eqplus-dev` (the production project), keep username
-  `api-prod` and update the existing `eqplus-app` custom role in place.
-- On database `eqplus`, grant `find`, `insert`, `update` and `remove` only on
-  `users`, `profiles`, `vendors` and `clients`; grant `find` only on
-  `skillTaxonomy`; and grant only `find` and `insert` on `auditLogs`.
-- Grant no `listIndexes`, `createIndex`, `dropIndex`, `collMod`,
-  `createCollection`, database-wide, `admin`-database or `AnyDatabase`
-  privilege to either runtime role. The runtime role has no inherited roles.
-  This is the concrete implementation of “readWrite on `eqplus` minus
-  `update`/`remove` on `auditLogs`, with index privileges removed”; MongoDB
-  cannot express that subtraction through an inherited built-in role.
-- `api-dev` is a separate development user, not an accepted staging or
-  production runtime identity. Its broad `readWrite` role must not appear in
-  either deployed connection string; its replacement or retirement is tracked
-  separately before FR-REG-07A.
+- In `eqplus-staging`, keep username `eqplus-staging-app` and replace its
+  `readWriteAnyDatabase@admin` assignment with the custom role
+  `eqplus-app-staging`. In `eqplus-dev` (the production project), keep
+  username `api-prod` and keep the existing custom role `eqplus-app`.
+- `eqplus-app-staging` must have the same data shape as `eqplus-app`: full
+  `find`, `insert`, `update` and `remove` on the non-audit application
+  collections (`users`, `profiles`, `vendors`, `clients`, `skillTaxonomy`) and
+  only `find` and `insert` on `auditLogs`. It has no index actions.
+- Production `eqplus-app` already has the correct `auditLogs` shape. Remove
+  only its `createIndex` action; do not rebuild or otherwise change the role.
+  Its `listIndexes`/`dropIndex` state must be recorded before and after so the
+  direct Atlas finding remains auditable.
+- Neither runtime role may inherit a built-in role or hold
+  `readWriteAnyDatabase`, `dbAdmin`, `listIndexes`, `createIndex`, `dropIndex`,
+  `collMod`, `createCollection`, database-wide, `admin`-database or
+  `AnyDatabase` privilege. MongoDB cannot express the audit-log subtraction
+  through an inherited built-in role, so these are explicit custom roles.
+- `api-dev` exists only in the repository's legacy setup and handoff notes; no
+  application, workflow, deployed secret or connection configuration in this
+  repository references it. Its purpose is therefore not evidenced as an
+  active production dependency. Bhavesh must confirm no external local tool or
+  operator still uses it; if none does, remove the production-project user
+  rather than repurpose it.
 
 ### Migration principals
 
-- Keep username `eqplus-migrator` in each project, but assign separate,
-  project-local custom roles and keep the staging and production credentials in
-  their existing separate managed secrets.
-- Grant `listIndexes`, `createIndex` and `dropIndex` on all six application
-  collections (`users`, `profiles`, `vendors`, `clients`, `skillTaxonomy`,
-  `auditLogs`). These are the only principals allowed to manage indexes.
-- Grant the data actions required by the committed migrations only: `find` on
-  `users`; `find`, `insert` and `update` on `profiles`; `find`, `insert` and
-  `update` on `skillTaxonomy`; and `find`, `insert`, `update` and `remove` on
-  `migrationChangelog` and `migrationLock`.
-- Grant `listCollections` at the `eqplus` database scope and `createCollection`
-  plus `collMod` only on the collections used by the committed schema
-  migrations (`skillTaxonomy`, `users` and `profiles`). Do not grant either
-  action on `auditLogs`, `tests` or `testAttempts`; the FR-TST-01 role addition
-  remains separate.
-- Grant no data `insert`, `update` or `remove` action on `auditLogs`. The
-  migration principal may inspect and change its indexes, but it cannot change
-  audit entries. No broad built-in role is inherited.
+- Keep username `eqplus-migrator` in each project, but replace its
+  `readWrite@eqplus` (and any other built-in role) assignment with the
+  project-local custom role `eqplus-migrator-role`. Staging and production
+  retain separate credentials in their existing managed secrets.
+- `eqplus-migrator-role` grants full `find`, `insert`, `update` and `remove`
+  on the non-audit application collections (`users`, `profiles`, `vendors`,
+  `clients`, `skillTaxonomy`), only `find` and `insert` on `auditLogs`, and
+  full CRUD on the migration bookkeeping collections `migrationChangelog` and
+  `migrationLock`.
+- The migrator role also grants `createIndex`, `dropIndex` and `listIndexes`
+  across the `eqplus` collection resources, including `auditLogs`. These are
+  the only principals allowed to manage indexes. It has no inherited built-in
+  role, and no `AnyDatabase` privilege.
+- `collMod`, `createCollection` and `listCollections` remain limited to the
+  committed migration resources required by the existing migrations; do not
+  grant them on `auditLogs`, `tests` or `testAttempts`. The FR-TST-01 role
+  addition remains separate. The migrator has no `update` or `remove` action
+  on `auditLogs`, despite having index actions there.
 
 ### Effective-role verification
 
 After each role assignment, the trusted Atlas operator records the role and
 privilege view for the exact username without displaying credentials. Use the
 Atlas console's effective-privilege view or an equivalent `usersInfo` check
-with `showPrivileges: true` and `showCredentials: false`. Acceptance requires:
+with `showPrivileges: true` and `showCredentials: false`. Apply and verify in
+this order:
 
-1. The runtime user has only its one custom role; no inherited role contains
-   `readWrite`, `readWriteAnyDatabase` or `dbAdmin`.
-2. Runtime privileges contain no `listIndexes`, `createIndex`, `dropIndex` or
-   `collMod`, and `auditLogs` contains `find`/`insert` but not `update`/`remove`.
-3. Each migrator has only its project-local migration role, has the three index
-   actions on all six application collections, and has no `update`/`remove` on
-   `auditLogs`.
-4. A staging API smoke test succeeds with the staging runtime URI; a staging
-   migration `status` and two idempotent `up` runs succeed with the staging
-   migrator URI. Production is verified with `status` first and remains
-   approval-gated for any `up`/`apply` execution.
+1. **Staging first:** `eqplus-staging-app` has only `eqplus-app-staging`, the
+   `readWriteAnyDatabase@admin` role is absent, and its effective privileges
+   contain no index action. `eqplus-migrator` has only
+   `eqplus-migrator-role`, full CRUD on non-audit application collections,
+   `find`/`insert` on `auditLogs`, and the three index actions.
+2. Run the staging API smoke test and capture the effective-privilege output.
+   Confirm `auditLogs` has no `update` or `remove` for either principal and
+   that no inherited `readWrite`, `readWriteAnyDatabase` or `dbAdmin` role
+   remains.
+3. **Production second:** `api-prod` keeps `eqplus-app`; remove only its
+   `createIndex` action and prove its existing `auditLogs` `find`/`insert`
+   shape is unchanged. Replace production `eqplus-migrator`'s built-in role
+   with `eqplus-migrator-role`, then record the same effective-privilege view.
+4. Confirm `api-dev` has no external dependency. If unused, remove it; do not
+   treat its deletion as the runtime-role verification.
+5. Run a staging migration `status` and two idempotent `up` runs with the
+   staging migrator URI. Production is verified with `status` first and
+   remains approval-gated for any `up`/`apply` execution.
 
 The recorded evidence must include the two projects, usernames, effective
 roles, relevant privilege rows and command timestamps. It must not include a
@@ -90,25 +113,32 @@ password or a connection URI.
 
 ## Required sequence
 
-1. Capture `db.<collection>.getIndexes()` for each application collection
-   in both clusters, including `_id_`, and retain the complete manifests for
-   review and rollback. Compare names, key order and all index options.
-2. Provision a distinct migration principal in each Atlas project. Give it
-   the reviewed index-management permissions from FR-FND-07 and only the
-   collection data and `migrate-mongo` changelog/lock permissions needed by
-   committed migrations. It must not update or remove `auditLogs`.
-3. Remove database-wide grants and index permissions from the staging and
-   production application runtime principals, and replace the broad `api-dev`
-   development role with the FR-FND-07-restricted role before FR-REG-07A.
-   Verify their effective roles,
-   including the absence of inherited broad privileges. Retain `FIND` and
-   `INSERT`, but no `UPDATE` or `REMOVE`, on `auditLogs`.
-4. Store each migration URI as a separate managed secret. Make it available
+1. Capture the current effective roles for `eqplus-staging-app`, staging
+   `eqplus-migrator`, `api-prod`, production `eqplus-migrator` and `api-dev`.
+   Capture `db.<collection>.getIndexes()` for each application collection in
+   both clusters, including `_id_`, and retain complete manifests for review
+   and rollback. Compare names, key order and all index options.
+2. **Apply staging first.** In `eqplus-staging`, create
+   `eqplus-app-staging` and `eqplus-migrator-role`; replace the staging runtime
+   user's `readWriteAnyDatabase@admin` assignment and the staging migrator's
+   built-in roles. Do not rotate either credential.
+3. **Verify staging before touching production.** Record effective privileges
+   for both staging principals, confirm the runtime has no index actions and
+   the migrator has the three index actions, and confirm neither can update or
+   remove `auditLogs`. Run the staging API smoke test.
+4. **Apply production second.** On `eqplus-app`, remove only `createIndex` and
+   prove the existing `auditLogs` `find`/`insert` privileges are unchanged.
+   Replace the production migrator's built-in roles with
+   `eqplus-migrator-role`, then record and verify effective privileges.
+5. Confirm whether any external local tool or operator uses `api-dev`. If no
+   dependency exists, remove the production-project user; do not use it as a
+   deployed runtime or migration identity.
+6. Store each migration URI as a separate managed secret. Make it available
    only to the trusted migration operator or job. Never inject it into a
    Cloud Run API service, save it in the repository, or print it in logs.
-5. Deploy the API change that sets `autoIndex: false` under `NODE_ENV=production`.
+7. Deploy the API change that sets `autoIndex: false` under `NODE_ENV=production`.
    Confirm application startup creates no index and normal reads/writes work.
-6. Only then run the reviewed name-reconciliation migration on staging with
+8. Only then run the reviewed name-reconciliation migration on staging with
    `NODE_ENV=production` and `MONGODB_MIGRATION_URI` set to the staging
    migration credential. Set `INDEX_RECONCILIATION_BASELINE_PATH` to a new,
    absolute path outside the repository and retain the generated file for
