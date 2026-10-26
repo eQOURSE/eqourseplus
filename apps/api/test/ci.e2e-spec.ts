@@ -200,14 +200,15 @@ describe("FR-FND-05 API deployment", () => {
     );
   });
 
-  it("passes the Cloud Run migration secret to migrate-mongo", () => {
+  it("requires the dedicated migration secret in production", () => {
     const migrationConfig = readFileSync(
       path.join(repositoryDirectory, "apps", "api", "migrate-mongo-config.cjs"),
       "utf8",
     );
 
+    expect(migrationConfig).toContain('environment.NODE_ENV === "production"');
     expect(migrationConfig).toContain(
-      "environment.MONGODB_MIGRATION_URI ?? environment.MONGODB_URI",
+      "environment.MONGODB_MIGRATION_URI || environment.MONGODB_URI",
     );
   });
 
