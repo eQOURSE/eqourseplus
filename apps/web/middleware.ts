@@ -188,7 +188,9 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
       } else if (refresh.status === 401) {
         if (pathname === "/login") {
           // A revoked refresh session is an expected signed-out state on the
-          // page where the user can recover by requesting a new OTP.
+          // page where the user can recover by requesting a new OTP. This
+          // deliberately gives up the concurrent-rotation fail-closed guard
+          // for /login only; marketing routes still protect a winning session.
           accessToken = undefined;
           clearStaleCookies = true;
         } else if (accessToken) {
