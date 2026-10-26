@@ -129,7 +129,13 @@ function unavailable(reason: UnavailableReason, group: RouteGroup): NextResponse
   });
 }
 
-function finishResponse(response: NextResponse, requestId: string, rotated: { accessToken: string; refreshToken: string } | null, sessionBearing = true): NextResponse {
+function finishResponse(
+  response: NextResponse,
+  requestId: string,
+  rotated: { accessToken: string; refreshToken: string } | null,
+  sessionBearing = true,
+  clearStaleCookies = false,
+): NextResponse {
   response.headers.set("x-request-id", requestId);
   response.headers.set("Cache-Control", sessionBearing ? "no-store" : "private, max-age=0, must-revalidate");
   if (rotated) {
@@ -138,6 +144,14 @@ function finishResponse(response: NextResponse, requestId: string, rotated: { ac
     });
     response.cookies.set(REFRESH_COOKIE, rotated.refreshToken, {
       httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 30 * 24 * 60 * 60,
+    });
+  }
+  if (clearStaleCookies) {
+    response.cookies.set(ACCESS_COOKIE, "", {
+      httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 0,
+    });
+    response.cookies.set(REFRESH_COOKIE, "", {
+      httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 0,
     });
   }
   return response;
@@ -159,6 +173,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
   const group = routeGroup(pathname);
   let rotated: { accessToken: string; refreshToken: string } | null = null;
+  let clearStaleCookies = false;
   let session: AuthSession | null = null;
   try {
     let upstream = accessToken ? await sessionFor(accessToken, requestId) : null;
@@ -170,10 +185,17 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
         upstream = await sessionFor(accessToken, requestId);
       } else if (refresh.parseFailed) {
         return unavailable("parse_failed", group);
-      } else if (refresh.status === 401 && accessToken) {
-        // A stale cookie may have lost a concurrent rotation on another instance.
-        // Never render a guest header or clear a winning response's cookies.
-        return unavailable("refresh_lost", group);
+      } else if (refresh.status === 401) {
+        if (pathname === "/login") {
+          // A revoked refresh session is an expected signed-out state on the
+          // page where the user can recover by requesting a new OTP.
+          accessToken = undefined;
+          clearStaleCookies = true;
+        } else if (accessToken) {
+          // A stale cookie may have lost a concurrent rotation on another instance.
+          // Never render a guest header or clear a winning response's cookies.
+          return unavailable("refresh_lost", group);
+        }
       } else if (refresh.status !== 401) {
         return unavailable("upstream_status", group);
       }
@@ -214,7 +236,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
   if (session) requestHeaders.set(PUBLIC_SESSION_HEADER, JSON.stringify(session));
   const response = NextResponse.next({ request: { headers: requestHeaders } });
-  return finishResponse(response, requestId, rotated, Boolean(session || accessToken || refreshToken));
+  return finishResponse(response, requestId, rotated, Boolean(session || accessToken || refreshToken), clearStaleCookies);
 }
 
 export const config = {
