@@ -146,9 +146,10 @@ this order:
    the same effective-privilege view.
 4. Confirm `api-dev` has no external dependency. If unused, remove it; do not
    treat its deletion as the runtime-role verification.
-5. Run a staging migration `status` and two idempotent `up` runs with the
-   staging migrator URI. Production is verified with `status` first and
-   remains approval-gated for any `up`/`apply` execution.
+5. Run two idempotent staging `apply` runs with the staging migrator URI.
+   There is no status-only staging run: selecting `status` for staging is
+   normalized to `apply` by the workflow. Production is verified with
+   `status` first and remains approval-gated for any `up`/`apply` execution.
 
 The recorded evidence must include the two projects, usernames, effective
 roles, relevant privilege rows and command timestamps. It must not include a
