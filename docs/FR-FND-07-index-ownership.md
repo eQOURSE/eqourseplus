@@ -17,12 +17,13 @@ do not promote it to `main` until the production role split is verified.
 - In `eqplus-dev`, the production-project `eqplus-migrator` still has
   `readWrite@eqplus` and `dbAdmin@eqplus`; it must be replaced by the same
   project-local `eqplus-migrator-role` after staging verification. `api-prod`
-  still has only its custom `eqplus-app` assignment in the user inventory;
-  its effective custom privileges must be read in the Atlas console before
-  the production `createIndex` tightening. Production remains untouched.
+  has only its custom `eqplus-app` assignment, with no inherited role or
+  specific privilege. The 2026-10-26 console readback shows its sole current
+  violation is `createIndex` on eight `eqplus` resources. Production remains
+  untouched.
 - Production-project `api-dev` still has broad `readWrite@eqplus`, which
-  permits `update` and `remove` on `auditLogs`. Its external use must be
-  confirmed before removal.
+  permits `update` and `remove` on `auditLogs`; it has no `dbAdmin` role. Its
+  external use must be confirmed before removal.
 - The repository references `api-dev` only in legacy `SETUP.md`, `HANDOFF.md`
   and this rollout document; no application code, workflow, deployed secret
   or connection configuration uses it. Its external use must be confirmed
@@ -34,6 +35,13 @@ do not promote it to `main` until the production role split is verified.
   same observed key patterns. The Atlas connector exposes names and keys but
   not the complete `unique`, `sparse`, partial-filter, collation and TTL
   options, so its output alone is insufficient for the parity gate.
+- The production console readback on 2026-10-26 confirms `eqplus-app` already
+  has `auditLogs` `find`/`insert` only and no `dropIndex`, `listIndexes`,
+  `collMod` or `createCollection`. Its first tracked production change is
+  therefore removal of `createIndex` only. The second tracked change removes
+  `migrationChangelog`/`migrationLock` full data privileges and
+  `tests`/`testAttempts` `find`/`insert`/`update`; repository search found no
+  application, migration or query use of those test collections.
 
 ## Target Atlas role shapes (2026-10-26)
 
@@ -145,6 +153,16 @@ this order:
 The recorded evidence must include the two projects, usernames, effective
 roles, relevant privilege rows and command timestamps. It must not include a
 password or a connection URI.
+
+The GitHub repository variable named `CLIENT_IDENTIFIER_HMAC_SECRET` must be
+verified before migration secrets are considered complete. The workflow does
+not read a GitHub variable or expose this value: it injects the GCP Secret
+Manager secret named `CLIENT_IDENTIFIER_HMAC_SECRET` into Cloud Run with
+`--set-secrets`. If the repository variable is only the label
+`CLIENT_IDENTIFIER_HMAC_SECRET_23`, remove or rename it to avoid a plaintext
+secret-looking value. If it is the real HMAC value, revoke it from repository
+variables and confirm the existing GCP Secret Manager value is unchanged; do
+not rotate it as part of this FR.
 
 ## Required sequence
 
