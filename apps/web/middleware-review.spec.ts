@@ -120,6 +120,22 @@ describe("FR-REG-02D review regressions", () => {
     expect(response.headers.get("set-cookie")).toBeNull();
   });
 
+  it("treats a revoked refresh session as signed out on /login and clears both cookies", async () => {
+    vi.stubEnv("API_URL", "https://api.eqourse.test");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 401 })));
+
+    const response = await middleware(request(
+      "/login",
+      "__Host-eqourse-access=expired; __Host-eqourse-refresh=revoked",
+    ));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-request-x-eqourse-public-session")).toBeNull();
+    expect(response.headers.get("set-cookie")).toContain("__Host-eqourse-access=;");
+    expect(response.headers.get("set-cookie")).toContain("__Host-eqourse-refresh=;");
+    expect(captureMessage).not.toHaveBeenCalled();
+  });
+
   it("uses the shared verifier destination before rendering /login", async () => {
     vi.stubEnv("API_URL", "https://api.eqourse.test");
     const verifier = { ...session, roleAssignments: [{ role: "VERIFIER", businessUnit: "EQOURSE" }] };
