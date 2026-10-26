@@ -39,14 +39,18 @@ another custom role.
   `readWriteAnyDatabase@admin` assignment with the custom role
   `eqplus-app-staging`. In `eqplus-dev` (the production project), keep
   username `api-prod` and keep the existing custom role `eqplus-app`.
-- `eqplus-app-staging` must have the same data shape as `eqplus-app`: full
-  `find`, `insert`, `update` and `remove` on the non-audit application
-  collections (`users`, `profiles`, `vendors`, `clients`, `skillTaxonomy`) and
-  only `find` and `insert` on `auditLogs`. It has no index actions.
-- Production `eqplus-app` already has the correct `auditLogs` shape. Remove
-  only its `createIndex` action; do not rebuild or otherwise change the role.
-  Its `listIndexes`/`dropIndex` state must be recorded before and after so the
-  direct Atlas finding remains auditable.
+- `eqplus-app-staging` is intentionally narrower than the current production
+  role: it has full `find`, `insert`, `update` and `remove` only on the
+  non-audit application collections (`users`, `profiles`, `vendors`,
+  `clients`, `skillTaxonomy`) and only `find` and `insert` on `auditLogs`. It
+  has no index actions and no privileges on `migrationChangelog`,
+  `migrationLock`, `tests` or `testAttempts`.
+- Production `eqplus-app` already has the correct `auditLogs` shape. This is
+  option (a), so production has two tracked tightening changes: first remove
+  only its `createIndex` action; second remove its `find`/`insert`/`update`/
+  `remove` privileges on `migrationChangelog` and `migrationLock`, plus its
+  `find`/`insert`/`update` privileges on `tests` and `testAttempts`. Do not
+  rebuild the role; record each change and its effective-privilege result.
 - Neither runtime role may inherit a built-in role or hold
   `readWriteAnyDatabase`, `dbAdmin`, `listIndexes`, `createIndex`, `dropIndex`,
   `collMod`, `createCollection`, database-wide, `admin`-database or
@@ -97,10 +101,12 @@ this order:
    Confirm `auditLogs` has no `update` or `remove` for either principal and
    that no inherited `readWrite`, `readWriteAnyDatabase` or `dbAdmin` role
    remains.
-3. **Production second:** `api-prod` keeps `eqplus-app`; remove only its
-   `createIndex` action and prove its existing `auditLogs` `find`/`insert`
-   shape is unchanged. Replace production `eqplus-migrator`'s built-in role
-   with `eqplus-migrator-role`, then record the same effective-privilege view.
+3. **Production second:** `api-prod` keeps `eqplus-app`; remove its
+   `createIndex` action, then remove the over-granted migration/test collection
+   privileges listed above, proving its existing `auditLogs` `find`/`insert`
+   shape is unchanged after each tracked change. Replace production
+   `eqplus-migrator`'s built-in role with `eqplus-migrator-role`, then record
+   the same effective-privilege view.
 4. Confirm `api-dev` has no external dependency. If unused, remove it; do not
    treat its deletion as the runtime-role verification.
 5. Run a staging migration `status` and two idempotent `up` runs with the
@@ -126,9 +132,11 @@ password or a connection URI.
    for both staging principals, confirm the runtime has no index actions and
    the migrator has the three index actions, and confirm neither can update or
    remove `auditLogs`. Run the staging API smoke test.
-4. **Apply production second.** On `eqplus-app`, remove only `createIndex` and
-   prove the existing `auditLogs` `find`/`insert` privileges are unchanged.
-   Replace the production migrator's built-in roles with
+4. **Apply production second.** On `eqplus-app`, first remove `createIndex`,
+   then remove its over-granted `migrationChangelog`, `migrationLock`, `tests`
+   and `testAttempts` privileges as the second tracked change. Prove the
+   existing `auditLogs` `find`/`insert` privileges are unchanged after each
+   change. Replace the production migrator's built-in roles with
    `eqplus-migrator-role`, then record and verify effective privileges.
 5. Confirm whether any external local tool or operator uses `api-dev`. If no
    dependency exists, remove the production-project user; do not use it as a

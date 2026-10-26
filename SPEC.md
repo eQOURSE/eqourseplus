@@ -553,18 +553,22 @@ open board (wk25–30) → 8 AI+CRM (31+). Never start a phase before the previo
 
 **FR-FND-07 role-separation amendment (2026-10-26):** The reviewed Atlas
 role shape and verification procedure are normative in
-`docs/FR-FND-07-index-ownership.md`. The staging runtime user
-`eqplus-staging-app` receives `eqplus-app-staging`, which has the same data
-shape as production `eqplus-app` and no index actions. Production `api-prod`
-keeps `eqplus-app`; only its `createIndex` action is removed because its
-`auditLogs` `find`/`insert` shape is already compliant. Both project-local
-`eqplus-migrator` users receive `eqplus-migrator-role`: full CRUD on the
-non-audit application collections, `find`/`insert` only on `auditLogs`, and
+`docs/FR-FND-07-index-ownership.md`. Choose option (a): the staging runtime
+user `eqplus-staging-app` receives the narrow custom role
+`eqplus-app-staging`, with full CRUD only on non-audit application collections,
+`find`/`insert` on `auditLogs`, and no index actions. It intentionally does not
+copy production's current extra privileges on `migrationChangelog`,
+`migrationLock`, `tests` or `testAttempts`. Production `api-prod` keeps
+`eqplus-app`; its first tracked change removes `createIndex`, and its second
+tracked change removes those four over-granted collection privileges. Both
+project-local `eqplus-migrator` users receive `eqplus-migrator-role`: full CRUD
+on non-audit application collections, `find`/`insert` only on `auditLogs`, and
 `createIndex`/`dropIndex`/`listIndexes`. `api-dev` is not referenced by the
 repository's application or deployment configuration and must be confirmed
 unused before removal. The order is staging role replacement, effective-role
-verification and smoke test, then production role changes and verification;
-the dependent migration PRs remain blocked until the recorded evidence passes.
+verification and smoke test, then the two production tightening changes and
+verification; the dependent migration PRs remain blocked until the recorded
+evidence passes.
 
 **FR-FND-06 amendment (2026-10-24):** Production observability uses explicit
 Sentry environments. The `javascript-nextjs` public-session alert and a named
