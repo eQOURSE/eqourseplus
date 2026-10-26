@@ -21,8 +21,8 @@ export class DatabaseConnectionService
     if (connection.readyState === 1) return;
 
     if (!this.connectionPromise) {
-      const { uri } = loadDatabaseConfig(process.env);
-      this.connectionPromise = connect(uri)
+      const { uri, autoIndex } = loadDatabaseConfig(process.env);
+      this.connectionPromise = connect(uri, { autoIndex })
         .then(() => undefined)
         .catch((error: unknown) => {
           this.connectionPromise = undefined;
