@@ -97,7 +97,10 @@ count toward the production rules.
 After both rules are saved, sign in with an internal `SUPER_ADMIN` account and
 trigger the repeatable production-safe checks:
 
-1. `GET /api/v1/internal/observability-check` on the API.
+1. `GET /api/v1/internal/observability-check` on the web origin. The same-origin
+   Next route handler forwards the session cookie as a bearer token to the API;
+   do not call the API origin directly from a browser because its CORS policy
+   deliberately keeps `credentials` disabled.
 2. `GET /observability-check` on the web app.
 
 Each route is noindex, absent from the sitemap, inaccessible without an

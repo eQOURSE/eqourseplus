@@ -533,7 +533,9 @@ action throttle. Both alerts notify the configured Sentry recipient, and
 acceptance requires a real production error in each app plus confirmed email
 delivery; configuration or a Sentry test event alone is insufficient. Each app
 therefore exposes a repeatable, guarded observability check: API `GET
-/api/v1/internal/observability-check` and the server-rendered web
+/api/v1/internal/observability-check` reached from the browser through the
+same-origin web route handler, which forwards the session cookie as a bearer
+token, and the server-rendered web
 `/observability-check` route. Both require an authenticated `SUPER_ADMIN`, are
 noindex and absent from the sitemap, and throw a known PII-free error only
 after authentication succeeds. Unauthenticated requests and authenticated
