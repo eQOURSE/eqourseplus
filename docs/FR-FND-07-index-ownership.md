@@ -18,6 +18,76 @@ do not promote it to `main` until the production role split is verified.
   not the complete `unique`, `sparse`, partial-filter, collation and TTL
   options, so its output alone is insufficient for the parity gate.
 
+## Target Atlas role shapes (2026-10-26)
+
+Atlas custom roles are project-local. Create the staging and production roles
+separately; do not attach a built-in `readWrite`, `readWriteAnyDatabase` or
+`dbAdmin` role to either deployed principal, and do not inherit one through
+another custom role.
+
+### Runtime principals
+
+- In `eqplus-staging`, keep username `eqplus-staging-app` and assign a custom
+  runtime role. In `eqplus-dev` (the production project), keep username
+  `api-prod` and update the existing `eqplus-app` custom role in place.
+- On database `eqplus`, grant `find`, `insert`, `update` and `remove` only on
+  `users`, `profiles`, `vendors` and `clients`; grant `find` only on
+  `skillTaxonomy`; and grant only `find` and `insert` on `auditLogs`.
+- Grant no `listIndexes`, `createIndex`, `dropIndex`, `collMod`,
+  `createCollection`, database-wide, `admin`-database or `AnyDatabase`
+  privilege to either runtime role. The runtime role has no inherited roles.
+  This is the concrete implementation of “readWrite on `eqplus` minus
+  `update`/`remove` on `auditLogs`, with index privileges removed”; MongoDB
+  cannot express that subtraction through an inherited built-in role.
+- `api-dev` is a separate development user, not an accepted staging or
+  production runtime identity. Its broad `readWrite` role must not appear in
+  either deployed connection string; its replacement or retirement is tracked
+  separately before FR-REG-07A.
+
+### Migration principals
+
+- Keep username `eqplus-migrator` in each project, but assign separate,
+  project-local custom roles and keep the staging and production credentials in
+  their existing separate managed secrets.
+- Grant `listIndexes`, `createIndex` and `dropIndex` on all six application
+  collections (`users`, `profiles`, `vendors`, `clients`, `skillTaxonomy`,
+  `auditLogs`). These are the only principals allowed to manage indexes.
+- Grant the data actions required by the committed migrations only: `find` on
+  `users`; `find`, `insert` and `update` on `profiles`; `find`, `insert` and
+  `update` on `skillTaxonomy`; and `find`, `insert`, `update` and `remove` on
+  `migrationChangelog` and `migrationLock`.
+- Grant `listCollections` at the `eqplus` database scope and `createCollection`
+  plus `collMod` only on the collections used by the committed schema
+  migrations (`skillTaxonomy`, `users` and `profiles`). Do not grant either
+  action on `auditLogs`, `tests` or `testAttempts`; the FR-TST-01 role addition
+  remains separate.
+- Grant no data `insert`, `update` or `remove` action on `auditLogs`. The
+  migration principal may inspect and change its indexes, but it cannot change
+  audit entries. No broad built-in role is inherited.
+
+### Effective-role verification
+
+After each role assignment, the trusted Atlas operator records the role and
+privilege view for the exact username without displaying credentials. Use the
+Atlas console's effective-privilege view or an equivalent `usersInfo` check
+with `showPrivileges: true` and `showCredentials: false`. Acceptance requires:
+
+1. The runtime user has only its one custom role; no inherited role contains
+   `readWrite`, `readWriteAnyDatabase` or `dbAdmin`.
+2. Runtime privileges contain no `listIndexes`, `createIndex`, `dropIndex` or
+   `collMod`, and `auditLogs` contains `find`/`insert` but not `update`/`remove`.
+3. Each migrator has only its project-local migration role, has the three index
+   actions on all six application collections, and has no `update`/`remove` on
+   `auditLogs`.
+4. A staging API smoke test succeeds with the staging runtime URI; a staging
+   migration `status` and two idempotent `up` runs succeed with the staging
+   migrator URI. Production is verified with `status` first and remains
+   approval-gated for any `up`/`apply` execution.
+
+The recorded evidence must include the two projects, usernames, effective
+roles, relevant privilege rows and command timestamps. It must not include a
+password or a connection URI.
+
 ## Required sequence
 
 1. Capture `db.<collection>.getIndexes()` for each application collection

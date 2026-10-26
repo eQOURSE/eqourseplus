@@ -551,6 +551,20 @@ open board (wk25–30) → 8 AI+CRM (31+). Never start a phase before the previo
 
 **FR-FND-07 accepted deviation (2026-10-31):** Staging and production index-name parity in the acceptance criterion above is deferred. The safety objectives of FR-FND-07 are met: deployed runtimes create no indexes, the runtime and migration roles are separated and verified, the migration credential fails closed in production, and `auditLogs` remains append-only. The remaining difference is index naming between clusters. Renaming unique indexes requires paused production writes, which is not justified by naming consistency alone. This divergence is accepted and will be resolved when those collections are next modified. The FR-FND-07 requirement and acceptance criterion remain unchanged; parity is an explicit outstanding deviation.
 
+**FR-FND-07 role-separation amendment (2026-10-26):** The reviewed Atlas
+role shape and verification procedure are normative in
+`docs/FR-FND-07-index-ownership.md`. Runtime roles are project-local custom
+roles with data actions on `eqplus` collections only: `users`, `profiles`,
+`vendors` and `clients` may use `find`/`insert`/`update`/`remove`,
+`skillTaxonomy` uses `find`, and `auditLogs` uses only `find`/`insert`.
+Runtime roles inherit no built-in role and have no `listIndexes`,
+`createIndex`, `dropIndex`, `collMod`, `createCollection`, database-wide or
+`AnyDatabase` privilege. Separate project-local migrator roles alone hold
+index actions on all application collections, plus only the committed
+migration data and changelog/lock actions; they have no `update` or `remove`
+on `auditLogs`. Atlas effective privileges must be recorded for staging and
+production before FR-FND-07 or the dependent migration PRs are accepted.
+
 **FR-FND-06 amendment (2026-10-24):** Production observability uses explicit
 Sentry environments. The `javascript-nextjs` public-session alert and a named
 `node-nestjs` API error alert are both filtered to `environment:production`,
