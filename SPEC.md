@@ -561,9 +561,16 @@ copy production's current extra privileges on `migrationChangelog`,
 `migrationLock`, `tests` or `testAttempts`. Production `api-prod` keeps
 `eqplus-app`; its first tracked change removes `createIndex`, and its second
 tracked change removes those four over-granted collection privileges. Both
-project-local `eqplus-migrator` users receive `eqplus-migrator-role`: full CRUD
-on non-audit application collections, `find`/`insert` only on `auditLogs`, and
-`createIndex`/`dropIndex`/`listIndexes`. `api-dev` is not referenced by the
+project-local `eqplus-migrator` users receive `eqplus-migrator-role` with the
+explicit resource/action matrix in the rollout document: application
+collections receive the required index actions; `auditLogs` is `find`/`insert`
+only for data actions; `migrationLock` receives `createIndex` for the
+`migrate-mongo` TTL lock index; neither bookkeeping collection receives
+`dropIndex` or `listIndexes`; and database `eqplus` receives
+`listCollections` because MongoDB cannot scope that action to a collection.
+The committed users migration's `createCollection` fallback is included, as
+are `collMod`/`createCollection` on `profiles` and `skillTaxonomy`.
+`api-dev` is not referenced by the
 repository's application or deployment configuration and must be confirmed
 unused before removal. The order is staging role replacement, effective-role
 verification and smoke test, then the two production tightening changes and

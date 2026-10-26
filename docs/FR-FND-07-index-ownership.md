@@ -69,20 +69,37 @@ another custom role.
   `readWrite@eqplus` (and any other built-in role) assignment with the
   project-local custom role `eqplus-migrator-role`. Staging and production
   retain separate credentials in their existing managed secrets.
-- `eqplus-migrator-role` grants full `find`, `insert`, `update` and `remove`
-  on the non-audit application collections (`users`, `profiles`, `vendors`,
-  `clients`, `skillTaxonomy`), only `find` and `insert` on `auditLogs`, and
-  full CRUD on the migration bookkeeping collections `migrationChangelog` and
-  `migrationLock`.
-- The migrator role also grants `createIndex`, `dropIndex` and `listIndexes`
-  across the `eqplus` collection resources, including `auditLogs`. These are
-  the only principals allowed to manage indexes. It has no inherited built-in
-  role, and no `AnyDatabase` privilege.
-- `collMod`, `createCollection` and `listCollections` remain limited to the
-  committed migration resources required by the existing migrations; do not
-  grant them on `auditLogs`, `tests` or `testAttempts`. The FR-TST-01 role
-  addition remains separate. The migrator has no `update` or `remove` action
-  on `auditLogs`, despite having index actions there.
+- `eqplus-migrator-role` uses this explicit matrix. “Full CRUD” below means
+  `find`, `insert`, `update` and `remove`.
+
+  | Resource | Actions |
+  | --- | --- |
+  | `eqplus.users` | full CRUD, `createIndex`, `dropIndex`, `listIndexes`, `createCollection` |
+  | `eqplus.profiles` | full CRUD, `createIndex`, `dropIndex`, `listIndexes`, `collMod`, `createCollection` |
+  | `eqplus.vendors` | full CRUD, `createIndex`, `dropIndex`, `listIndexes` |
+  | `eqplus.clients` | full CRUD, `createIndex`, `dropIndex`, `listIndexes` |
+  | `eqplus.skillTaxonomy` | full CRUD, `createIndex`, `dropIndex`, `listIndexes`, `collMod`, `createCollection` |
+  | `eqplus.auditLogs` | `find`, `insert`, `createIndex`, `dropIndex`, `listIndexes` only |
+  | `eqplus.migrationChangelog` | full CRUD; no index action |
+  | `eqplus.migrationLock` | full CRUD, `createIndex`; no `dropIndex` or `listIndexes` |
+  | database `eqplus` | `listCollections` only |
+
+  `listCollections` is deliberately granted at database scope because MongoDB
+  does not expose a collection-scoped form of that action. The committed
+  migrations call `db.listCollections({ name: ... })` for `users`, `profiles`
+  and `skillTaxonomy`, so this is an unavoidable database-level widening within
+  `eqplus`, not an `AnyDatabase` privilege. The users migration also contains a
+  `createCollection("users")` fallback, so `users` is intentionally included
+  above.
+
+  The repository uses `migrate-mongo@14.0.7` with `lockTtl: 300`. Its lock
+  helper creates the TTL index on `migrationLock`; it does not call
+  `listIndexes` and does not create an index on `migrationChangelog`. Therefore
+  `createIndex` is allowed on `migrationLock`, while `dropIndex` and
+  `listIndexes` are omitted from both bookkeeping collections. The migrator
+  has no `update` or `remove` action on `auditLogs`, despite having index
+  actions there. It has no inherited built-in role and no `AnyDatabase`
+  privilege.
 
 ### Effective-role verification
 
@@ -95,8 +112,8 @@ this order:
 1. **Staging first:** `eqplus-staging-app` has only `eqplus-app-staging`, the
    `readWriteAnyDatabase@admin` role is absent, and its effective privileges
    contain no index action. `eqplus-migrator` has only
-   `eqplus-migrator-role`, full CRUD on non-audit application collections,
-   `find`/`insert` on `auditLogs`, and the three index actions.
+   `eqplus-migrator-role`, with the exact matrix above, including
+   database-level `listCollections` and `createIndex` on `migrationLock`.
 2. Run the staging API smoke test and capture the effective-privilege output.
    Confirm `auditLogs` has no `update` or `remove` for either principal and
    that no inherited `readWrite`, `readWriteAnyDatabase` or `dbAdmin` role
@@ -130,8 +147,8 @@ password or a connection URI.
    built-in roles. Do not rotate either credential.
 3. **Verify staging before touching production.** Record effective privileges
    for both staging principals, confirm the runtime has no index actions and
-   the migrator has the three index actions, and confirm neither can update or
-   remove `auditLogs`. Run the staging API smoke test.
+   the migrator matches the exact matrix above, and confirm neither can update
+   or remove `auditLogs`. Run the staging API smoke test.
 4. **Apply production second.** On `eqplus-app`, first remove `createIndex`,
    then remove its over-granted `migrationChangelog`, `migrationLock`, `tests`
    and `testAttempts` privileges as the second tracked change. Prove the
