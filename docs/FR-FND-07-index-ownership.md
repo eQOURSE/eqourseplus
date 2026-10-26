@@ -9,11 +9,20 @@ do not promote it to `main` until the production role split is verified.
 - In `eqplus-dev`, production `api-prod` uses custom role `eqplus-app` on
   `admin`. Its `auditLogs` privilege is already `find` + `insert` only; the
   sole reported violation is `createIndex`, which must be removed in place.
-- In `eqplus-staging`, `eqplus-staging-app` still has
-  `readWriteAnyDatabase@admin`; it must be replaced by `eqplus-app-staging`.
-- Both project-local `eqplus-migrator` users and production-project `api-dev`
-  still have broad `readWrite@eqplus`, which permits `update` and `remove` on
-  `auditLogs`. The migrators must be replaced by `eqplus-migrator-role`.
+- In `eqplus-staging`, the 2026-10-26 Atlas console change replaced both
+  staging users' prior roles, including the previously missed
+  `dbAdmin@eqplus` assignments. `eqplus-staging-app` now has only
+  `eqplus-app-staging`; `eqplus-migrator` now has only
+  `eqplus-migrator-role`. No credential was rotated.
+- In `eqplus-dev`, the production-project `eqplus-migrator` still has
+  `readWrite@eqplus` and `dbAdmin@eqplus`; it must be replaced by the same
+  project-local `eqplus-migrator-role` after staging verification. `api-prod`
+  still has only its custom `eqplus-app` assignment in the user inventory;
+  its effective custom privileges must be read in the Atlas console before
+  the production `createIndex` tightening. Production remains untouched.
+- Production-project `api-dev` still has broad `readWrite@eqplus`, which
+  permits `update` and `remove` on `auditLogs`. Its external use must be
+  confirmed before removal.
 - The repository references `api-dev` only in legacy `SETUP.md`, `HANDOFF.md`
   and this rollout document; no application code, workflow, deployed secret
   or connection configuration uses it. Its external use must be confirmed
@@ -114,6 +123,9 @@ this order:
    contain no index action. `eqplus-migrator` has only
    `eqplus-migrator-role`, with the exact matrix above, including
    database-level `listCollections` and `createIndex` on `migrationLock`.
+   The Atlas user inventory readback for both users was recorded at
+   `2026-10-26 10:30–10:35 UTC`; it showed exactly one role per user and no
+   inherited role.
 2. Run the staging API smoke test and capture the effective-privilege output.
    Confirm `auditLogs` has no `update` or `remove` for either principal and
    that no inherited `readWrite`, `readWriteAnyDatabase` or `dbAdmin` role
@@ -141,10 +153,11 @@ password or a connection URI.
    Capture `db.<collection>.getIndexes()` for each application collection in
    both clusters, including `_id_`, and retain complete manifests for review
    and rollback. Compare names, key order and all index options.
-2. **Apply staging first.** In `eqplus-staging`, create
-   `eqplus-app-staging` and `eqplus-migrator-role`; replace the staging runtime
-   user's `readWriteAnyDatabase@admin` assignment and the staging migrator's
-   built-in roles. Do not rotate either credential.
+2. **Staging role replacement — applied 2026-10-26.** In `eqplus-staging`,
+   `eqplus-app-staging` and `eqplus-migrator-role` were created and assigned;
+   the staging runtime user's `readWriteAnyDatabase@admin`/`dbAdmin` and the
+   staging migrator's `readWrite`/`dbAdmin` assignments were removed. No
+   credential was rotated.
 3. **Verify staging before touching production.** Record effective privileges
    for both staging principals, confirm the runtime has no index actions and
    the migrator matches the exact matrix above, and confirm neither can update
