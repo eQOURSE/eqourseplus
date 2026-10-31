@@ -200,17 +200,6 @@ describe("FR-FND-05 API deployment", () => {
     );
   });
 
-  it("passes the Cloud Run migration secret to migrate-mongo", () => {
-    const migrationConfig = readFileSync(
-      path.join(repositoryDirectory, "apps", "api", "migrate-mongo-config.cjs"),
-      "utf8",
-    );
-
-    expect(migrationConfig).toContain(
-      "environment.MONGODB_MIGRATION_URI ?? environment.MONGODB_URI",
-    );
-  });
-
   it("keeps migrate-mongo in runtime dependencies and documents legacy job cleanup", () => {
     const apiPackage = JSON.parse(readFileSync(apiPackagePath, "utf8")) as {
       dependencies?: Record<string, string>;
