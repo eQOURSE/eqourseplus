@@ -551,6 +551,32 @@ open board (wk25–30) → 8 AI+CRM (31+). Never start a phase before the previo
 
 **FR-FND-07 accepted deviation (2026-10-31):** Staging and production index-name parity in the acceptance criterion above is deferred. The safety objectives of FR-FND-07 are met: deployed runtimes create no indexes, the runtime and migration roles are separated and verified, the migration credential fails closed in production, and `auditLogs` remains append-only. The remaining difference is index naming between clusters. Renaming unique indexes requires paused production writes, which is not justified by naming consistency alone. This divergence is accepted and will be resolved when those collections are next modified. The FR-FND-07 requirement and acceptance criterion remain unchanged; parity is an explicit outstanding deviation.
 
+**FR-FND-07 role-separation amendment (2026-10-26):** The reviewed Atlas
+role shape and verification procedure are normative in
+`docs/FR-FND-07-index-ownership.md`. Choose option (a): the staging runtime
+user `eqplus-staging-app` receives the narrow custom role
+`eqplus-app-staging`, with full CRUD only on non-audit application collections,
+`find`/`insert` on `auditLogs`, and no index actions. It intentionally does not
+copy production's current extra privileges on `migrationChangelog`,
+`migrationLock`, `tests` or `testAttempts`. Production `api-prod` keeps
+`eqplus-app`; its first tracked change removes `createIndex`, and its second
+tracked change removes those four over-granted collection privileges. Both
+project-local `eqplus-migrator` users receive `eqplus-migrator-role` with the
+explicit resource/action matrix in the rollout document: application
+collections receive the required index actions; `auditLogs` is `find`/`insert`
+only for data actions; `migrationLock` receives `createIndex` for the
+`migrate-mongo` TTL lock index; neither bookkeeping collection receives
+`dropIndex` or `listIndexes`; and database `eqplus` receives
+`listCollections` because MongoDB cannot scope that action to a collection.
+The committed users migration's `createCollection` fallback is included, as
+are `collMod`/`createCollection` on `profiles` and `skillTaxonomy`.
+`api-dev` is not referenced by the
+repository's application or deployment configuration and must be confirmed
+unused before removal. The order is staging role replacement, effective-role
+verification and smoke test, then the two production tightening changes and
+verification; the dependent migration PRs remain blocked until the recorded
+evidence passes.
+
 **FR-FND-06 amendment (2026-10-24):** Production observability uses explicit
 Sentry environments. The `javascript-nextjs` public-session alert and a named
 `node-nestjs` API error alert are both filtered to `environment:production`,
