@@ -2,6 +2,8 @@
 Current phase: 2 — Freelancer onboarding (next: FR-REG-06 profile state machine)
 Last completed FR: FR-REG-02D public session-aware rendering and navigation — 2026-10-19 — The shared public header receives the authoritative session before server HTML is sent; expired access cookies refresh before rendering. Signed-in `/login` and submitted or reviewed company registration entries redirect before their forms appear. The permanent route-enumerating regression covers every public page with the shared header. Marketing routes remain server-rendered with SEO metadata; `/jobs/[slug]` remains static SSG. Web tests (432), API tests (206), monorepo lint and production build pass; delayed local HTTP checks confirmed the first response for signed-in and signed-out routes. PR review follow-up added concurrent refresh coalescing, bounded upstream calls, actor-specific company guards, explicit anonymous cache policy, shared sign-in routing, route-list agreement, and a branded fail-closed session error.
 
+- 2026-11-07 — Added the operational GCP exit record and secret-parity procedure in [docs/GCP-EXIT.md](docs/GCP-EXIT.md); no FR status changed.
+
 ## Specification amendments
 - [x] 2026-10-31 — SPEC v2.33: specified FR-CNT-01…13 in §5.9, F7 editorial states, supporting §8 entities and §9 API group, and the FR-TST-01 single-bank dependency. FR-CNT-06 has P1 bank-similarity and generated-content declaration checks, with external plagiarism screening at P2. Recorded the dated FR-FND-07 index-name parity deviation without changing its requirement or acceptance criterion. HANDOFF.md line 13 had drifted at v2.30 through the v2.31 and v2.32 amendments; its version token is now v2.33. These FRs are specified; implementation and acceptance remain pending.
 
