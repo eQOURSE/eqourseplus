@@ -28,12 +28,22 @@ gcp_staging=(
   RESEND_API_KEY R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY SENTRY_DSN
 )
 
-for command in gcloud aws sha256sum perl; do
+for command in gcloud aws perl; do
   if ! command -v "$command" >/dev/null 2>&1; then
     printf 'Preflight failed: %s is required.\n' "$command" >&2
     exit 2
   fi
 done
+if command -v sha256sum >/dev/null 2>&1; then
+  hash_command=sha256sum
+  hash_args=()
+elif command -v shasum >/dev/null 2>&1; then
+  hash_command=shasum
+  hash_args=(-a 256)
+else
+  printf 'Preflight failed: sha256sum or shasum is required.\n' >&2
+  exit 2
+fi
 
 if ! project=$(gcloud config get-value project 2>/dev/null) || [[ $project != eqplus-503212 ]]; then
   printf 'Preflight failed: active GCP project must be eqplus-503212.\n' >&2
@@ -61,32 +71,33 @@ for env in production staging; do
       gcp_name=${gcp_staging[i]}
     fi
 
-    if ! gcp_version=$(gcloud secrets versions list "$gcp_name" --project=eqplus-503212 --filter='state=ENABLED' --sort-by='~createTime' --limit=1 --format='value(name)' 2>/dev/null) || [[ -z $gcp_version ]]; then
-      printf '%s/%s: ERROR GCP_VERSION\n' "$env" "$name"
-      error=$((error + 1))
-      continue
+    gcp_version='?'
+    if version_name=$(gcloud secrets versions describe latest --secret="$gcp_name" --project=eqplus-503212 --format='value(name)' 2>/dev/null); then
+      version_number=${version_name##*/}
+      if [[ $version_number =~ ^[0-9]+$ ]]; then
+        gcp_version=$version_number
+      fi
     fi
-    gcp_version=${gcp_version##*/}
 
     # Normalize one stored trailing LF on both sides before hashing. AWS's
     # --output text adds one further LF, so remove that formatter LF first.
-    # Only the sha256sum result enters a shell variable; values stay in pipes.
-    if ! gcp_digest=$(gcloud secrets versions access "$gcp_version" --secret="$gcp_name" --project=eqplus-503212 2>/dev/null | perl -0777 -pe 's/\n\z//' | sha256sum); then
-      printf '%s/%s: ERROR GCP_READ\n' "$env" "$name"
+    # Only the SHA-256 result enters a shell variable; values stay in pipes.
+    if ! gcp_digest=$(gcloud secrets versions access latest --secret="$gcp_name" --project=eqplus-503212 2>/dev/null | perl -0777 -pe 's/\n\z//' | "$hash_command" "${hash_args[@]}"); then
+      printf '%s/%s: ERROR GCP_READ (gcp v%s)\n' "$env" "$name" "$gcp_version"
       error=$((error + 1))
       continue
     fi
-    if ! aws_digest=$(aws ssm get-parameter --name="/eqplus/$env/$name" --with-decryption --query Parameter.Value --output text --region ap-south-1 2>/dev/null | perl -0777 -pe 's/\n\z//' | perl -0777 -pe 's/\n\z//' | sha256sum); then
-      printf '%s/%s: ERROR AWS_READ\n' "$env" "$name"
+    if ! aws_digest=$(aws ssm get-parameter --name="/eqplus/$env/$name" --with-decryption --query Parameter.Value --output text --region ap-south-1 2>/dev/null | perl -0777 -pe 's/\n\z//' | perl -0777 -pe 's/\n\z//' | "$hash_command" "${hash_args[@]}"); then
+      printf '%s/%s: ERROR AWS_READ (gcp v%s)\n' "$env" "$name" "$gcp_version"
       error=$((error + 1))
       continue
     fi
 
     if [[ ${gcp_digest%% *} == "${aws_digest%% *}" ]]; then
-      printf '%s/%s: OK\n' "$env" "$name"
+      printf '%s/%s: OK (gcp v%s)\n' "$env" "$name" "$gcp_version"
       ok=$((ok + 1))
     else
-      printf '%s/%s: MISMATCH\n' "$env" "$name"
+      printf '%s/%s: MISMATCH (gcp v%s)\n' "$env" "$name" "$gcp_version"
       mismatch=$((mismatch + 1))
     fi
   done

@@ -68,4 +68,6 @@ With read access to GCP Secret Manager and AWS SSM, and the active project, acco
 ./scripts/verify-secret-parity.sh
 ```
 
-The script is read-only. It prints one verdict per environment/name comparison (`OK`, `MISMATCH`, or `ERROR` with a short reason) and a final count. No value is printed or saved. A nonzero exit means at least one comparison needs investigation; record all 18 `OK` verdicts before C2 or any Phase D action. Do not rotate secrets to repair a mismatch; reconcile the stored copies without exposing their values.
+The script is read-only. It prints one verdict per environment/name comparison (`OK`, `MISMATCH`, or `ERROR` with a short reason), the GCP version number when available (`gcp v?` otherwise), and a final count. No value is printed or saved. A nonzero exit means at least one comparison needs investigation; record all 18 `OK` verdicts before C2 or any Phase D action.
+
+Run the checker **twice**: once now and again immediately before C2. A GCP secret updated between those runs would otherwise go unnoticed. On a `MISMATCH`, **GCP Secret Manager is authoritative** because it is what production currently runs against. Reconcile by copying the GCP value into SSM, never the reverse, and never by rotating. Keep values out of logs and the repository.
