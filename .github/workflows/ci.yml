@@ -94,23 +94,18 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "${{ inputs.environment }}" == "staging" ]]; then
-            MIGRATION_SECRET=MONGODB_URI_MIGRATOR_STAGING
             if [[ "${{ inputs.action }}" == "seed" ]]; then
               MIGRATION_ACTION=seed
             else
               MIGRATION_ACTION=apply
             fi
           elif [[ "${{ inputs.environment }}" == "production" ]]; then
-            MIGRATION_SECRET=MONGODB_URI_MIGRATOR
             MIGRATION_ACTION=${{ inputs.action }}
           else
             echo "::error::Unsupported database environment"
             exit 1
           fi
-          MIGRATION_JOB="eqplus-db-migrate-${{ inputs.environment }}-${{ inputs.action == 'seed' && 'seed' || inputs.environment == 'staging' && 'apply' || inputs.action }}"
-          echo "MIGRATION_SECRET=${MIGRATION_SECRET}" >> "${GITHUB_ENV}"
           echo "MIGRATION_ACTION=${MIGRATION_ACTION}" >> "${GITHUB_ENV}"
-          echo "MIGRATION_JOB=${MIGRATION_JOB}" >> "${GITHUB_ENV}"
           echo "Selected ${{ inputs.environment }} migration action: ${MIGRATION_ACTION}"
 
       - name: Configure AWS migration credentials

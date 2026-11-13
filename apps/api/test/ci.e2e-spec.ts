@@ -20,6 +20,7 @@ const dockerfilePath = path.join(
 );
 const dockerignorePath = path.join(repositoryDirectory, ".dockerignore");
 const packagePath = path.join(repositoryDirectory, "package.json");
+const apiPackagePath = path.join(repositoryDirectory, "apps", "api", "package.json");
 const nodeVersionPath = path.join(repositoryDirectory, ".node-version");
 const pinnedNodeVersion = "22.23.1";
 const pnpmMinimumNodeVersion = [22, 13, 0] as const;
@@ -145,6 +146,34 @@ describe("FR-FND-05 AWS ECS deployment", () => {
     expect(migration).not.toContain("--with-decryption");
     expect(migration).toContain("environment:");
     expect(migration).toContain("inputs.environment");
+  });
+
+  it("keeps migrate-mongo in the production image", () => {
+    const apiPackage = JSON.parse(readFileSync(apiPackagePath, "utf8")) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+
+    expect(apiPackage.dependencies?.["migrate-mongo"]).toBeDefined();
+    expect(apiPackage.devDependencies?.["migrate-mongo"]).toBeUndefined();
+  });
+
+  it("keeps staging and production runtime configuration isolated", () => {
+    expect(production).toContain('CORS_ORIGINS: "https://plus.eqourse.com"');
+    for (const forbidden of ["localhost", "staging.plus.eqourse.com", "eqplus-staging-kyc-docs"]) {
+      expect(production).not.toContain(forbidden);
+    }
+    expect(staging).not.toContain("eqplus-prod-kyc-docs");
+    for (const job of [staging, production]) {
+      expect(job).toContain('SMS_PROVIDER: "sandbox"');
+      expect(job).toContain('MAILER_PROVIDER: "resend"');
+      expect(job).toContain('OTP_EMAIL_FROM: ${{ vars.OTP_EMAIL_FROM }}');
+    }
+  });
+
+  it("has no obsolete migration job or secret selector", () => {
+    expect(workflow).not.toContain("MIGRATION_SECRET");
+    expect(workflow).not.toContain("MIGRATION_JOB");
   });
 
   it("keeps the non-root production Docker image", () => {
