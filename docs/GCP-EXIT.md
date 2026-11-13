@@ -1,6 +1,6 @@
 # GCP exit runbook
 
-Operational record and runbook, dated **7 November 2026**. This does not amend `SPEC.md`. The entire GCP account is being closed, so the API move is forced rather than cost-driven. For context, eqplus itself ran at roughly ₹584/week; approximately 99.5% of the ₹130,221 November bill was Vertex AI in the separate `tutrain-automation` project, since shut off.
+Operational record and runbook, updated **13 November 2026**. This does not amend `SPEC.md`. The entire GCP account is being closed, so the API move is forced rather than cost-driven. For context, eqplus itself ran at roughly ₹584/week; approximately 99.5% of the ₹130,221 November bill was Vertex AI in the separate `tutrain-automation` project, since shut off.
 
 ## Current inventory
 
@@ -43,20 +43,22 @@ After cutover, a browser holding a cached bundle continues calling the old Cloud
 
 | Step | Action and evidence |
 | --- | --- |
-| A0 | Secret inventory **DONE**; run cross-store parity as described below and record `OK` for all 18 comparisons. |
-| A1 | CI pushes images to ECR through the existing OIDC role; retain the GCP push for rollback. |
-| A2 | Build ECS cluster, staging service, ALB, and ACM certificate; inject SSM parameters through the task-definition `secrets` block; send egress through NAT so Atlas sees `13.207.125.34`. |
-| A3 | Replace the Cloud Run migration Job with a one-off ECS task. Retain the environment approval gate; production must still fail closed without `MONGODB_MIGRATION_URI`; `auditLogs` stays append-only. Current CI maps staging `action=status` to `apply`; deliberately preserve or fix this behavior in A3. |
+| A0 | **DONE 13 Nov:** cross-store parity is `OK` for all 18 SSM values. Three values were re-copied byte-exactly; the GCP values for `JWT_SECRET` and `SENTRY_DSN` end in CRLF, and the AWS CLI `file://` reader had stripped the CR. |
+| A1 | **DONE:** CI pushes SHA-tagged images to ECR through GitHub OIDC. |
+| A2 | **DONE:** ECS staging and production services use SSM task-definition secrets and private NAT egress through `13.207.125.34`; CI deploys to ECS via OIDC. |
+| A3 | **DONE:** approved migration dispatch registers and runs a one-off ECS task, prints its CloudWatch logs, and checks its exit status. Staging `action=status` continues to map to `apply`. |
 | B1 | Point the staging hostname at the ALB. Smoke-test registration, OTP, sign-in, profile save, R2 upload, and the verifier console. |
 | B2 | Run migration `status`, then two idempotent `apply` runs from the ECS task. |
 | B3 | Confirm Atlas connections from `13.207.125.34`. |
-| C1 | Deploy a healthy production ECS service without sending traffic to it. |
-| C2 | Cut over by changing Vercel environment variables and redeploying, **not** by changing DNS. Requires A0 parity = `OK`. |
-| C3 | Soak for 72 hours; watch Sentry, ALB target health, and Atlas connection counts. |
+| C1 | **DONE 12 Nov:** staging cut over to ECS. |
+| C2 | **DONE 13 Nov 2026:** production cut over to ECS after A0 parity passed. |
+| C3 | **RUNNING until 16 Nov:** 72-hour soak; watch Sentry, ALB target health, and Atlas connection counts. |
 | D1 | Export anything that exists only in GCP, including Cloud Logging history and any Cloud Storage data. |
 | D2 | Remove `8.234.113.251` from both Atlas IP access lists, then update every repository and `SPEC.md` reference to `13.207.125.34`. Do not remove it early: that would take production down. |
 | D3 | Delete Cloud Run jobs, Artifact Registry images, service accounts, and the WIF provider. Scale both Cloud Run services to `min-instances=0` rather than deleting them. |
 | D4 | Delete the GCP project only after Sentry shows no Cloud Run hostname traffic and explicit sign-off is recorded. |
+
+Phase D decommission is **pending**. `SPEC.md` §20 and FR-FND-05 still describe Cloud Run and will be amended separately.
 
 **A0 parity gates C2 and all of Phase D only. It does not gate A1, A2, A3, or Phase B; none of those steps reads or moves a secret value.**
 
