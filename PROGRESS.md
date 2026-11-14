@@ -5,6 +5,7 @@ Last completed FR: FR-REG-02D public session-aware rendering and navigation — 
 - 2026-11-07 — Added the operational GCP exit record and secret-parity procedure in [docs/GCP-EXIT.md](docs/GCP-EXIT.md); no FR status changed.
 
 ## Specification amendments
+- [x] 2026-11-14 — SPEC v2.34: amended FR-REG-06 transition ownership and audit actor rules; specified account-holder resubmission from `MORE_INFO_NEEDED`, immutable `submittedAt` and the `(state, submittedAt)` profile queue index; documented FR-TST-04/05/06 test-result, retake and approval handling, including the account-holder more-information reason read and Verifier transition history additions pending Bhavesh's approval. HANDOFF.md's version token is intentionally unchanged by this PR.
 - [x] 2026-10-31 — SPEC v2.33: specified FR-CNT-01…13 in §5.9, F7 editorial states, supporting §8 entities and §9 API group, and the FR-TST-01 single-bank dependency. FR-CNT-06 has P1 bank-similarity and generated-content declaration checks, with external plagiarism screening at P2. Recorded the dated FR-FND-07 index-name parity deviation without changing its requirement or acceptance criterion. HANDOFF.md line 13 had drifted at v2.30 through the v2.31 and v2.32 amendments; its version token is now v2.33. These FRs are specified; implementation and acceptance remain pending.
 
 ## Phase 0 — Foundation (wk 1–2) — SPEC.md Section 22.1, strictly in order
